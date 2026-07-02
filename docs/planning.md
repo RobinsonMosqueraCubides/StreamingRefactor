@@ -16,7 +16,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 * **Resultado Esperado:** Repositorio con estructura base de monorepo.
 * **Criterios de Terminación:** Las carpetas existen, el `.gitignore` ignora dependencias de JS y Python, y el proyecto está versionado.
 
-### - [ ] Tarea 1.2: Configuración Base del Backend (FastAPI + SQLAlchemy)
+### - [x] Tarea 1.2: Configuración Base del Backend (FastAPI + SQLAlchemy)
 * **Objetivo:** Inicializar el proyecto FastAPI y la conexión a la base de datos PostgreSQL.
 * **Descripción:** Crear entorno virtual de Python, instalar dependencias, configurar FastAPI, SQLAlchemy 2.0 async, y Pydantic. Configurar variables de entorno y el motor de conexión a Supabase. Configurar CORS.
 * **Archivos/Módulos a crear:** `backend/requirements.txt`, `backend/main.py`, `backend/core/config.py`, `backend/db/database.py`.
@@ -25,7 +25,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 * **Resultado Esperado:** Servidor FastAPI corriendo localmente respondiendo a un endpoint de health check (`/health`) y conectado a la BD.
 * **Criterios de Terminación:** El servidor arranca sin errores y el endpoint `/health` devuelve 200 OK.
 
-### - [ ] Tarea 1.3: Configuración Base del Frontend (React + Vite + Tailwind)
+### - [x] Tarea 1.3: Configuración Base del Frontend (React + Vite + Tailwind)
 * **Objetivo:** Inicializar el proyecto Frontend con un enfoque Mobile First.
 * **Descripción:** Usar Vite para inicializar un proyecto de React con TypeScript. Instalar Tailwind CSS y configurar el tema base. Configurar Axios o Fetch para consumir la API. Crear un Layout principal con Bottom Navigation para móviles.
 * **Archivos/Módulos a crear:** `frontend/package.json`, `frontend/vite.config.ts`, `frontend/tailwind.config.js`, `frontend/src/App.tsx`, `frontend/src/api/axios.ts`, `frontend/src/layouts/MainLayout.tsx`.
