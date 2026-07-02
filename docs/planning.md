@@ -7,7 +7,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 ## - [ ] 🏗️ Fase 1: Configuración de la Infraestructura y Arquitectura Base
 **Objetivo:** Establecer el esqueleto del proyecto Monorepo, inicializar los servicios base (Frontend y Backend) y desplegar el esquema de la base de datos en Supabase. Esta fase desbloquea el desarrollo en paralelo del resto de fases.
 
-### - [ ] Tarea 1.1: Inicialización del Monorepo
+### - [x] Tarea 1.1: Inicialización del Monorepo
 * **Objetivo:** Crear la estructura de carpetas y configuración para alojar Frontend y Backend en el mismo repositorio.
 * **Descripción:** Configurar un entorno monorepo estándar. Crear la carpeta `/backend` y `/frontend`. Configurar gitignore y archivos de documentación base.
 * **Archivos/Módulos a crear:** `.gitignore`, `README.md`, `backend/`, `frontend/`.
