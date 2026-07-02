@@ -4,7 +4,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 
 ---
 
-## - [ ] 🏗️ Fase 1: Configuración de la Infraestructura y Arquitectura Base
+## - [x] 🏗️ Fase 1: Configuración de la Infraestructura y Arquitectura Base
 **Objetivo:** Establecer el esqueleto del proyecto Monorepo, inicializar los servicios base (Frontend y Backend) y desplegar el esquema de la base de datos en Supabase. Esta fase desbloquea el desarrollo en paralelo del resto de fases.
 
 ### - [x] Tarea 1.1: Inicialización del Monorepo
@@ -34,7 +34,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 * **Resultado Esperado:** App React renderizando una pantalla base con Bottom Navigation y estilos de Tailwind cargados.
 * **Criterios de Terminación:** El comando `npm run dev` funciona y muestra el layout base de manera responsive en navegador.
 
-### - [ ] Tarea 1.4: Modelado de Datos y Migraciones (Alembic)
+### - [x] Tarea 1.4: Modelado de Datos y Migraciones (Alembic)
 * **Objetivo:** Traducir el modelo de datos (DDL) a modelos de SQLAlchemy y aplicar migraciones.
 * **Descripción:** Configurar Alembic. Crear los modelos SQLAlchemy correspondientes al DDL definido (Plataformas, Clientes, Proveedores, Cuentas, Perfiles, etc.) + Tabla de `plantillas_mensajes` para WhatsApp. Generar y aplicar la primera migración hacia Supabase.
 * **Archivos/Módulos a crear:** `backend/alembic.ini`, `backend/db/models.py`, `backend/alembic/versions/`.
