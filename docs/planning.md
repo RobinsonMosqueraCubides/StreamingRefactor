@@ -54,7 +54,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 **Objetivo:** Desarrollar los endpoints y lógica de negocio (Controladores/Servicios) para las entidades maestras.
 *Nota: Desde aquí, Frontend (Fase 3) puede desarrollarse en paralelo usando Mocks o esperando a estas APIs.*
 
-### - [ ] Tarea 2.1: CRUD de Catálogos (Plataformas, Combos y Plantillas WhatsApp)
+### - [x] Tarea 2.1: CRUD de Catálogos (Plataformas, Combos y Plantillas WhatsApp)
 * **Objetivo:** Endpoints para crear y listar plataformas de streaming, combos y editar las plantillas de WhatsApp (Opción A).
 * **Descripción:** Implementar esquemas Pydantic y rutas de FastAPI para `Plataformas`, `Combos` y `Plantillas`.
 * **Archivos/Módulos a crear:** `backend/schemas/catalogo_schemas.py`, `backend/api/rutas/catalogos.py`, `backend/services/catalogo_service.py`.

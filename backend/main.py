@@ -4,6 +4,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from db.database import get_db
+from api.rutas.catalogos import plataformas_router, combos_router, plantillas_router
+from api.rutas.actores import clientes_router, proveedores_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -19,6 +21,16 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+# Registrar routers de catálogos
+app.include_router(plataformas_router, prefix=settings.API_V1_STR)
+app.include_router(combos_router, prefix=settings.API_V1_STR)
+app.include_router(plantillas_router, prefix=settings.API_V1_STR)
+
+# Registrar routers de actores
+app.include_router(clientes_router, prefix=settings.API_V1_STR)
+app.include_router(proveedores_router, prefix=settings.API_V1_STR)
+
 
 @app.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)):
@@ -36,3 +48,4 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         "database": db_status,
         "database_error": error_detail
     }
+
