@@ -10,6 +10,7 @@ class VentaItemCreate(BaseModel):
     combo_id: Optional[int] = Field(None, description="ID del combo asociado si aplica")
     precio_aplicado: float = Field(..., ge=0.0, description="Precio unitario aplicado para esta plataforma/perfil")
     tipo_unidad: str = Field(default="PANTALLA", description="Tipo de unidad: PANTALLA o CUENTA")
+    cuenta_madre_id: Optional[int] = Field(None, description="ID de la Cuenta Madre específica a asignar")
 
 class DetalleVentaResponse(BaseModel):
     id: int

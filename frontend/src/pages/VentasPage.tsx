@@ -29,16 +29,33 @@ interface Plantilla {
   mensaje: string;
 }
 
+interface Credencial {
+  id: number;
+  email: string;
+  password: string;
+}
+
+interface Proveedor {
+  id: number;
+  nombre: string;
+}
+
 interface CuentaMadre {
   id: number;
-  credencial: {
-    email: string;
-    password: string;
-  };
-  perfiles?: {
+  proveedor_id: number;
+  credencial_id: number;
+  plataforma_id: number;
+  max_perfiles: number;
+  precio_compra: number;
+  fecha_compra: string;
+  fecha_vencimiento: string;
+  estado: string;
+  perfiles: {
     id: number;
     nombre_perfil: string;
     pin: string | null;
+    asignado: boolean;
+    reportado?: boolean;
   }[];
 }
 
@@ -48,6 +65,7 @@ interface VentaItem {
   precio_aplicado: number;
   tipo_unidad: 'PANTALLA' | 'CUENTA';
   is_edited: boolean;
+  cuenta_madre_id: number | null;
 }
 
 export default function VentasPage() {
@@ -55,6 +73,8 @@ export default function VentasPage() {
   const [plataformas, setPlataformas] = useState<Plataforma[]>([]);
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [cuentas, setCuentas] = useState<CuentaMadre[]>([]);
+  const [credenciales, setCredenciales] = useState<Credencial[]>([]);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   
   // Navigation tabs: 'pos' o 'historial'
   const [activeTab, setActiveTab] = useState<'pos' | 'historial'>('pos');
@@ -74,6 +94,11 @@ export default function VentasPage() {
   const [tipoUnidad, setTipoUnidad] = useState<'PANTALLA' | 'CUENTA'>('PANTALLA');
   const [selectedPrecio, setSelectedPrecio] = useState(15000);
 
+  // Search Cuenta Madre
+  const [selectedCuentaId, setSelectedCuentaId] = useState('');
+  const [cuentaSearchText, setCuentaSearchText] = useState('');
+  const [showCuentaDropdown, setShowCuentaDropdown] = useState(false);
+
   const [isComboActive, setIsComboActive] = useState(false);
   const [comboTotalPrice, setComboTotalPrice] = useState(0);
 
@@ -83,6 +108,16 @@ export default function VentasPage() {
   const [abonoMonto, setAbonoMonto] = useState(0);
   const [abonoEntidad, setAbonoEntidad] = useState('NEQUI');
   const [paymentStatus, setPaymentStatus] = useState('');
+
+  // --- EDITABLE PERFILES ON SUCCESS MODAL ---
+  const [editablePerfiles, setEditablePerfiles] = useState<{
+    [perfilId: number]: {
+      nombre_perfil: string;
+      pin: string;
+      saving?: boolean;
+      saved?: boolean;
+    }
+  }>({});
 
   // --- HISTORIAL STUFF ---
   const [sales, setSales] = useState<any[]>([]);
@@ -111,16 +146,20 @@ export default function VentasPage() {
 
   const fetchPOSData = async () => {
     try {
-      const [clRes, platRes, plantRes, cmRes] = await Promise.all([
+      const [clRes, platRes, plantRes, cmRes, credRes, provRes] = await Promise.all([
         api.get('/clientes/'),
         api.get('/plataformas/'),
         api.get('/plantillas/'),
         api.get('/cuentas_madre/'),
+        api.get('/credenciales/'),
+        api.get('/proveedores/'),
       ]);
       setClientes(clRes.data);
       setPlataformas(platRes.data);
       setPlantillas(plantRes.data);
       setCuentas(cmRes.data);
+      setCredenciales(credRes.data);
+      setProveedores(provRes.data);
 
       if (platRes.data.length > 0) setSelectedPlatId(String(platRes.data[0].id));
     } catch (err: any) {
@@ -141,6 +180,32 @@ export default function VentasPage() {
     fetchPOSData();
     fetchSalesHistory();
   }, []);
+
+  // Reset selectedCuentaId when platform or unit type changes
+  useEffect(() => {
+    setSelectedCuentaId('');
+    setCuentaSearchText('');
+  }, [selectedPlatId, tipoUnidad]);
+
+  // Inicializar editablePerfiles con valores por defecto cuando se registra una venta
+  useEffect(() => {
+    if (registeredVenta) {
+      const initial: any = {};
+      const clientObj = clientes.find(c => c.id === registeredVenta.cliente_id);
+      const defaultUser = clientObj ? clientObj.nombre : 'Usuario';
+      
+      registeredVenta.detalles.forEach((det: any) => {
+        const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+        initial[det.perfil_id] = {
+          nombre_perfil: defaultUser,
+          pin: randomPin,
+          saving: false,
+          saved: false
+        };
+      });
+      setEditablePerfiles(initial);
+    }
+  }, [registeredVenta, clientes]);
 
   // Sincronizar precio según tipo de unidad seleccionado
   useEffect(() => {
@@ -184,7 +249,8 @@ export default function VentasPage() {
       precio_original: selectedPrecio,
       precio_aplicado: selectedPrecio,
       tipo_unidad: tipoUnidad,
-      is_edited: false
+      is_edited: false,
+      cuenta_madre_id: selectedCuentaId ? parseInt(selectedCuentaId) : null
     };
 
     const nextItems = [...items, newItem];
@@ -210,6 +276,9 @@ export default function VentasPage() {
     } else {
       setItems(nextItems);
     }
+
+    setSelectedCuentaId('');
+    setCuentaSearchText('');
   };
 
   const handleRemoveItem = (index: number) => {
@@ -334,7 +403,8 @@ export default function VentasPage() {
           plataforma_id: item.plataforma_id,
           combo_id: null,
           precio_aplicado: item.precio_aplicado,
-          tipo_unidad: item.tipo_unidad
+          tipo_unidad: item.tipo_unidad,
+          cuenta_madre_id: item.cuenta_madre_id
         }))
       };
 
@@ -353,20 +423,41 @@ export default function VentasPage() {
     }
   };
 
-  const handleRegisterPayment = async () => {
+  // --- AUTOMATIZACION: GUARDAR ACCESOS Y REGISTRAR ABONO EN UN CLICK ---
+  const handleFinalizeProcess = async () => {
     if (!registeredVenta) return;
+    setLoading(true);
     setPaymentStatus('');
     try {
-      await api.post(`/ventas/${registeredVenta.id}/pagos`, {
-        monto: abonoMonto,
-        entidad: abonoEntidad
+      // 1. Guardar todos los perfiles asociados a la venta
+      const savePromises = registeredVenta.detalles.map((detail: any) => {
+        const editData = editablePerfiles[detail.perfil_id];
+        if (editData) {
+          return api.put(`/perfiles/${detail.perfil_id}`, {
+            nombre_perfil: editData.nombre_perfil,
+            pin: editData.pin
+          });
+        }
+        return Promise.resolve();
       });
-      setPaymentStatus('Abono registrado con éxito.');
-      const res = await api.get(`/ventas/${registeredVenta.id}`);
-      setRegisteredVenta(res.data);
+      await Promise.all(savePromises);
+
+      // 2. Registrar abono contable
+      if (abonoMonto > 0) {
+        await api.post(`/ventas/${registeredVenta.id}/pagos`, {
+          monto: abonoMonto,
+          entidad: abonoEntidad
+        });
+      }
+
+      // 3. Finalizar y limpiar
+      setIsSuccessOpen(false);
+      fetchPOSData();
       fetchSalesHistory();
     } catch (err: any) {
-      setPaymentStatus('Error al registrar el abono.');
+      alert('Error al guardar los accesos o registrar el abono. Verifica la información.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -418,7 +509,6 @@ export default function VentasPage() {
   const handleOpenRenovacionModal = (sale: any) => {
     setSelectedSaleToRenew(sale);
     
-    // Sugerir fecha corte + 30 dias
     const originalDate = new Date(sale.fecha_corte);
     originalDate.setDate(originalDate.getDate() + 30);
     const suggestedStr = originalDate.toISOString().split('T')[0];
@@ -460,18 +550,27 @@ export default function VentasPage() {
         ? "Hola [Nombre Cliente], te recordamos que tu suscripción de {plataforma} vence pronto ({fecha_corte}). Puedes renovarla realizando el pago de {monto} COP."
         : templateType === 'corte'
         ? "Hola [Nombre Cliente], tu suscripción de {plataforma} ha vencido y los perfiles asociados han sido suspendidos. Realiza tu pago de {monto} COP para reactivarlos."
-        : "Hola [Nombre Cliente], aquí están tus accesos de {plataforma}:\nUsuario: {email}\nContraseña: {password}\nPIN: {pin}"
+        : "Hola [Nombre Cliente], aquí están tus accesos de {plataforma}:\nUsuario: {email}\nContraseña: {password}\nUsuario Perfil: {usuario}\nPIN: {pin}"
     };
 
-    const platName = plataformas.find(p => p.id === detail.plataforma_id)?.nombre || `Plataforma #${detail.plataforma_id}`;
-    const cuentaMadre = cuentas.find(c => c.id === detail.cuenta_madre_id);
-    const email = cuentaMadre?.credencial?.email || 'N/A';
-    const password = cuentaMadre?.credencial?.password || 'N/A';
+    const cm = cuentas.find(c => c.id === detail.cuenta_madre_id);
+    const platId = cm?.plataforma_id;
+    const platName = plataformas.find(p => p.id === platId)?.nombre || `Plataforma #${platId}`;
+    
+    const cred = credenciales.find(cr => cr.id === cm?.credencial_id);
+    const email = cred?.email || 'N/A';
+    const password = cred?.password || 'N/A';
 
-    let pinVal = 'Sin PIN';
-    if (cuentaMadre && cuentaMadre.perfiles) {
-      const matchPerfil = cuentaMadre.perfiles.find((p: any) => p.id === detail.perfil_id);
-      if (matchPerfil && matchPerfil.pin) pinVal = matchPerfil.pin;
+    const edited = editablePerfiles[detail.perfil_id];
+    let profileUser = edited ? edited.nombre_perfil : cliente.nombre;
+    let profilePin = edited ? edited.pin : 'N/A';
+
+    if (!edited && cm && cm.perfiles) {
+      const matchPerfil = cm.perfiles.find((p: any) => p.id === detail.perfil_id);
+      if (matchPerfil) {
+        profileUser = matchPerfil.nombre_perfil;
+        if (matchPerfil.pin) profilePin = matchPerfil.pin;
+      }
     }
 
     let msg = template.mensaje
@@ -479,7 +578,8 @@ export default function VentasPage() {
       .replace('{plataforma}', platName)
       .replace('{email}', email)
       .replace('{password}', password)
-      .replace('{pin}', pinVal);
+      .replace('{usuario}', profileUser)
+      .replace('{pin}', profilePin);
 
     msg = msg.replace('{monto}', String(detail.precio_aplicado))
              .replace('{fecha_corte}', cuttingDate);
@@ -488,8 +588,42 @@ export default function VentasPage() {
     return `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(msg)}`;
   };
 
+  // WhatsApp link consolidado para todos los accesos comprados (Especial para combos o listas)
+  const getConsolidatedWhatsAppLink = () => {
+    if (!registeredVenta) return '#';
+    const cliente = clientes.find(c => c.id === registeredVenta.cliente_id);
+    if (!cliente) return '#';
+
+    let msg = `Hola *${cliente.nombre}*, aquí tienes los accesos para tus suscripciones de streaming:\n\n`;
+
+    registeredVenta.detalles.forEach((detail: any, idx: number) => {
+      const cm = cuentas.find(c => c.id === detail.cuenta_madre_id);
+      const cred = credenciales.find(cr => cr.id === cm?.credencial_id);
+      const email = cred?.email || 'N/A';
+      const password = cred?.password || 'N/A';
+      
+      const platId = cm?.plataforma_id;
+      const platName = plataformas.find(p => p.id === platId)?.nombre || `Plataforma #${platId}`;
+
+      const edited = editablePerfiles[detail.perfil_id] || { nombre_perfil: cliente.nombre, pin: 'N/A' };
+      
+      msg += `*${idx + 1}. ${platName}*\n`;
+      msg += `   • Correo: \`${email}\`\n`;
+      msg += `   • Clave: \`${password}\`\n`;
+      msg += `   • Perfil (Usuario): *${edited.nombre_perfil}*\n`;
+      msg += `   • PIN: *${edited.pin}*\n\n`;
+    });
+
+    msg += `Fecha de Vencimiento: *${registeredVenta.fecha_corte}*\n\n`;
+    msg += `¡Gracias por tu confianza y preferencia! 🚀`;
+    
+    const telefonoLimpio = cliente.telefono.replace('+', '').replace(/\s/g, '');
+    return `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(msg)}`;
+  };
+
   const getPlataformaName = (id: number) => plataformas.find(p => p.id === id)?.nombre || `ID #${id}`;
   const getClienteName = (id: number) => clientes.find(c => c.id === id)?.nombre || `Cliente #${id}`;
+  const getProveedorName = (id: number) => proveedores.find(p => p.id === id)?.nombre || `Proveedor #${id}`;
 
   const toggleExpandSale = (id: number) => {
     setExpandedSaleId(expandedSaleId === id ? null : id);
@@ -505,6 +639,44 @@ export default function VentasPage() {
     setClienteId(String(c.id));
     setClienteSearch(`${c.nombre} (${c.telefono})`);
     setShowClientDropdown(false);
+  };
+
+  // Filtrar cuentas madres según la plataforma y tipo de unidad seleccionada
+  const getAvailableStockCuentas = () => {
+    if (!selectedPlatId) return [];
+    const platIdNum = parseInt(selectedPlatId);
+
+    return cuentas.filter(c => {
+      if (c.plataforma_id !== platIdNum || c.estado !== 'ACTIVA') return false;
+      
+      const freePerfiles = c.perfiles.filter(p => !p.asignado && !p.reportado);
+      
+      if (tipoUnidad === 'PANTALLA') {
+        return freePerfiles.length > 0;
+      } else {
+        return freePerfiles.length === c.max_perfiles;
+      }
+    });
+  };
+
+  // Filtrar cuentas madres para la búsqueda predictiva de stock
+  const filteredStockCuentas = getAvailableStockCuentas().filter(c => {
+    const cred = credenciales.find(cr => cr.id === c.credencial_id);
+    const email = cred?.email || '';
+    const provName = getProveedorName(c.proveedor_id);
+    
+    const searchString = `${email} ${provName}`.toLowerCase();
+    return searchString.includes(cuentaSearchText.toLowerCase());
+  });
+
+  const handleSelectCuentaMadre = (c: CuentaMadre) => {
+    const cred = credenciales.find(cr => cr.id === c.credencial_id);
+    const email = cred?.email || `Cuenta #${c.id}`;
+    const provName = getProveedorName(c.proveedor_id);
+
+    setSelectedCuentaId(String(c.id));
+    setCuentaSearchText(`${email} (Proveedor: ${provName})`);
+    setShowCuentaDropdown(false);
   };
 
   // Calcular diferencia de días para alertas
@@ -654,7 +826,47 @@ export default function VentasPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-855/60">
+                {/* Searchable Dropdown for Cuentas Madre of selected Platform */}
+                <div className="relative">
+                  <Input
+                    label="Seleccionar Cuenta de Stock (Opcional - Autoselección si se deja vacío)"
+                    placeholder="Buscar cuenta por correo o nombre de proveedor..."
+                    value={cuentaSearchText}
+                    onChange={(e) => {
+                      setCuentaSearchText(e.target.value);
+                      setShowCuentaDropdown(true);
+                      if (!e.target.value) setSelectedCuentaId('');
+                    }}
+                    onFocus={() => setShowCuentaDropdown(true)}
+                    leftIcon={<Search className="w-4 h-4 text-slate-500" />}
+                  />
+                  {showCuentaDropdown && filteredStockCuentas.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-h-60 overflow-y-auto divide-y divide-slate-850">
+                      {filteredStockCuentas.map((c) => {
+                        const cred = credenciales.find(cr => cr.id === c.credencial_id);
+                        const emailStr = cred?.email || `Cuenta Madre #${c.id}`;
+                        const provName = getProveedorName(c.proveedor_id);
+                        const freeStock = c.perfiles.filter(p => !p.asignado && !p.reportado).length;
+
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => handleSelectCuentaMadre(c)}
+                            className="px-4 py-2.5 hover:bg-slate-800 text-slate-200 text-sm cursor-pointer transition-colors"
+                          >
+                            <p className="font-semibold">{emailStr}</p>
+                            <div className="flex justify-between text-xs text-slate-500 mt-0.5">
+                              <span>Proveedor: {provName}</span>
+                              <span className="text-cyan-400 font-medium">{freeStock} / {c.max_perfiles} perfiles libres</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-850/60">
                   <Input
                     label="Precio Sugerido (COP)"
                     type="number"
@@ -704,43 +916,55 @@ export default function VentasPage() {
                   </div>
                 )}
 
-                {items.map((item, index) => (
-                  <div key={index} className="flex flex-col sm:flex-row justify-between sm:items-center bg-slate-950/20 border border-slate-850 p-4 rounded-xl gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-slate-200">{getPlataformaName(item.plataforma_id)}</p>
-                        <span className="text-[9px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded font-bold uppercase">
-                          {item.tipo_unidad}
-                        </span>
-                        {isComboActive && (
-                          <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                            item.is_edited ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-800 text-slate-400'
-                          }`}>
-                            {item.is_edited ? 'Editado' : 'Automático'}
+                {items.map((item, index) => {
+                  let specAccountLabel = '';
+                  if (item.cuenta_madre_id) {
+                    const cm = cuentas.find(c => c.id === item.cuenta_madre_id);
+                    const cr = credenciales.find(cred => cred.id === cm?.credencial_id);
+                    specAccountLabel = cr ? ` (Cuenta: ${cr.email})` : '';
+                  }
+
+                  return (
+                    <div key={index} className="flex flex-col sm:flex-row justify-between sm:items-center bg-slate-950/20 border border-slate-850 p-4 rounded-xl gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-slate-200">
+                            {getPlataformaName(item.plataforma_id)}
+                            <span className="text-xs font-normal text-slate-400">{specAccountLabel}</span>
+                          </p>
+                          <span className="text-[9px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded font-bold uppercase">
+                            {item.tipo_unidad}
                           </span>
-                        )}
+                          {isComboActive && (
+                            <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                              item.is_edited ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-800 text-slate-400'
+                            }`}>
+                              {item.is_edited ? 'Editado' : 'Automático'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 justify-end">
+                        <div className="w-36">
+                          <Input
+                            label=""
+                            type="number"
+                            value={item.precio_aplicado}
+                            onChange={(e) => handleEditItemPrice(index, parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="text-red-400 hover:text-red-200 p-1.5 rounded-lg hover:bg-slate-800 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center gap-3 justify-end">
-                      <div className="w-36">
-                        <Input
-                          label=""
-                          type="number"
-                          value={item.precio_aplicado}
-                          onChange={(e) => handleEditItemPrice(index, parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-                      <button 
-                        type="button"
-                        onClick={() => handleRemoveItem(index)}
-                        className="text-red-400 hover:text-red-200 p-1.5 rounded-lg hover:bg-slate-800 cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Procesar */}
@@ -783,7 +1007,7 @@ export default function VentasPage() {
                 placeholder="Buscar por cliente o ID de venta..."
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
-                leftIcon={<Search className="w-4 h-4 text-slate-500" />}
+                leftIcon={<Search className="w-4 h-4 text-slate-550" />}
               />
             </div>
             
@@ -831,7 +1055,7 @@ export default function VentasPage() {
                         <h3 className="text-base font-bold text-slate-200">{getClienteName(sale.cliente_id)}</h3>
                         {statusBadge}
                       </div>
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-550 mt-1">
                         <span className="font-mono">Venta #{sale.id}</span>
                         <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Corte: {sale.fecha_corte}</span>
                       </div>
@@ -870,37 +1094,42 @@ export default function VentasPage() {
 
                   {/* Detalle Expandible Accordion */}
                   {expandedSaleId === sale.id && (
-                    <div className="border-t border-slate-855 pt-4 mt-2 space-y-3 animate-in fade-in duration-200">
-                      <h4 className="text-xs font-bold text-slate-450 uppercase tracking-wider">Pantallas Adquiridas:</h4>
+                    <div className="border-t border-slate-850 pt-4 mt-2 space-y-3 animate-in fade-in duration-200">
+                      <h4 className="text-xs font-bold text-slate-455 uppercase tracking-wider">Pantallas Adquiridas:</h4>
                       {sale.detalles.map((detail: any, index: number) => {
                         const cm = cuentas.find(c => c.id === detail.cuenta_madre_id);
+                        const cred = credenciales.find(c => c.id === cm?.credencial_id);
+                        
                         let pinVal = 'Sin PIN';
+                        let profileUser = 'N/A';
                         if (cm && cm.perfiles) {
                           const matchPerfil = cm.perfiles.find((p: any) => p.id === detail.perfil_id);
-                          if (matchPerfil && matchPerfil.pin) pinVal = matchPerfil.pin;
+                          if (matchPerfil) {
+                            profileUser = matchPerfil.nombre_perfil;
+                            if (matchPerfil.pin) pinVal = matchPerfil.pin;
+                          }
                         }
 
-                        // WhatsApp link dynamically based on days left
                         const typeTemplate = diffDays <= 0 ? 'corte' : 'cobro';
                         const waMsgLink = getWhatsAppLink(detail, sale.fecha_corte, sale.cliente_id, typeTemplate);
 
                         return (
-                          <div key={index} className="flex flex-col md:flex-row justify-between bg-slate-950/40 border border-slate-850 p-4 rounded-xl gap-4">
+                          <div key={index} className="flex flex-col md:flex-row justify-between bg-slate-955/40 border border-slate-850 p-4 rounded-xl gap-4">
                             <div className="space-y-1">
                               <p className="text-sm font-bold text-slate-200">
                                 {getPlataformaName(detail.plataforma_id)}
                               </p>
-                              <p className="text-xs text-slate-550">Monto aplicado: ${detail.precio_aplicado.toLocaleString('es-CO')} COP</p>
+                              <p className="text-xs text-slate-500">Monto aplicado: ${detail.precio_aplicado.toLocaleString('es-CO')} COP</p>
                               
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-mono text-slate-400 bg-slate-950/60 p-2.5 rounded-lg border border-slate-850 mt-2 max-w-lg">
-                                <p>Usuario: <strong className="text-slate-200 font-sans">{cm?.credencial?.email || 'Cargando...'}</strong></p>
-                                <p>Clave: <strong className="text-slate-200 font-sans">{cm?.credencial?.password || 'Cargando...'}</strong></p>
+                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px] font-mono text-slate-400 bg-slate-950/60 p-2.5 rounded-lg border border-slate-850 mt-2 max-w-2xl">
+                                <p>Usuario: <strong className="text-slate-200 font-sans">{cred?.email || 'N/A'}</strong></p>
+                                <p>Clave: <strong className="text-slate-200 font-sans">{cred?.password || 'N/A'}</strong></p>
+                                <p>Perfil: <strong className="text-slate-200 font-sans">{profileUser}</strong></p>
                                 <p>PIN: <strong className="text-cyan-400 font-sans">{pinVal}</strong></p>
                               </div>
                             </div>
 
                             <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-2">
-                              {/* Send whatsapp notification based on corte date */}
                               {(diffDays === 2 || diffDays <= 0) ? (
                                 <a
                                   href={waMsgLink}
@@ -951,10 +1180,29 @@ export default function VentasPage() {
       {/* Modal Éxito POS */}
       <Modal
         isOpen={isSuccessOpen}
-        onClose={() => setIsSuccessOpen(false)}
+        onClose={() => {}} // Bloquear cierre accidental fuera del modal
         title="¡Venta Registrada Exitosamente!"
         footer={
-          <Button variant="primary" onClick={() => setIsSuccessOpen(false)}>Finalizar Proceso</Button>
+          <div className="flex flex-col sm:flex-row gap-3 w-full justify-between items-center">
+            {registeredVenta && (
+              <a
+                href={getConsolidatedWhatsAppLink()}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-green-600 border border-green-500 px-4 py-2.5 rounded-xl hover:bg-green-500 transition-all cursor-pointer w-full sm:w-auto justify-center"
+              >
+                <Smartphone className="w-4 h-4" /> Enviar todo por WhatsApp
+              </a>
+            )}
+            <Button 
+              variant="primary" 
+              onClick={handleFinalizeProcess} 
+              isLoading={loading}
+              className="w-full sm:w-auto"
+            >
+              Finalizar proceso
+            </Button>
+          </div>
         }
       >
         {registeredVenta && (
@@ -968,34 +1216,57 @@ export default function VentasPage() {
             </div>
 
             {/* Cuentas Asignadas */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <h4 className="text-xs font-bold text-slate-450 uppercase tracking-wider">Detalles de Accesos Asignados:</h4>
               {registeredVenta.detalles.map((detail: any, index: number) => {
                 const cm = cuentas.find(c => c.id === detail.cuenta_madre_id);
-                let pinVal = 'Sin PIN';
-                if (cm && cm.perfiles) {
-                  const matchPerfil = cm.perfiles.find((p: any) => p.id === detail.perfil_id);
-                  if (matchPerfil && matchPerfil.pin) pinVal = matchPerfil.pin;
-                }
+                const cred = credenciales.find(c => c.id === cm?.credencial_id);
+                const email = cred?.email || 'N/A';
+                const password = cred?.password || 'N/A';
                 
+                const platId = cm?.plataforma_id;
+                const platName = plataformas.find(p => p.id === platId)?.nombre || `Plataforma #${platId}`;
+
+                const editData = editablePerfiles[detail.perfil_id] || { nombre_perfil: '', pin: '', saving: false, saved: false };
+
                 return (
-                  <div key={index} className="bg-slate-950/60 border border-slate-850 p-4 rounded-xl space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-bold text-slate-200">{getPlataformaName(detail.plataforma_id)}</span>
-                      <a 
-                        href={getWhatsAppLink(detail, registeredVenta.fecha_corte, registeredVenta.cliente_id, 'cambio_credenciales')} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-green-400 hover:text-green-300 font-semibold transition-colors bg-green-500/10 px-3 py-1.5 rounded-lg border border-green-500/20 cursor-pointer"
-                      >
-                        <Smartphone className="w-3.5 h-3.5" /> Enviar por WhatsApp
-                      </a>
+                  <div key={index} className="bg-slate-950/60 border border-slate-855 p-4 rounded-xl space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-850/60 pb-2.5">
+                      <span className="text-sm font-bold text-slate-200">{platName}</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-slate-400 bg-slate-900/40 p-3 rounded-lg border border-slate-850/60">
-                      <p>Usuario: <strong className="text-slate-200 font-sans">{cm?.credencial?.email || 'Cargando...'}</strong></p>
-                      <p>Clave: <strong className="text-slate-200 font-sans">{cm?.credencial?.password || 'Cargando...'}</strong></p>
-                      <p>PIN: <strong className="text-cyan-400 font-sans">{pinVal}</strong></p>
+                    {/* Non-editable credentials shown for copy/paste */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-900/40 p-3 rounded-lg border border-slate-850/60">
+                      <div>
+                        <p className="text-[10px] text-slate-550 font-bold uppercase mb-1">Usuario Cuenta</p>
+                        <p className="text-xs text-slate-300 font-mono select-all bg-slate-950/50 p-1.5 rounded border border-slate-850">{email}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-550 font-bold uppercase mb-1">Clave Cuenta</p>
+                        <p className="text-xs text-slate-300 font-mono select-all bg-slate-950/50 p-1.5 rounded border border-slate-850">{password}</p>
+                      </div>
+                    </div>
+
+                    {/* Editable User & PIN fields */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        label="Nombre Perfil (Usuario)"
+                        value={editData.nombre_perfil}
+                        onChange={(e) => setEditablePerfiles(prev => ({
+                          ...prev,
+                          [detail.perfil_id]: { ...prev[detail.perfil_id], nombre_perfil: e.target.value, saved: false }
+                        }))}
+                        required
+                      />
+                      <Input
+                        label="PIN Perfil"
+                        value={editData.pin}
+                        onChange={(e) => setEditablePerfiles(prev => ({
+                          ...prev,
+                          [detail.perfil_id]: { ...prev[detail.perfil_id], pin: e.target.value, saved: false }
+                        }))}
+                        required
+                      />
                     </div>
                   </div>
                 );
@@ -1012,35 +1283,26 @@ export default function VentasPage() {
                 <p className="text-xs text-cyan-400 font-semibold">{paymentStatus}</p>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-grow">
-                  <Input
-                    label="Monto del Abono (COP)"
-                    type="number"
-                    value={abonoMonto}
-                    onChange={(e) => setAbonoMonto(parseFloat(e.target.value) || 0)}
-                    min={0.01}
-                  />
-                </div>
-                <div className="sm:w-44">
-                  <Select
-                    label="Medio de Pago"
-                    value={abonoEntidad}
-                    onChange={(e) => setAbonoEntidad(e.target.value)}
-                    options={[
-                      { value: 'NEQUI', label: 'Nequi' },
-                      { value: 'BANCOLOMBIA', label: 'Bancolombia' },
-                      { value: 'DAVIPLATA', label: 'Daviplata' },
-                      { value: 'NU_BANK', label: 'Nu Bank' },
-                      { value: 'EFECTIVO', label: 'Efectivo' },
-                    ]}
-                  />
-                </div>
-                <div className="sm:self-end">
-                  <Button variant="secondary" onClick={handleRegisterPayment}>
-                    Registrar Pago
-                  </Button>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Monto del Abono (COP)"
+                  type="number"
+                  value={abonoMonto}
+                  onChange={(e) => setAbonoMonto(parseFloat(e.target.value) || 0)}
+                  min={0.01}
+                />
+                <Select
+                  label="Medio de Pago"
+                  value={abonoEntidad}
+                  onChange={(e) => setAbonoEntidad(e.target.value)}
+                  options={[
+                    { value: 'NEQUI', label: 'Nequi' },
+                    { value: 'BANCOLOMBIA', label: 'Bancolombia' },
+                    { value: 'DAVIPLATA', label: 'Daviplata' },
+                    { value: 'NU_BANK', label: 'Nu Bank' },
+                    { value: 'EFECTIVO', label: 'Efectivo' },
+                  ]}
+                />
               </div>
             </div>
           </div>
@@ -1128,12 +1390,12 @@ export default function VentasPage() {
             {/* Liberar vs Baneo de pantalla vieja */}
             {['CAMBIO_RECURSO', 'REEMBOLSO'].includes(tipoGarantia) && (
               <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800/80 animate-in fade-in duration-200">
-                <label className="flex items-center gap-3 cursor-pointer text-xs sm:text-sm text-slate-350">
+                <label className="flex items-center gap-3 cursor-pointer text-xs sm:text-sm text-slate-355">
                   <input
                     type="checkbox"
                     checked={liberarRecursoAnterior}
                     onChange={(e) => setLiberarRecursoAnterior(e.target.checked)}
-                    className="rounded border-slate-850 text-cyan-500 focus:ring-cyan-500 bg-slate-950 w-4 h-4"
+                    className="rounded border-slate-855 text-cyan-500 focus:ring-cyan-500 bg-slate-955 w-4 h-4"
                   />
                   <div>
                     <p className="font-semibold text-slate-200">Liberar pantalla anterior</p>
@@ -1160,10 +1422,10 @@ export default function VentasPage() {
       >
         {selectedSaleToRenew && (
           <form onSubmit={handleApplyRenovacion} className="space-y-4">
-            <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-850 text-xs">
+            <div className="bg-slate-955/60 p-4 rounded-xl border border-slate-850 text-xs">
               <p className="text-slate-400 uppercase font-bold tracking-wider">Cliente:</p>
               <h3 className="text-sm font-bold text-slate-200 mt-1">{getClienteName(selectedSaleToRenew.cliente_id)}</h3>
-              <p className="text-slate-500 mt-1">Fecha de corte actual: <strong>{selectedSaleToRenew.fecha_corte}</strong></p>
+              <p className="text-slate-550 mt-1">Fecha de corte actual: <strong>{selectedSaleToRenew.fecha_corte}</strong></p>
             </div>
 
             {renovacionError && <p className="text-xs text-red-400 font-semibold">{renovacionError}</p>}

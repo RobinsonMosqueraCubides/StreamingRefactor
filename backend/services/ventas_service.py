@@ -47,19 +47,28 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
 
         if getattr(item, "tipo_unidad", "PANTALLA") == "CUENTA":
             # Buscar una cuenta madre que tenga todos sus perfiles disponibles (ninguno asignado ni reportado)
-            # Subquery de cuentas que tienen al menos un perfil asignado o reportado
-            subq_assigned = select(Perfil.cuenta_madre_id).where((Perfil.asignado == True) | (Perfil.reportado == True))
-            
-            stmt_cm = (
-                select(CuentaMadre)
-                .where(
-                    CuentaMadre.plataforma_id == item.plataforma_id,
-                    CuentaMadre.estado == EstadoCuenta.ACTIVA,
-                    ~CuentaMadre.id.in_(subq_assigned)
+            # O directamente la seleccionada por el usuario
+            if getattr(item, "cuenta_madre_id", None) is not None:
+                stmt_cm = (
+                    select(CuentaMadre)
+                    .where(
+                        CuentaMadre.id == item.cuenta_madre_id,
+                        CuentaMadre.estado == EstadoCuenta.ACTIVA
+                    )
+                    .with_for_update(skip_locked=True)
                 )
-                .with_for_update(skip_locked=True)
-                .limit(1)
-            )
+            else:
+                subq_assigned = select(Perfil.cuenta_madre_id).where((Perfil.asignado == True) | (Perfil.reportado == True))
+                stmt_cm = (
+                    select(CuentaMadre)
+                    .where(
+                        CuentaMadre.plataforma_id == item.plataforma_id,
+                        CuentaMadre.estado == EstadoCuenta.ACTIVA,
+                        ~CuentaMadre.id.in_(subq_assigned)
+                    )
+                    .with_for_update(skip_locked=True)
+                    .limit(1)
+                )
             res_cm = await db.execute(stmt_cm)
             db_cm = res_cm.scalar_one_or_none()
 
@@ -100,18 +109,21 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
         else:
             # Asignación estándar de una sola pantalla (PANTALLA)
             # SELECT FOR UPDATE SKIP LOCKED
-            stmt = (
-                select(Perfil)
-                .join(CuentaMadre)
-                .where(
+            stmt = select(Perfil).join(CuentaMadre)
+            if getattr(item, "cuenta_madre_id", None) is not None:
+                stmt = stmt.where(
+                    Perfil.cuenta_madre_id == item.cuenta_madre_id,
+                    Perfil.asignado == False,
+                    Perfil.reportado == False
+                )
+            else:
+                stmt = stmt.where(
                     CuentaMadre.plataforma_id == item.plataforma_id,
                     CuentaMadre.estado == EstadoCuenta.ACTIVA,
                     Perfil.asignado == False,
                     Perfil.reportado == False
                 )
-                .with_for_update(skip_locked=True)
-                .limit(1)
-            )
+            stmt = stmt.with_for_update(skip_locked=True).limit(1)
             result = await db.execute(stmt)
             perfil = result.scalar_one_or_none()
 
