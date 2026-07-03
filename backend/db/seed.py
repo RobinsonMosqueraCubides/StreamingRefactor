@@ -7,12 +7,26 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import select
 from db.database import SessionLocal
-from db.models import Plataforma, PlantillaMensaje
+from db.models import Plataforma, PlantillaMensaje, Usuario
+from core.security import get_password_hash
 
 async def seed_data():
     print("Iniciando la siembra de datos semilla...")
     async with SessionLocal() as session:
         async with session.begin():
+            # Sembrar Usuario administrador semilla
+            stmt_user = select(Usuario).where(Usuario.username == "admin")
+            result_user = await session.execute(stmt_user)
+            if not result_user.scalar_one_or_none():
+                session.add(Usuario(
+                    username="admin",
+                    password_hash=get_password_hash("admin123"),
+                    role="admin"
+                ))
+                print("Usuario 'admin' con clave 'admin123' agregado.")
+            else:
+                print("Usuario 'admin' ya existe.")
+
             # Sembrar Plataformas iniciales
             plataformas_nombres = ["Netflix", "Disney+", "Prime Video", "Max", "Crunchyroll", "Spotify"]
             for nombre in plataformas_nombres:

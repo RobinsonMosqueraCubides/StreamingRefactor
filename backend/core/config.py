@@ -10,8 +10,12 @@ class Settings(BaseSettings):
     # Base de datos
     DATABASE_URL: str = "sqlite+aiosqlite:///./streaming_erp.db"
     
-    # CORS
-    BACKEND_CORS_ORIGINS: List[str] = ["*"]
+    BACKEND_CORS_ORIGINS: List[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ]
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

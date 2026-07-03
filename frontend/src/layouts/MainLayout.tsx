@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import React from 'react';
 import { LayoutDashboard, Users, Database, ShoppingCart, Settings } from 'lucide-react';
 
@@ -8,6 +9,13 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children, activeTab, setActiveTab }: MainLayoutProps) {
+=======
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Users, Database, ShoppingCart, Settings, LogOut } from 'lucide-react';
+
+export default function MainLayout() {
+  const navigate = useNavigate();
+>>>>>>> Stashed changes
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'clientes', label: 'Clientes', icon: Users },
@@ -16,8 +24,13 @@ export default function MainLayout({ children, activeTab, setActiveTab }: MainLa
     { id: 'configuracion', label: 'Configuración', icon: Settings },
   ];
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row pb-20 md:pb-0">
+    <div className="min-h-screen bg-slate-955 text-slate-100 flex flex-col md:flex-row pb-20 md:pb-0">
       {/* Sidebar para pantallas grandes (Desktop) */}
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 p-6 shrink-0">
         <div className="mb-8">
@@ -31,6 +44,7 @@ export default function MainLayout({ children, activeTab, setActiveTab }: MainLa
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
+<<<<<<< Updated upstream
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
@@ -39,12 +53,33 @@ export default function MainLayout({ children, activeTab, setActiveTab }: MainLa
                     ? 'bg-cyan-500/10 text-cyan-400 border-l-4 border-cyan-400 font-medium'
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                 }`}
+=======
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }: { isActive: boolean }) =>
+                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-205 text-left cursor-pointer ${
+                    isActive
+                      ? 'bg-cyan-500/10 text-cyan-400 border-l-4 border-cyan-400 font-medium'
+                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                  }`
+                }
+>>>>>>> Stashed changes
               >
                 <Icon className="w-5 h-5" />
                 <span>{item.label}</span>
               </button>
             );
           })}
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-205 text-left text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 mt-auto cursor-pointer border-none bg-transparent"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Cerrar Sesión</span>
+          </button>
         </nav>
       </aside>
 
@@ -64,6 +99,7 @@ export default function MainLayout({ children, activeTab, setActiveTab }: MainLa
               onClick={() => setActiveTab(item.id)}
               className="flex flex-col items-center gap-1 flex-1 py-1 cursor-pointer"
             >
+<<<<<<< Updated upstream
               <div
                 className={`p-2 rounded-xl transition-all duration-300 ${
                   isActive 
@@ -77,8 +113,36 @@ export default function MainLayout({ children, activeTab, setActiveTab }: MainLa
                 {item.label}
               </span>
             </button>
+=======
+              {({ isActive }: { isActive: boolean }) => (
+                <>
+                  <div
+                    className={`p-2 rounded-xl transition-all duration-300 ${
+                      isActive 
+                        ? 'bg-cyan-500/20 text-cyan-400 scale-110' 
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <span className={`text-[10px] ${isActive ? 'text-cyan-400 font-medium' : 'text-slate-500'}`}>
+                    {item.label}
+                  </span>
+                </>
+              )}
+            </NavLink>
+>>>>>>> Stashed changes
           );
         })}
+        <button
+          onClick={handleLogout}
+          className="flex flex-col items-center gap-1 flex-1 py-1 cursor-pointer border-none bg-transparent text-rose-500"
+        >
+          <div className="p-2 rounded-xl text-rose-500">
+            <LogOut className="w-5 h-5" />
+          </div>
+          <span className="text-[10px] text-rose-500">Cerrar</span>
+        </button>
       </nav>
     </div>
   );

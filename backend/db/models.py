@@ -1,5 +1,6 @@
 import enum
 from datetime import date, datetime
+from decimal import Decimal
 from typing import List, Optional
 from sqlalchemy import (
     String, Numeric, Date, DateTime, ForeignKey, Enum, UniqueConstraint, CheckConstraint, Text, func
@@ -73,7 +74,7 @@ class Proveedor(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(150), nullable=False)
     telefono: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
-    saldo_a_favor: Mapped[float] = mapped_column(Numeric(12, 2), default=0.00)
+    saldo_a_favor: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
     
     # Relationships
     cuentas_madre: Mapped[List["CuentaMadre"]] = relationship(back_populates="proveedor")
@@ -102,7 +103,7 @@ class CuentaMadre(Base):
     credencial_id: Mapped[int] = mapped_column(ForeignKey("credenciales.id"))
     plataforma_id: Mapped[int] = mapped_column(ForeignKey("plataformas.id"))
     max_perfiles: Mapped[int] = mapped_column(nullable=False)
-    precio_compra: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    precio_compra: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     fecha_compra: Mapped[date] = mapped_column(Date, nullable=False)
     fecha_vencimiento: Mapped[date] = mapped_column(Date, nullable=False)
     estado: Mapped[EstadoCuenta] = mapped_column(Enum(EstadoCuenta, name="estado_cuenta"), default=EstadoCuenta.ACTIVA)
@@ -138,7 +139,7 @@ class Combo(Base):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(150), nullable=False)
-    precio_combo: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    precio_combo: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     
     # Relationships
     detalles_venta: Mapped[List["DetalleVenta"]] = relationship(back_populates="combo")
@@ -150,7 +151,7 @@ class Venta(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id"))
     fecha_corte: Mapped[date] = mapped_column(Date, nullable=False)
-    monto_total: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    monto_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     estado_pago: Mapped[EstadoPago] = mapped_column(Enum(EstadoPago, name="estado_pago"), default=EstadoPago.PENDIENTE)
     
     # Relationships
@@ -167,7 +168,7 @@ class DetalleVenta(Base):
     combo_id: Mapped[Optional[int]] = mapped_column(ForeignKey("combos.id"), nullable=True)
     cuenta_madre_id: Mapped[Optional[int]] = mapped_column(ForeignKey("cuentas_madre.id"), nullable=True)
     perfil_id: Mapped[Optional[int]] = mapped_column(ForeignKey("perfiles.id"), nullable=True)
-    precio_aplicado: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    precio_aplicado: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     
     # Relationships
     venta: Mapped["Venta"] = relationship(back_populates="detalles")
@@ -182,7 +183,7 @@ class PagoVenta(Base):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     venta_id: Mapped[int] = mapped_column(ForeignKey("ventas.id", ondelete="CASCADE"))
-    monto: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    monto: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     entidad: Mapped[EntidadFinanciera] = mapped_column(Enum(EntidadFinanciera, name="entidad_financiera"), nullable=False)
     fecha: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     
@@ -196,7 +197,7 @@ class Transaccion(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     tipo: Mapped[str] = mapped_column(String(10), nullable=False)  # 'INGRESO' or 'EGRESO'
     categoria: Mapped[str] = mapped_column(String(50), nullable=False)
-    monto: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    monto: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     entidad: Mapped[EntidadFinanciera] = mapped_column(Enum(EntidadFinanciera, name="entidad_financiera"), nullable=False)
     referencia_id: Mapped[Optional[int]] = mapped_column(nullable=True)
     fecha: Mapped[datetime] = mapped_column(DateTime, default=func.now())
@@ -222,9 +223,36 @@ class GarantiaCliente(Base):
     perfil_nuevo: Mapped[Optional["Perfil"]] = relationship(foreign_keys=[perfil_nuevo_id])
 
 
+<<<<<<< Updated upstream
+=======
+class GarantiaProveedor(Base):
+    __tablename__ = "garantias_proveedores"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cuenta_madre_id: Mapped[int] = mapped_column(ForeignKey("cuentas_madre.id", ondelete="CASCADE"))
+    tipo_garantia: Mapped[str] = mapped_column(String(50), nullable=False) # 'CAMBIO_CLAVE', 'CAMBIO_CUENTA', 'SALDO_A_FAVOR'
+    monto_saldo_a_favor: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    resuelto: Mapped[bool] = mapped_column(default=False)
+    
+    # Relationships
+    cuenta_madre: Mapped["CuentaMadre"] = relationship(back_populates="garantias")
+
+
+>>>>>>> Stashed changes
 class PlantillaMensaje(Base):
     __tablename__ = "plantillas_mensajes"
     
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     mensaje: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), default="admin")
+
