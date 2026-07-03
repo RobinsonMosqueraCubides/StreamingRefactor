@@ -10,6 +10,8 @@ from api.rutas.actores import clientes_router, proveedores_router
 from api.rutas.inventario import credenciales_router, cuentas_madre_router, perfiles_router
 from api.rutas.ventas import ventas_router
 from api.rutas.finanzas import finanzas_router, pagos_router
+from api.rutas.garantias import garantias_router
+from api.rutas.garantias_proveedores import garantias_prov_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -46,6 +48,14 @@ app.include_router(ventas_router, prefix=settings.API_V1_STR)
 # Registrar routers de finanzas y pagos
 app.include_router(finanzas_router, prefix=settings.API_V1_STR)
 app.include_router(pagos_router, prefix=settings.API_V1_STR)
+
+# Registrar router de garantías de clientes
+app.include_router(garantias_router, prefix=settings.API_V1_STR)
+
+# Registrar router de garantías de proveedores
+app.include_router(garantias_prov_router, prefix=settings.API_V1_STR)
+
+
 
 @app.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)):

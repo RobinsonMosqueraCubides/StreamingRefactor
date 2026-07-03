@@ -1,0 +1,154 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from datetime import timedelta
+from fastapi import HTTPException, status
+
+from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Transaccion, GarantiaCliente, EstadoCuenta
+from schemas.garantias_schemas import GarantiaCreate
+
+async def get_garantias(db: AsyncSession):
+    result = await db.execute(select(GarantiaCliente).order_by(GarantiaCliente.id.desc()))
+    return result.scalars().all()
+
+async def registrar_garantia(db: AsyncSession, garantia: GarantiaCreate):
+    # 1. Obtener el detalle de la venta
+    stmt_det = (
+        select(DetalleVenta)
+        .options(selectinload(DetalleVenta.cuenta_madre))
+        .where(DetalleVenta.id == garantia.detalle_venta_id)
+    )
+    res_det = await db.execute(stmt_det)
+    db_detalle = res_det.scalar_one_or_none()
+    if not db_detalle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Detalle de venta con id {garantia.detalle_venta_id} no encontrado"
+        )
+
+    # 2. Obtener la venta asociada y el perfil anterior
+    stmt_venta = select(Venta).where(Venta.id == db_detalle.venta_id)
+    res_venta = await db.execute(stmt_venta)
+    db_venta = res_venta.scalar_one()
+
+    perfil_anterior_id = db_detalle.perfil_id
+    if not perfil_anterior_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Este detalle de venta no tiene un perfil asociado para aplicar garantía."
+        )
+
+    stmt_perf = select(Perfil).where(Perfil.id == perfil_anterior_id)
+    res_perf = await db.execute(stmt_perf)
+    perfil_anterior = res_perf.scalar_one()
+
+    # 3. Lógica según el tipo de garantía
+    tipo = garantia.tipo_garantia.upper()
+    db_gar = None
+
+    if tipo == 'REEMBOLSO':
+        if not garantia.monto_reembolso or not garantia.entidad_reembolso:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Para la garantía de REEMBOLSO son obligatorios el monto_reembolso y la entidad_reembolso."
+            )
+        
+        # Devolución de dinero: No se permite cambiar recurso ni extender días
+        # Liberar o reportar el recurso anterior
+        if garantia.liberar_recurso_anterior:
+            perfil_anterior.asignado = False
+            perfil_anterior.reportado = False
+        else:
+            perfil_anterior.asignado = True
+            perfil_anterior.reportado = True
+
+        # Crear egreso contable
+        db_trans = Transaccion(
+            tipo="EGRESO",
+            categoria="REEMBOLSO_GARANTIA",
+            monto=garantia.monto_reembolso,
+            entidad=garantia.entidad_reembolso,
+            referencia_id=db_venta.id
+        )
+        db.add(db_trans)
+
+        db_gar = GarantiaCliente(
+            detalle_venta_id=db_detalle.id,
+            perfil_anterior_id=perfil_anterior_id,
+            perfil_nuevo_id=None,
+            dias_extendidos=0,
+            resuelto=True
+        )
+
+    elif tipo == 'CAMBIO_RECURSO':
+        # Cambio de cuenta o pantalla
+        # Liberar o reportar el recurso anterior
+        if garantia.liberar_recurso_anterior:
+            perfil_anterior.asignado = False
+            perfil_anterior.reportado = False
+        else:
+            perfil_anterior.asignado = True
+            perfil_anterior.reportado = True
+
+        # Buscar un nuevo perfil libre de la misma plataforma
+        plataforma_id = db_detalle.cuenta_madre.plataforma_id
+        stmt_new = (
+            select(Perfil)
+            .join(CuentaMadre)
+            .where(
+                CuentaMadre.plataforma_id == plataforma_id,
+                CuentaMadre.estado == EstadoCuenta.ACTIVA,
+                Perfil.asignado == False,
+                Perfil.reportado == False
+            )
+            .with_for_update(skip_locked=True)
+            .limit(1)
+        )
+        res_new = await db.execute(stmt_new)
+        nuevo_perfil = res_new.scalar_one_or_none()
+
+        if not nuevo_perfil:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No hay perfiles disponibles en el inventario para realizar la reasignación."
+            )
+
+        # Asignar nuevo perfil al cliente
+        nuevo_perfil.asignado = True
+        db_detalle.perfil_id = nuevo_perfil.id
+        db_detalle.cuenta_madre_id = nuevo_perfil.cuenta_madre_id
+
+        # Extender fecha de corte de la venta si se especifica
+        if garantia.dias_extendidos > 0:
+            db_venta.fecha_corte = db_venta.fecha_corte + timedelta(days=garantia.dias_extendidos)
+
+        db_gar = GarantiaCliente(
+            detalle_venta_id=db_detalle.id,
+            perfil_anterior_id=perfil_anterior_id,
+            perfil_nuevo_id=nuevo_perfil.id,
+            dias_extendidos=garantia.dias_extendidos,
+            resuelto=True
+        )
+
+    elif tipo in ('CAMBIO_CLAVE', 'AGREGAR_DIAS'):
+        # Mantener el mismo perfil y opcionalmente extender la fecha de corte
+        if garantia.dias_extendidos > 0:
+            db_venta.fecha_corte = db_venta.fecha_corte + timedelta(days=garantia.dias_extendidos)
+
+        db_gar = GarantiaCliente(
+            detalle_venta_id=db_detalle.id,
+            perfil_anterior_id=perfil_anterior_id,
+            perfil_nuevo_id=None,
+            dias_extendidos=garantia.dias_extendidos,
+            resuelto=True
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Tipo de garantía '{garantia.tipo_garantia}' no reconocido."
+        )
+
+    db.add(db_gar)
+    await db.commit()
+    await db.refresh(db_gar)
+    return db_gar

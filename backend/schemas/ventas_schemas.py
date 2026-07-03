@@ -39,3 +39,7 @@ class VentaResponse(BaseModel):
     detalles: List[DetalleVentaResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class VentaRenovacion(BaseModel):
+    nueva_fecha_corte: date

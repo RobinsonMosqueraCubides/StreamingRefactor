@@ -46,9 +46,9 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
         plat_name = plat.nombre if plat else f"ID {item.plataforma_id}"
 
         if getattr(item, "tipo_unidad", "PANTALLA") == "CUENTA":
-            # Buscar una cuenta madre que tenga todos sus perfiles disponibles (ninguno asignado)
-            # Subquery de cuentas que tienen al menos un perfil asignado
-            subq_assigned = select(Perfil.cuenta_madre_id).where(Perfil.asignado == True)
+            # Buscar una cuenta madre que tenga todos sus perfiles disponibles (ninguno asignado ni reportado)
+            # Subquery de cuentas que tienen al menos un perfil asignado o reportado
+            subq_assigned = select(Perfil.cuenta_madre_id).where((Perfil.asignado == True) | (Perfil.reportado == True))
             
             stmt_cm = (
                 select(CuentaMadre)
@@ -106,7 +106,8 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
                 .where(
                     CuentaMadre.plataforma_id == item.plataforma_id,
                     CuentaMadre.estado == EstadoCuenta.ACTIVA,
-                    Perfil.asignado == False
+                    Perfil.asignado == False,
+                    Perfil.reportado == False
                 )
                 .with_for_update(skip_locked=True)
                 .limit(1)
@@ -138,3 +139,11 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
 
     # Retornar la venta con los detalles precargados
     return await get_venta(db, db_venta.id)
+
+
+async def renovar_venta(db: AsyncSession, venta_id: int, nueva_fecha_corte):
+    db_venta = await get_venta(db, venta_id)
+    db_venta.fecha_corte = nueva_fecha_corte
+    await db.commit()
+    await db.refresh(db_venta)
+    return db_venta

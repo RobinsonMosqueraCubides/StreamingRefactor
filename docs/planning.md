@@ -154,7 +154,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 ## - [ ] ⚙️ Fase 5: Garantías, Casos Especiales y Tareas Programadas (Fullstack)
 **Objetivo:** Manejar excepciones del negocio (caídas) y automatizaciones.
 
-### - [ ] Tarea 5.1: Garantías de Clientes (UC-04) - Backend y Frontend
+### - [x] Tarea 5.1: Garantías de Clientes (UC-04) - Backend y Frontend
 * **Objetivo:** Reasignar perfiles cuando una cuenta cae.
 * **Descripción (Backend):** Endpoint que reciba un `detalle_venta_id`, libere el perfil viejo, busque uno nuevo, actualice `garantias_clientes` y opcionalmente extienda `fecha_corte`.
 * **Descripción (Frontend):** Botón "Reportar Caída" en el detalle de la venta de un cliente, abre un flujo para reasignar y notificar vía WhatsApp.
