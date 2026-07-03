@@ -63,7 +63,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 * **Resultado Esperado:** Endpoints GET, POST, PUT, DELETE expuestos.
 * **Criterios de Terminación:** Peticiones HTTP a `/api/plataformas`, `/api/combos` y `/api/plantillas` responden datos en formato JSON correctamente estructurado.
 
-### - [ ] Tarea 2.2: CRUD de Actores (Proveedores y Clientes)
+### - [x] Tarea 2.2: CRUD de Actores (Proveedores y Clientes)
 * **Objetivo:** Gestión de los usuarios del sistema (UC-09 parcial).
 * **Descripción:** Crear endpoints para registrar clientes (verificando celular único) y proveedores. Incluir endpoint para cambiar el `estado_cliente` a `BANEADO` (UC-09).
 * **Archivos/Módulos a crear:** `backend/schemas/actor_schemas.py`, `backend/api/rutas/actores.py`, `backend/services/actor_service.py`.

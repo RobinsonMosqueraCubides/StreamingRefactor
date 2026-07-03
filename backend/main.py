@@ -6,6 +6,7 @@ from core.config import settings
 from db.database import get_db
 from api.rutas.catalogos import plataformas_router, combos_router, plantillas_router
 from api.rutas.actores import clientes_router, proveedores_router
+from api.rutas.inventario import credenciales_router, cuentas_madre_router, perfiles_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -30,6 +31,12 @@ app.include_router(plantillas_router, prefix=settings.API_V1_STR)
 # Registrar routers de actores
 app.include_router(clientes_router, prefix=settings.API_V1_STR)
 app.include_router(proveedores_router, prefix=settings.API_V1_STR)
+
+# Registrar routers de inventario
+app.include_router(credenciales_router, prefix=settings.API_V1_STR)
+app.include_router(cuentas_madre_router, prefix=settings.API_V1_STR)
+app.include_router(perfiles_router, prefix=settings.API_V1_STR)
+
 
 
 @app.get("/health")
