@@ -1,6 +1,9 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
+<<<<<<< HEAD
 from decimal import Decimal
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 
 # --- Plataforma Schemas ---
 
@@ -23,7 +26,11 @@ class PlataformaResponse(PlataformaBase):
 
 class ComboBase(BaseModel):
     nombre: str = Field(..., max_length=150, description="Nombre descriptivo del combo")
+<<<<<<< HEAD
     precio_combo: Decimal = Field(..., ge=Decimal("0.00"), description="Precio total del combo en COP")
+=======
+    precio_combo: float = Field(..., ge=0, description="Precio total del combo en COP")
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 
 class ComboCreate(ComboBase):
     pass

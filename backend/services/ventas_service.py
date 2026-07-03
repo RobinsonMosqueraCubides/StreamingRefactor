@@ -1,11 +1,17 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+<<<<<<< HEAD
 from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Plataforma, EstadoCuenta, EstadoPago, PlantillaMensaje
 from schemas.ventas_schemas import VentaCreate
 from fastapi import HTTPException, status
 from decimal import Decimal
 import urllib.parse
+=======
+from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Plataforma, EstadoCuenta, EstadoPago
+from schemas.ventas_schemas import VentaCreate
+from fastapi import HTTPException, status
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 
 async def get_ventas(db: AsyncSession):
     result = await db.execute(
@@ -161,6 +167,7 @@ async def renovar_venta(db: AsyncSession, venta_id: int, nueva_fecha_corte):
     await db.commit()
     await db.refresh(db_venta)
     return db_venta
+<<<<<<< HEAD
 
 
 async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int, template_type: str) -> str:
@@ -264,3 +271,5 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
     encoded_msg = urllib.parse.quote(msg)
     return f"https://wa.me/{phone}?text={encoded_msg}"
 
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864

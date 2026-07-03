@@ -1,6 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+<<<<<<< HEAD
 from decimal import Decimal
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 from db.models import Venta, PagoVenta, Transaccion, EstadoPago
 from schemas.finanzas_schemas import PagoVentaCreate, GastoManualCreate
 from fastapi import HTTPException, status
@@ -39,7 +42,11 @@ async def registrar_pago_venta(db: AsyncSession, venta_id: int, pago: PagoVentaC
     suma_pagos_result = await db.execute(
         select(func.sum(PagoVenta.monto)).where(PagoVenta.venta_id == venta_id)
     )
+<<<<<<< HEAD
     suma_total = suma_pagos_result.scalar() or Decimal("0.00")
+=======
+    suma_total = suma_pagos_result.scalar() or 0.0
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 
     if suma_total >= db_venta.monto_total:
         db_venta.estado_pago = EstadoPago.PAGADO

@@ -1,6 +1,9 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
+<<<<<<< HEAD
 from decimal import Decimal
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 from db.models import TipoCliente, EstadoCliente
 
 # --- Cliente Schemas ---
@@ -29,7 +32,11 @@ class ClienteResponse(ClienteBase):
 class ProveedorBase(BaseModel):
     nombre: str = Field(..., max_length=150, description="Nombre del proveedor")
     telefono: str = Field(..., max_length=20, description="Teléfono celular único del proveedor")
+<<<<<<< HEAD
     saldo_a_favor: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"), description="Saldo a favor en pesos COP")
+=======
+    saldo_a_favor: float = Field(default=0.00, ge=0.0, description="Saldo a favor en pesos COP")
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 
 class ProveedorCreate(ProveedorBase):
     pass

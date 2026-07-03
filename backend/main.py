@@ -5,10 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from db.database import get_db
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
 from api.deps import get_current_user
 from api.rutas.auth import auth_router
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 from api.rutas.catalogos import plataformas_router, combos_router, plantillas_router
 from api.rutas.actores import clientes_router, proveedores_router
 from api.rutas.inventario import credenciales_router, cuentas_madre_router, perfiles_router
@@ -17,7 +20,10 @@ from api.rutas.finanzas import finanzas_router, pagos_router
 from api.rutas.garantias import garantias_router
 from api.rutas.garantias_proveedores import garantias_prov_router
 
+<<<<<<< HEAD
 >>>>>>> Stashed changes
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
@@ -33,6 +39,7 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
 # Registrar router de autenticación (PÚBLICO)
@@ -72,6 +79,37 @@ app.include_router(garantias_prov_router, prefix=settings.API_V1_STR, dependenci
 
 
 >>>>>>> Stashed changes
+=======
+# Registrar routers de catálogos
+app.include_router(plataformas_router, prefix=settings.API_V1_STR)
+app.include_router(combos_router, prefix=settings.API_V1_STR)
+app.include_router(plantillas_router, prefix=settings.API_V1_STR)
+
+# Registrar routers de actores
+app.include_router(clientes_router, prefix=settings.API_V1_STR)
+app.include_router(proveedores_router, prefix=settings.API_V1_STR)
+
+# Registrar routers de inventario
+app.include_router(credenciales_router, prefix=settings.API_V1_STR)
+app.include_router(cuentas_madre_router, prefix=settings.API_V1_STR)
+app.include_router(perfiles_router, prefix=settings.API_V1_STR)
+
+# Registrar routers de ventas
+app.include_router(ventas_router, prefix=settings.API_V1_STR)
+
+# Registrar routers de finanzas y pagos
+app.include_router(finanzas_router, prefix=settings.API_V1_STR)
+app.include_router(pagos_router, prefix=settings.API_V1_STR)
+
+# Registrar router de garantías de clientes
+app.include_router(garantias_router, prefix=settings.API_V1_STR)
+
+# Registrar router de garantías de proveedores
+app.include_router(garantias_prov_router, prefix=settings.API_V1_STR)
+
+
+
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 @app.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)):
     db_status = "connected"

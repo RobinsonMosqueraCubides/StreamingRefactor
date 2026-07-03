@@ -114,6 +114,7 @@ class CuentaMadre(Base):
     plataforma: Mapped["Plataforma"] = relationship(back_populates="cuentas_madre")
     perfiles: Mapped[List["Perfil"]] = relationship(back_populates="cuenta_madre", cascade="all, delete-orphan")
     detalles_venta: Mapped[List["DetalleVenta"]] = relationship(back_populates="cuenta_madre")
+    garantias: Mapped[List["GarantiaProveedor"]] = relationship(back_populates="cuenta_madre", cascade="all, delete-orphan")
 
 
 class Perfil(Base):
@@ -124,6 +125,7 @@ class Perfil(Base):
     nombre_perfil: Mapped[str] = mapped_column(String(50), nullable=False)
     pin: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     asignado: Mapped[bool] = mapped_column(default=False)
+    reportado: Mapped[bool] = mapped_column(default=False)
     
     # Relationships
     cuenta_madre: Mapped["CuentaMadre"] = relationship(back_populates="perfiles")
@@ -223,15 +225,22 @@ class GarantiaCliente(Base):
     perfil_nuevo: Mapped[Optional["Perfil"]] = relationship(foreign_keys=[perfil_nuevo_id])
 
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 class GarantiaProveedor(Base):
     __tablename__ = "garantias_proveedores"
     
     id: Mapped[int] = mapped_column(primary_key=True)
     cuenta_madre_id: Mapped[int] = mapped_column(ForeignKey("cuentas_madre.id", ondelete="CASCADE"))
     tipo_garantia: Mapped[str] = mapped_column(String(50), nullable=False) # 'CAMBIO_CLAVE', 'CAMBIO_CUENTA', 'SALDO_A_FAVOR'
+<<<<<<< HEAD
     monto_saldo_a_favor: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
+=======
+    monto_saldo_a_favor: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
     fecha: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     resuelto: Mapped[bool] = mapped_column(default=False)
     
@@ -239,7 +248,10 @@ class GarantiaProveedor(Base):
     cuenta_madre: Mapped["CuentaMadre"] = relationship(back_populates="garantias")
 
 
+<<<<<<< HEAD
 >>>>>>> Stashed changes
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 class PlantillaMensaje(Base):
     __tablename__ = "plantillas_mensajes"
     

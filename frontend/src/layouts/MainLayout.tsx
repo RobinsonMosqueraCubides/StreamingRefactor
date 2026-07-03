@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 import React from 'react';
 import { LayoutDashboard, Users, Database, ShoppingCart, Settings } from 'lucide-react';
@@ -16,12 +17,18 @@ import { LayoutDashboard, Users, Database, ShoppingCart, Settings, LogOut } from
 export default function MainLayout() {
   const navigate = useNavigate();
 >>>>>>> Stashed changes
+=======
+import { NavLink, Outlet } from 'react-router-dom';
+import { LayoutDashboard, Users, Database, ShoppingCart, Settings } from 'lucide-react';
+
+export default function MainLayout() {
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'clientes', label: 'Clientes', icon: Users },
-    { id: 'inventario', label: 'Inventario', icon: Database },
-    { id: 'ventas', label: 'Ventas', icon: ShoppingCart },
-    { id: 'configuracion', label: 'Configuración', icon: Settings },
+    { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/clientes', label: 'Clientes', icon: Users },
+    { to: '/inventario', label: 'Inventario', icon: Database },
+    { to: '/ventas', label: 'Ventas', icon: ShoppingCart },
+    { to: '/configuracion', label: 'Configuración', icon: Settings },
   ];
 
   const handleLogout = () => {
@@ -42,8 +49,8 @@ export default function MainLayout() {
         <nav className="flex flex-col gap-2 flex-grow">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeTab === item.id;
             return (
+<<<<<<< HEAD
 <<<<<<< Updated upstream
               <button
                 key={item.id}
@@ -54,22 +61,31 @@ export default function MainLayout() {
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                 }`}
 =======
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
+<<<<<<< HEAD
                 className={({ isActive }: { isActive: boolean }) =>
+=======
+                className={({ isActive }) =>
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
                   `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-205 text-left cursor-pointer ${
                     isActive
                       ? 'bg-cyan-500/10 text-cyan-400 border-l-4 border-cyan-400 font-medium'
                       : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                   }`
                 }
+<<<<<<< HEAD
 >>>>>>> Stashed changes
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
               >
                 <Icon className="w-5 h-5" />
                 <span>{item.label}</span>
-              </button>
+              </NavLink>
             );
           })}
 
@@ -85,20 +101,21 @@ export default function MainLayout() {
 
       {/* Main Content Area */}
       <main className="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full">
-        {children}
+        <Outlet />
       </main>
 
       {/* Bottom Navigation para pantallas móviles */}
       <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-2xl shadow-lg px-4 py-2 flex justify-between items-center z-50">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
           return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
               className="flex flex-col items-center gap-1 flex-1 py-1 cursor-pointer"
             >
+<<<<<<< HEAD
 <<<<<<< Updated upstream
               <div
                 className={`p-2 rounded-xl transition-all duration-300 ${
@@ -115,6 +132,9 @@ export default function MainLayout() {
             </button>
 =======
               {({ isActive }: { isActive: boolean }) => (
+=======
+              {({ isActive }) => (
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
                 <>
                   <div
                     className={`p-2 rounded-xl transition-all duration-300 ${
@@ -131,7 +151,10 @@ export default function MainLayout() {
                 </>
               )}
             </NavLink>
+<<<<<<< HEAD
 >>>>>>> Stashed changes
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
           );
         })}
         <button

@@ -52,7 +52,11 @@ async def registrar_garantia_proveedor(db: AsyncSession, garantia: GarantiaProve
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Se requiere el 'monto_saldo_a_favor' para la garantía de saldo a favor."
             )
+<<<<<<< HEAD
         db_cm.proveedor.saldo_a_favor = db_cm.proveedor.saldo_a_favor + garantia.monto_saldo_a_favor
+=======
+        db_cm.proveedor.saldo_a_favor = float(db_cm.proveedor.saldo_a_favor) + garantia.monto_saldo_a_favor
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
         # La cuenta madre se da de baja
         db_cm.estado = EstadoCuenta.CAIDA
 

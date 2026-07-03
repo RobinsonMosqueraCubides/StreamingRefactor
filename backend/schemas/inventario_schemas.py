@@ -1,6 +1,9 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
+<<<<<<< HEAD
 from decimal import Decimal
+=======
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 from datetime import date
 from db.models import EstadoCuenta, EntidadFinanciera
 
@@ -48,7 +51,11 @@ class CuentaMadreBase(BaseModel):
     credencial_id: int = Field(..., description="ID de la credencial asociada")
     plataforma_id: int = Field(..., description="ID de la plataforma de streaming")
     max_perfiles: int = Field(..., ge=1, description="Cantidad máxima de perfiles configurados para esta cuenta")
+<<<<<<< HEAD
     precio_compra: Decimal = Field(..., ge=Decimal("0.0"), description="Costo de la cuenta en pesos COP")
+=======
+    precio_compra: float = Field(..., ge=0.0, description="Costo de la cuenta en pesos COP")
+>>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
     fecha_compra: date = Field(..., description="Fecha de compra de la cuenta madre")
     fecha_vencimiento: date = Field(..., description="Fecha de vencimiento de la cuenta madre")
     estado: EstadoCuenta = Field(default=EstadoCuenta.ACTIVA, description="Estado actual de la cuenta")
