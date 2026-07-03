@@ -1,28 +1,8 @@
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-import React from 'react';
-import { LayoutDashboard, Users, Database, ShoppingCart, Settings } from 'lucide-react';
-
-interface MainLayoutProps {
-  children: React.ReactNode;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-}
-
-export default function MainLayout({ children, activeTab, setActiveTab }: MainLayoutProps) {
-=======
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Database, ShoppingCart, Settings, LogOut } from 'lucide-react';
 
 export default function MainLayout() {
   const navigate = useNavigate();
->>>>>>> Stashed changes
-=======
-import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, Database, ShoppingCart, Settings } from 'lucide-react';
-
-export default function MainLayout() {
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/clientes', label: 'Clientes', icon: Users },
@@ -50,38 +30,17 @@ export default function MainLayout() {
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left cursor-pointer ${
-                  isActive
-                    ? 'bg-cyan-500/10 text-cyan-400 border-l-4 border-cyan-400 font-medium'
-                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
-                }`}
-=======
-=======
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
-<<<<<<< HEAD
                 className={({ isActive }: { isActive: boolean }) =>
-=======
-                className={({ isActive }) =>
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
                   `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-205 text-left cursor-pointer ${
                     isActive
                       ? 'bg-cyan-500/10 text-cyan-400 border-l-4 border-cyan-400 font-medium'
                       : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                   }`
                 }
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
               >
                 <Icon className="w-5 h-5" />
                 <span>{item.label}</span>
@@ -115,26 +74,7 @@ export default function MainLayout() {
               end={item.end}
               className="flex flex-col items-center gap-1 flex-1 py-1 cursor-pointer"
             >
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-              <div
-                className={`p-2 rounded-xl transition-all duration-300 ${
-                  isActive 
-                    ? 'bg-cyan-500/20 text-cyan-400 scale-110' 
-                    : 'text-slate-500'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-              </div>
-              <span className={`text-[10px] ${isActive ? 'text-cyan-400 font-medium' : 'text-slate-500'}`}>
-                {item.label}
-              </span>
-            </button>
-=======
               {({ isActive }: { isActive: boolean }) => (
-=======
-              {({ isActive }) => (
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
                 <>
                   <div
                     className={`p-2 rounded-xl transition-all duration-300 ${
@@ -151,10 +91,6 @@ export default function MainLayout() {
                 </>
               )}
             </NavLink>
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
           );
         })}
         <button

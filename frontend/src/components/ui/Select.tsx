@@ -7,11 +7,7 @@ interface Option {
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
-<<<<<<< HEAD
   options?: Option[];
-=======
-  options: Option[];
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
   error?: string;
 }
 
@@ -38,19 +34,11 @@ export default function Select({
             ${className}`}
           {...props}
         >
-<<<<<<< HEAD
           {options ? options.map((option) => (
             <option key={option.value} value={option.value} className="bg-slate-900 text-slate-100">
               {option.label}
             </option>
           )) : props.children}
-=======
-          {options.map((option) => (
-            <option key={option.value} value={option.value} className="bg-slate-900 text-slate-100">
-              {option.label}
-            </option>
-          ))}
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
         </select>
         {/* Custom Chevron Icon */}
         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-500">

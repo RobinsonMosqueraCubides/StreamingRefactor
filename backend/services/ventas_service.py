@@ -1,28 +1,33 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-<<<<<<< HEAD
 from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Plataforma, EstadoCuenta, EstadoPago, PlantillaMensaje
 from schemas.ventas_schemas import VentaCreate
 from fastapi import HTTPException, status
 from decimal import Decimal
 import urllib.parse
-=======
-from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Plataforma, EstadoCuenta, EstadoPago
-from schemas.ventas_schemas import VentaCreate
-from fastapi import HTTPException, status
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 
-async def get_ventas(db: AsyncSession):
+async def get_ventas(db: AsyncSession, skip: int = 0, limit: int = 100):
     result = await db.execute(
-        select(Venta).options(selectinload(Venta.detalles))
+        select(Venta)
+        .options(
+            selectinload(Venta.cliente),
+            selectinload(Venta.detalles).selectinload(DetalleVenta.cuenta_madre).selectinload(CuentaMadre.credencial),
+            selectinload(Venta.detalles).selectinload(DetalleVenta.cuenta_madre).selectinload(CuentaMadre.plataforma),
+        )
+        .offset(skip)
+        .limit(limit)
     )
     return result.scalars().all()
 
 async def get_venta(db: AsyncSession, venta_id: int):
     result = await db.execute(
         select(Venta)
-        .options(selectinload(Venta.detalles))
+        .options(
+            selectinload(Venta.cliente),
+            selectinload(Venta.detalles).selectinload(DetalleVenta.cuenta_madre).selectinload(CuentaMadre.credencial),
+            selectinload(Venta.detalles).selectinload(DetalleVenta.cuenta_madre).selectinload(CuentaMadre.plataforma),
+        )
         .where(Venta.id == venta_id)
     )
     db_venta = result.scalar_one_or_none()
@@ -34,141 +39,137 @@ async def get_venta(db: AsyncSession, venta_id: int):
     return db_venta
 
 async def create_venta(db: AsyncSession, venta: VentaCreate):
-    # 1. Crear cabecera de la venta
-    db_venta = Venta(
-        cliente_id=venta.cliente_id,
-        fecha_corte=venta.fecha_corte,
-        monto_total=venta.monto_total,
-        estado_pago=EstadoPago.PENDIENTE
-    )
-    db.add(db_venta)
-    await db.flush()
+    try:
+        # 1. Crear cabecera de la venta
+        db_venta = Venta(
+            cliente_id=venta.cliente_id,
+            fecha_corte=venta.fecha_corte,
+            monto_total=venta.monto_total,
+            estado_pago=EstadoPago.PENDIENTE
+        )
+        db.add(db_venta)
+        await db.flush()
 
-    detalles = []
+        detalles = []
 
-    # 2. Iterar sobre cada item solicitado para asignar un perfil libre o una cuenta completa
-    for item in venta.items:
-        # Obtener el nombre de la plataforma para mensajes de error
-        plat_res = await db.execute(select(Plataforma).where(Plataforma.id == item.plataforma_id))
-        plat = plat_res.scalar_one_or_none()
-        plat_name = plat.nombre if plat else f"ID {item.plataforma_id}"
+        # 2. Iterar sobre cada item solicitado para asignar un perfil libre o una cuenta completa
+        for item in venta.items:
+            # Obtener el nombre de la plataforma para mensajes de error
+            plat_res = await db.execute(select(Plataforma).where(Plataforma.id == item.plataforma_id))
+            plat = plat_res.scalar_one_or_none()
+            plat_name = plat.nombre if plat else f"ID {item.plataforma_id}"
 
-        if getattr(item, "tipo_unidad", "PANTALLA") == "CUENTA":
-            # Buscar una cuenta madre que tenga todos sus perfiles disponibles (ninguno asignado ni reportado)
-            # O directamente la seleccionada por el usuario
-            if getattr(item, "cuenta_madre_id", None) is not None:
-                stmt_cm = (
-                    select(CuentaMadre)
-                    .where(
-                        CuentaMadre.id == item.cuenta_madre_id,
-                        CuentaMadre.estado == EstadoCuenta.ACTIVA
+            if getattr(item, "tipo_unidad", "PANTALLA") == "CUENTA":
+                if getattr(item, "cuenta_madre_id", None) is not None:
+                    stmt_cm = (
+                        select(CuentaMadre)
+                        .where(
+                            CuentaMadre.id == item.cuenta_madre_id,
+                            CuentaMadre.estado == EstadoCuenta.ACTIVA
+                        )
+                        .with_for_update(skip_locked=True)
                     )
+                else:
+                    subq_assigned = select(Perfil.cuenta_madre_id).where((Perfil.asignado == True) | (Perfil.reportado == True))
+                    stmt_cm = (
+                        select(CuentaMadre)
+                        .where(
+                            CuentaMadre.plataforma_id == item.plataforma_id,
+                            CuentaMadre.estado == EstadoCuenta.ACTIVA,
+                            ~CuentaMadre.id.in_(subq_assigned)
+                        )
+                        .with_for_update(skip_locked=True)
+                        .limit(1)
+                    )
+                res_cm = await db.execute(stmt_cm)
+                db_cm = res_cm.scalar_one_or_none()
+
+                if not db_cm:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"No hay cuentas completas disponibles para la plataforma {plat_name}"
+                    )
+
+                stmt_p = (
+                    select(Perfil)
+                    .where(Perfil.cuenta_madre_id == db_cm.id)
                     .with_for_update(skip_locked=True)
                 )
+                res_p = await db.execute(stmt_p)
+                perfiles = res_p.scalars().all()
+
+                if not perfiles:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"La Cuenta Madre #{db_cm.id} no posee perfiles configurados."
+                    )
+
+                # Calcular valor unitario por pantalla dentro del combo
+                precio_unitario = Decimal(str(item.precio_aplicado)) / Decimal(len(perfiles))
+
+                for perfil in perfiles:
+                    perfil.asignado = True
+                    db_detalle = DetalleVenta(
+                        venta_id=db_venta.id,
+                        combo_id=item.combo_id,
+                        cuenta_madre_id=perfil.cuenta_madre_id,
+                        perfil_id=perfil.id,
+                        precio_aplicado=precio_unitario
+                    )
+                    detalles.append(db_detalle)
             else:
-                subq_assigned = select(Perfil.cuenta_madre_id).where((Perfil.asignado == True) | (Perfil.reportado == True))
-                stmt_cm = (
-                    select(CuentaMadre)
-                    .where(
+                stmt = select(Perfil).join(CuentaMadre)
+                if getattr(item, "cuenta_madre_id", None) is not None:
+                    stmt = stmt.where(
+                        Perfil.cuenta_madre_id == item.cuenta_madre_id,
+                        Perfil.asignado == False,
+                        Perfil.reportado == False
+                    )
+                else:
+                    stmt = stmt.where(
                         CuentaMadre.plataforma_id == item.plataforma_id,
                         CuentaMadre.estado == EstadoCuenta.ACTIVA,
-                        ~CuentaMadre.id.in_(subq_assigned)
+                        Perfil.asignado == False,
+                        Perfil.reportado == False
                     )
-                    .with_for_update(skip_locked=True)
-                    .limit(1)
-                )
-            res_cm = await db.execute(stmt_cm)
-            db_cm = res_cm.scalar_one_or_none()
+                stmt = stmt.with_for_update(skip_locked=True).limit(1)
+                result = await db.execute(stmt)
+                perfil = result.scalar_one_or_none()
 
-            if not db_cm:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"No hay cuentas completas disponibles para la plataforma {plat_name}"
-                )
+                if not perfil:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"No hay perfiles disponibles para la plataforma {plat_name}"
+                    )
 
-            # Obtener y bloquear todos los perfiles asociados a la cuenta madre seleccionada
-            stmt_p = (
-                select(Perfil)
-                .where(Perfil.cuenta_madre_id == db_cm.id)
-                .with_for_update(skip_locked=True)
-            )
-            res_p = await db.execute(stmt_p)
-            perfiles = res_p.scalars().all()
-
-            if not perfiles:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"La cuenta completa seleccionada no tiene perfiles configurados."
-                )
-
-            # Dividir el precio entre el número de perfiles para el registro individual de cada detalle
-            precio_unitario = item.precio_aplicado / len(perfiles)
-
-            for perfil in perfiles:
                 perfil.asignado = True
+                
                 db_detalle = DetalleVenta(
                     venta_id=db_venta.id,
                     combo_id=item.combo_id,
                     cuenta_madre_id=perfil.cuenta_madre_id,
                     perfil_id=perfil.id,
-                    precio_aplicado=precio_unitario
+                    precio_aplicado=item.precio_aplicado
                 )
                 detalles.append(db_detalle)
-        else:
-            # Asignación estándar de una sola pantalla (PANTALLA)
-            # SELECT FOR UPDATE SKIP LOCKED
-            stmt = select(Perfil).join(CuentaMadre)
-            if getattr(item, "cuenta_madre_id", None) is not None:
-                stmt = stmt.where(
-                    Perfil.cuenta_madre_id == item.cuenta_madre_id,
-                    Perfil.asignado == False,
-                    Perfil.reportado == False
-                )
-            else:
-                stmt = stmt.where(
-                    CuentaMadre.plataforma_id == item.plataforma_id,
-                    CuentaMadre.estado == EstadoCuenta.ACTIVA,
-                    Perfil.asignado == False,
-                    Perfil.reportado == False
-                )
-            stmt = stmt.with_for_update(skip_locked=True).limit(1)
-            result = await db.execute(stmt)
-            perfil = result.scalar_one_or_none()
 
-            if not perfil:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"No hay perfiles disponibles para la plataforma {plat_name}"
-                )
-
-            # Asignar el perfil
-            perfil.asignado = True
-            
-            # Crear detalle de la venta
-            db_detalle = DetalleVenta(
-                venta_id=db_venta.id,
-                combo_id=item.combo_id,
-                cuenta_madre_id=perfil.cuenta_madre_id,
-                perfil_id=perfil.id,
-                precio_aplicado=item.precio_aplicado
-            )
-            detalles.append(db_detalle)
-
-    db.add_all(detalles)
-    await db.commit()
-
-    # Retornar la venta con los detalles precargados
-    return await get_venta(db, db_venta.id)
-
+        db.add_all(detalles)
+        await db.commit()
+        return await get_venta(db, db_venta.id)
+    except Exception as e:
+        await db.rollback()
+        raise e
 
 async def renovar_venta(db: AsyncSession, venta_id: int, nueva_fecha_corte):
-    db_venta = await get_venta(db, venta_id)
-    db_venta.fecha_corte = nueva_fecha_corte
-    await db.commit()
-    await db.refresh(db_venta)
-    return db_venta
-<<<<<<< HEAD
-
+    try:
+        db_venta = await get_venta(db, venta_id)
+        db_venta.fecha_corte = nueva_fecha_corte
+        await db.commit()
+        await db.refresh(db_venta)
+        return db_venta
+    except Exception as e:
+        await db.rollback()
+        raise e
 
 async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int, template_type: str) -> str:
     stmt_v = select(Venta).where(Venta.id == venta_id).options(selectinload(Venta.cliente))
@@ -206,17 +207,18 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
         elif template_type == 'corte':
             mensaje_base = "Hola [Nombre Cliente], tu suscripción de {plataforma} ha vencido y los perfiles asociados han sido suspendidos. Realiza tu pago de {monto} COP para reactivarlos."
         else:
-            mensaje_base = "Hola [Nombre Cliente], aquí están tus accesos de {plataforma}:\nUsuario: {email}\nContraseña: {password}\nUsuario Perfil: {usuario}\nPIN: {pin}"
+            mensaje_base = "Hola [Nombre Cliente], aquí tienes tus credenciales para {plataforma}: Usuario: {usuario}, Clave: {password}, Perfil: {perfil}, PIN: {pin}."
 
-    plat_name = cm.plataforma.nombre if (cm and cm.plataforma) else f"Plataforma #{detail.cuenta_madre_id}"
-    email = cm.credencial.email if (cm and cm.credencial) else "N/A"
+    # Obtener credenciales
+    plataforma = cm.plataforma.nombre if (cm and cm.plataforma) else "N/A"
+    usuario = cm.credencial.email if (cm and cm.credencial) else "N/A"
     password = cm.credencial.password if (cm and cm.credencial) else "N/A"
     profile_name = perfil.nombre_perfil if perfil else venta.cliente.nombre
     pin_val = perfil.pin if (perfil and perfil.pin) else "N/A"
-    
+
     msg = mensaje_base.replace('[Nombre Cliente]', venta.cliente.nombre) \
-                      .replace('{plataforma}', plat_name) \
-                      .replace('{email}', email) \
+                      .replace('{plataforma}', plataforma) \
+                      .replace('{usuario}', usuario) \
                       .replace('{password}', password) \
                       .replace('{usuario}', profile_name) \
                       .replace('{pin}', pin_val) \
@@ -226,7 +228,6 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
     phone = venta.cliente.telefono.replace('+', '').replace(' ', '')
     encoded_msg = urllib.parse.quote(msg)
     return f"https://wa.me/{phone}?text={encoded_msg}"
-
 
 async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str:
     stmt_v = select(Venta).where(Venta.id == venta_id).options(
@@ -270,6 +271,3 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
     phone = venta.cliente.telefono.replace('+', '').replace(' ', '')
     encoded_msg = urllib.parse.quote(msg)
     return f"https://wa.me/{phone}?text={encoded_msg}"
-
-=======
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864

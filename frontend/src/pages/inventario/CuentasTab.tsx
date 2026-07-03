@@ -5,36 +5,7 @@ import {
   ChevronDown, ChevronUp, Database, Calendar, DollarSign, RefreshCw, AlertTriangle, KeyRound, Eye, EyeOff
 } from 'lucide-react';
 
-interface CuentaMadre {
-  id: number;
-  proveedor_id: number;
-  credencial_id: number;
-  plataforma_id: number;
-  max_perfiles: number;
-  precio_compra: number;
-  fecha_compra: string;
-  fecha_vencimiento: string;
-  estado: 'ACTIVA' | 'CAIDA' | 'VENCIDA' | 'RENOVADA';
-  perfiles: any[];
-}
-
-interface Proveedor {
-  id: number;
-  nombre: string;
-  telefono: string;
-  saldo_a_favor: number;
-}
-
-interface Plataforma {
-  id: number;
-  nombre: string;
-}
-
-interface Credencial {
-  id: number;
-  email: string;
-  password?: string; // Optional if we fetch details
-}
+import type { CuentaMadre, Proveedor, Plataforma, Credencial } from '../../types';
 
 interface CuentasTabProps {
   cuentas: CuentaMadre[];

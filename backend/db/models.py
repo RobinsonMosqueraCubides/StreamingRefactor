@@ -89,10 +89,20 @@ class Credencial(Base):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
-    password: Mapped[str] = mapped_column(String(150), nullable=False)
+    _password: Mapped[str] = mapped_column("password", String(255), nullable=False)
     
     # Relationships
     cuentas_madre: Mapped[List["CuentaMadre"]] = relationship(back_populates="credencial")
+
+    @property
+    def password(self) -> str:
+        from core.encryption import decrypt_password
+        return decrypt_password(self._password)
+
+    @password.setter
+    def password(self, val: str) -> None:
+        from core.encryption import encrypt_password
+        self._password = encrypt_password(val)
 
 
 class CuentaMadre(Base):
@@ -225,33 +235,18 @@ class GarantiaCliente(Base):
     perfil_nuevo: Mapped[Optional["Perfil"]] = relationship(foreign_keys=[perfil_nuevo_id])
 
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 class GarantiaProveedor(Base):
     __tablename__ = "garantias_proveedores"
     
     id: Mapped[int] = mapped_column(primary_key=True)
     cuenta_madre_id: Mapped[int] = mapped_column(ForeignKey("cuentas_madre.id", ondelete="CASCADE"))
     tipo_garantia: Mapped[str] = mapped_column(String(50), nullable=False) # 'CAMBIO_CLAVE', 'CAMBIO_CUENTA', 'SALDO_A_FAVOR'
-<<<<<<< HEAD
     monto_saldo_a_favor: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
-=======
-    monto_saldo_a_favor: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
     fecha: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     resuelto: Mapped[bool] = mapped_column(default=False)
     
     # Relationships
     cuenta_madre: Mapped["CuentaMadre"] = relationship(back_populates="garantias")
-
-
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 class PlantillaMensaje(Base):
     __tablename__ = "plantillas_mensajes"
     

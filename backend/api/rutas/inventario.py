@@ -14,8 +14,8 @@ import services.inventario_service as service
 credenciales_router = APIRouter(prefix="/credenciales", tags=["Credenciales"])
 
 @credenciales_router.get("/", response_model=List[CredencialResponse])
-async def list_credenciales(db: AsyncSession = Depends(get_db)):
-    return await service.get_credenciales(db)
+async def list_credenciales(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    return await service.get_credenciales(db, skip, limit)
 
 @credenciales_router.get("/{id}", response_model=CredencialResponse)
 async def get_credencial(id: int, db: AsyncSession = Depends(get_db)):
@@ -38,8 +38,8 @@ async def delete_credencial(id: int, db: AsyncSession = Depends(get_db)):
 cuentas_madre_router = APIRouter(prefix="/cuentas_madre", tags=["Cuentas Madre"])
 
 @cuentas_madre_router.get("/", response_model=List[CuentaMadreResponse])
-async def list_cuentas_madre(db: AsyncSession = Depends(get_db)):
-    return await service.get_cuentas_madre(db)
+async def list_cuentas_madre(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    return await service.get_cuentas_madre(db, skip, limit)
 
 @cuentas_madre_router.get("/{id}", response_model=CuentaMadreResponse)
 async def get_cuenta_madre(id: int, db: AsyncSession = Depends(get_db)):
@@ -62,8 +62,8 @@ async def delete_cuenta_madre(id: int, db: AsyncSession = Depends(get_db)):
 perfiles_router = APIRouter(prefix="/perfiles", tags=["Perfiles"])
 
 @perfiles_router.get("/", response_model=List[PerfilResponse])
-async def list_perfiles(db: AsyncSession = Depends(get_db)):
-    return await service.get_perfiles(db)
+async def list_perfiles(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    return await service.get_perfiles(db, skip, limit)
 
 @perfiles_router.get("/{id}", response_model=PerfilResponse)
 async def get_perfil(id: int, db: AsyncSession = Depends(get_db)):

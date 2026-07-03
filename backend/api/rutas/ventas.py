@@ -5,16 +5,13 @@ from typing import List
 from db.database import get_db
 from schemas.ventas_schemas import VentaCreate, VentaResponse, VentaRenovacion
 import services.ventas_service as service
-<<<<<<< HEAD
 from api.deps import get_current_user
-=======
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
 
 ventas_router = APIRouter(prefix="/ventas", tags=["Ventas"])
 
 @ventas_router.get("/", response_model=List[VentaResponse])
-async def list_ventas(db: AsyncSession = Depends(get_db)):
-    return await service.get_ventas(db)
+async def list_ventas(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    return await service.get_ventas(db, skip, limit)
 
 @ventas_router.get("/{id}", response_model=VentaResponse)
 async def get_venta(id: int, db: AsyncSession = Depends(get_db)):
@@ -27,7 +24,6 @@ async def create_venta(venta: VentaCreate, db: AsyncSession = Depends(get_db)):
 @ventas_router.put("/{id}/renovar", response_model=VentaResponse)
 async def renovar_venta(id: int, renovacion: VentaRenovacion, db: AsyncSession = Depends(get_db)):
     return await service.renovar_venta(db, id, renovacion.nueva_fecha_corte)
-<<<<<<< HEAD
 
 @ventas_router.get("/{id}/whatsapp-link")
 async def get_whatsapp_link(
@@ -48,6 +44,3 @@ async def get_whatsapp_consolidated(
 ):
     url = await service.generate_whatsapp_consolidated(db, id)
     return {"url": url}
-
-=======
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864

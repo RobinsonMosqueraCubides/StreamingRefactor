@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -21,6 +21,13 @@ export default function GarantiaModal({ isOpen, onClose, selectedDetail, onSubmi
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const timerRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedDetail) {
@@ -54,7 +61,7 @@ export default function GarantiaModal({ isOpen, onClose, selectedDetail, onSubmi
 
       await onSubmit(payload);
       setSuccess('¡Garantía procesada de forma exitosa!');
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         onClose();
       }, 1000);
     } catch (err: any) {
@@ -129,7 +136,7 @@ export default function GarantiaModal({ isOpen, onClose, selectedDetail, onSubmi
         )}
 
         {tipoGarantia === 'CAMBIO_RECURSO' && (
-          <div className="flex items-center gap-2 bg-slate-950/40 p-3.5 rounded-xl border border-slate-850">
+          <div className="flex items-center gap-2 bg-slate-955/40 p-3.5 rounded-xl border border-slate-850">
             <input
               type="checkbox"
               id="liberar_recurso"
@@ -147,7 +154,7 @@ export default function GarantiaModal({ isOpen, onClose, selectedDetail, onSubmi
           <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={loading} className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold">
+          <Button type="submit" disabled={loading} className="bg-cyan-500 hover:bg-cyan-400 text-slate-955 font-bold">
             {loading ? 'Procesando...' : 'Aplicar Garantía'}
           </Button>
         </div>

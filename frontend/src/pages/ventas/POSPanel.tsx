@@ -7,48 +7,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-interface Cliente {
-  id: number;
-  nombre: string;
-  telefono: string;
-}
-
-interface Plataforma {
-  id: number;
-  nombre: string;
-}
-
-interface CuentaMadre {
-  id: number;
-  proveedor_id: number;
-  credencial_id: number;
-  plataforma_id: number;
-  max_perfiles: number;
-  precio_compra: number;
-  fecha_compra: string;
-  fecha_vencimiento: string;
-  estado: string;
-  perfiles: any[];
-}
-
-interface Credencial {
-  id: number;
-  email: string;
-}
-
-interface Proveedor {
-  id: number;
-  nombre: string;
-}
-
-interface VentaItem {
-  plataforma_id: number;
-  precio_original: number;
-  precio_aplicado: number;
-  tipo_unidad: 'PANTALLA' | 'CUENTA';
-  is_edited: boolean;
-  cuenta_madre_id: number | null;
-}
+import type { Cliente, Plataforma, CuentaMadre, Credencial, Proveedor, VentaItem } from '../../types';
 
 interface POSPanelProps {
   clientes: Cliente[];

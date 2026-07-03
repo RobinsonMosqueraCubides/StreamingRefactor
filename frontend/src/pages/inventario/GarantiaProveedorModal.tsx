@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -20,6 +20,14 @@ export default function GarantiaProveedorModal({ isOpen, onClose, selectedCuenta
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const timerRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedCuenta) {
@@ -56,7 +64,7 @@ export default function GarantiaProveedorModal({ isOpen, onClose, selectedCuenta
 
       await onSubmit(payload);
       setSuccess('¡Garantía aplicada al proveedor con éxito!');
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         onClose();
       }, 1000);
     } catch (err: any) {

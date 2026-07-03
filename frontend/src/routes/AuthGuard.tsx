@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom';
+import { MetadataProvider } from '../context/MetadataContext';
 
 export default function AuthGuard() {
   const token = localStorage.getItem('token');
@@ -7,5 +8,9 @@ export default function AuthGuard() {
     return <Navigate to="/login" replace />;
   }
   
-  return <Outlet />;
+  return (
+    <MetadataProvider>
+      <Outlet />
+    </MetadataProvider>
+  );
 }

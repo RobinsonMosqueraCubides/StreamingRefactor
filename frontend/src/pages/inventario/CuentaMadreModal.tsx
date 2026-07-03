@@ -6,21 +6,7 @@ import Select from '../../components/ui/Select';
 import api from '../../api/axios';
 import { AlertCircle, Plus, Eye, EyeOff } from 'lucide-react';
 
-interface Proveedor {
-  id: number;
-  nombre: string;
-  telefono: string;
-}
-
-interface Plataforma {
-  id: number;
-  nombre: string;
-}
-
-interface Credencial {
-  id: number;
-  email: string;
-}
+import type { Proveedor, Plataforma, Credencial } from '../../types';
 
 interface CuentaMadreModalProps {
   isOpen: boolean;

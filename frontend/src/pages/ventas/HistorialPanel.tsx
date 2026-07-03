@@ -7,35 +7,7 @@ import {
   Search, ShieldAlert, Calendar, RefreshCw, AlertTriangle, ChevronDown, ChevronUp, Eye, EyeOff, Smartphone
 } from 'lucide-react';
 
-interface Cliente {
-  id: number;
-  nombre: string;
-  telefono: string;
-}
-
-interface Plataforma {
-  id: number;
-  nombre: string;
-}
-
-interface CuentaMadre {
-  id: number;
-  proveedor_id: number;
-  credencial_id: number;
-  plataforma_id: number;
-  max_perfiles: number;
-  precio_compra: number;
-  fecha_compra: string;
-  fecha_vencimiento: string;
-  estado: string;
-  perfiles: any[];
-}
-
-interface Credencial {
-  id: number;
-  email: string;
-  password: string;
-}
+import type { Cliente, Plataforma, CuentaMadre, Credencial } from '../../types';
 
 interface HistorialPanelProps {
   sales: any[];

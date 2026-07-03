@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -16,6 +16,13 @@ export default function RenovacionModal({ isOpen, onClose, selectedSale, onSubmi
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const timerRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedSale) {
@@ -38,7 +45,7 @@ export default function RenovacionModal({ isOpen, onClose, selectedSale, onSubmi
     try {
       await onSubmit(nuevaFechaCorte);
       setSuccess('¡Suscripción renovada con éxito!');
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         onClose();
       }, 1000);
     } catch (err: any) {

@@ -13,8 +13,8 @@ import services.actor_service as service
 clientes_router = APIRouter(prefix="/clientes", tags=["Clientes"])
 
 @clientes_router.get("/", response_model=List[ClienteResponse])
-async def list_clientes(db: AsyncSession = Depends(get_db)):
-    return await service.get_clientes(db)
+async def list_clientes(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    return await service.get_clientes(db, skip, limit)
 
 @clientes_router.get("/{id}", response_model=ClienteResponse)
 async def get_cliente(id: int, db: AsyncSession = Depends(get_db)):
@@ -41,8 +41,8 @@ async def delete_cliente(id: int, db: AsyncSession = Depends(get_db)):
 proveedores_router = APIRouter(prefix="/proveedores", tags=["Proveedores"])
 
 @proveedores_router.get("/", response_model=List[ProveedorResponse])
-async def list_proveedores(db: AsyncSession = Depends(get_db)):
-    return await service.get_proveedores(db)
+async def list_proveedores(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    return await service.get_proveedores(db, skip, limit)
 
 @proveedores_router.get("/{id}", response_model=ProveedorResponse)
 async def get_proveedor(id: int, db: AsyncSession = Depends(get_db)):

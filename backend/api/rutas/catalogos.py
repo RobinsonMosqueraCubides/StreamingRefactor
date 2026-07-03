@@ -14,8 +14,8 @@ import services.catalogo_service as service
 plataformas_router = APIRouter(prefix="/plataformas", tags=["Plataformas"])
 
 @plataformas_router.get("/", response_model=List[PlataformaResponse])
-async def list_plataformas(db: AsyncSession = Depends(get_db)):
-    return await service.get_plataformas(db)
+async def list_plataformas(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    return await service.get_plataformas(db, skip, limit)
 
 @plataformas_router.get("/{id}", response_model=PlataformaResponse)
 async def get_plataforma(id: int, db: AsyncSession = Depends(get_db)):
@@ -38,8 +38,8 @@ async def delete_plataforma(id: int, db: AsyncSession = Depends(get_db)):
 combos_router = APIRouter(prefix="/combos", tags=["Combos"])
 
 @combos_router.get("/", response_model=List[ComboResponse])
-async def list_combos(db: AsyncSession = Depends(get_db)):
-    return await service.get_combos(db)
+async def list_combos(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    return await service.get_combos(db, skip, limit)
 
 @combos_router.get("/{id}", response_model=ComboResponse)
 async def get_combo(id: int, db: AsyncSession = Depends(get_db)):
@@ -62,8 +62,8 @@ async def delete_combo(id: int, db: AsyncSession = Depends(get_db)):
 plantillas_router = APIRouter(prefix="/plantillas", tags=["Plantillas WhatsApp"])
 
 @plantillas_router.get("/", response_model=List[PlantillaMensajeResponse])
-async def list_plantillas(db: AsyncSession = Depends(get_db)):
-    return await service.get_plantillas(db)
+async def list_plantillas(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    return await service.get_plantillas(db, skip, limit)
 
 @plantillas_router.get("/{id}", response_model=PlantillaMensajeResponse)
 async def get_plantilla(id: int, db: AsyncSession = Depends(get_db)):

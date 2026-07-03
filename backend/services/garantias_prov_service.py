@@ -28,52 +28,52 @@ async def registrar_garantia_proveedor(db: AsyncSession, garantia: GarantiaProve
 
     tipo = garantia.tipo_garantia.upper()
 
-    if tipo == 'CAMBIO_CLAVE':
-        if not garantia.nueva_clave:
+    try:
+        if tipo == 'CAMBIO_CLAVE':
+            if not garantia.nueva_clave:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Se requiere la 'nueva_clave' para aplicar el cambio de clave."
+                )
+            db_cm.credencial.password = garantia.nueva_clave
+
+        elif tipo == 'CAMBIO_CUENTA':
+            if not garantia.nueva_clave:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Se requiere la 'nueva_clave' para aplicar el cambio de cuenta."
+                )
+            if garantia.nuevo_email:
+                db_cm.credencial.email = garantia.nuevo_email
+            db_cm.credencial.password = garantia.nueva_clave
+
+        elif tipo == 'SALDO_A_FAVOR':
+            if not garantia.monto_saldo_a_favor:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Se requiere el 'monto_saldo_a_favor' para la garantía de saldo a favor."
+                )
+            db_cm.proveedor.saldo_a_favor = db_cm.proveedor.saldo_a_favor + garantia.monto_saldo_a_favor
+            # La cuenta madre se da de baja
+            db_cm.estado = EstadoCuenta.CAIDA
+
+        else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Se requiere la 'nueva_clave' para aplicar el cambio de clave."
+                detail=f"Tipo de garantía de proveedor '{garantia.tipo_garantia}' no reconocido."
             )
-        db_cm.credencial.password = garantia.nueva_clave
 
-    elif tipo == 'CAMBIO_CUENTA':
-        if not garantia.nueva_clave:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Se requiere la 'nueva_clave' para aplicar el cambio de cuenta."
-            )
-        if garantia.nuevo_email:
-            db_cm.credencial.email = garantia.nuevo_email
-        db_cm.credencial.password = garantia.nueva_clave
-
-    elif tipo == 'SALDO_A_FAVOR':
-        if not garantia.monto_saldo_a_favor:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Se requiere el 'monto_saldo_a_favor' para la garantía de saldo a favor."
-            )
-<<<<<<< HEAD
-        db_cm.proveedor.saldo_a_favor = db_cm.proveedor.saldo_a_favor + garantia.monto_saldo_a_favor
-=======
-        db_cm.proveedor.saldo_a_favor = float(db_cm.proveedor.saldo_a_favor) + garantia.monto_saldo_a_favor
->>>>>>> 8e66d8f83503523ac0b29353ba50e6453d8d4864
-        # La cuenta madre se da de baja
-        db_cm.estado = EstadoCuenta.CAIDA
-
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Tipo de garantía de proveedor '{garantia.tipo_garantia}' no reconocido."
+        # 2. Registrar log
+        db_gar = GarantiaProveedor(
+            cuenta_madre_id=db_cm.id,
+            tipo_garantia=tipo,
+            monto_saldo_a_favor=garantia.monto_saldo_a_favor if tipo == 'SALDO_A_FAVOR' else None,
+            resuelto=True
         )
-
-    # 2. Registrar log
-    db_gar = GarantiaProveedor(
-        cuenta_madre_id=db_cm.id,
-        tipo_garantia=tipo,
-        monto_saldo_a_favor=garantia.monto_saldo_a_favor if tipo == 'SALDO_A_FAVOR' else None,
-        resuelto=True
-    )
-    db.add(db_gar)
-    await db.commit()
-    await db.refresh(db_gar)
-    return db_gar
+        db.add(db_gar)
+        await db.commit()
+        await db.refresh(db_gar)
+        return db_gar
+    except Exception as e:
+        await db.rollback()
+        raise e

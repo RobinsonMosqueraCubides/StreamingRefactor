@@ -14,7 +14,7 @@ if settings.DATABASE_URL.startswith("sqlite"):
 engine = create_async_engine(
     settings.DATABASE_URL, 
     connect_args=connect_args,
-    echo=True
+    echo=False
 )
 
 # Crear fábrica de sesiones asíncronas
