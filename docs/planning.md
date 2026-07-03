@@ -119,25 +119,25 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 
 ---
 
-## - [ ] 💰 Fase 4: Lógica de Ventas y Financiera (Fullstack)
+## - [x] 💰 Fase 4: Lógica de Ventas y Financiera (Fullstack)
 **Objetivo:** El corazón del ERP. Vender, asignar perfiles automáticamente y cobrar.
 
-### - [ ] Tarea 4.1: Algoritmo de Venta y Asignación (UC-02, UC-07, UC-10) - Backend
-* **Objetivo:** Procesar una venta (separada o combo), buscar perfiles libres y calcular montos.
+### - [x] Tarea 4.1: Algoritmo de Venta y Asignación (UC-02, UC-07, UC-10) - Backend
+* **Objetivo:** Procesar una venta (separada o combo), buscar perfiles libres y calcular montos (El monto final de venta, debe ser editable durante el proceso de venta, en cualquiera de los casos, tanto para el cliente normal como para el revendedor).
 * **Descripción:** 
   * **Subtarea 4.1.1 (Algoritmo Asignación):** Buscar `perfiles` libres por plataforma usando bloqueo pesimista (`SELECT FOR UPDATE SKIP LOCKED` para evitar colisiones). Si es Venta Mayorista, marcar asignación pero enlazar a Revendedor.
-  * **Subtarea 4.1.2 (Prorrateo):** Si es un Combo, calcular fecha de corte unificada.
+  * **Subtarea 4.1.2 (Prorrateo):** Si es un Combo, calcular fecha de corte unificada, la fecha de corte debe ser editable durante el proceso de venta .
   * **Subtarea 4.1.3:** Crear registro en `ventas` y múltiples en `detalles_venta`.
 * **Archivos/Módulos:** `backend/services/ventas_service.py`, `backend/api/rutas/ventas.py`.
 * **Dependencias:** Fase 2.
 
-### - [ ] Tarea 4.2: Gestión de Pagos (UC-12) y Gastos (UC-11) - Backend
+### - [x] Tarea 4.2: Gestión de Pagos (UC-12) y Gastos (UC-11) - Backend
 * **Objetivo:** Registrar abonos a ventas y generar transacciones de egreso manuales.
 * **Descripción:** Endpoint para añadir pago a una venta. Si la suma de pagos >= monto total, cambiar estado de venta a `PAGADO` e insertar en `transacciones` como `INGRESO`. Endpoint para registrar EGRESOS manuales.
 * **Archivos/Módulos:** `backend/services/finanzas_service.py`.
 * **Dependencias:** Tarea 4.1.
 
-### - [ ] Tarea 4.3: Interfaz de Ventas y Financiera - Frontend
+### - [x] Tarea 4.3: Interfaz de Ventas y Financiera - Frontend
 * **Objetivo:** Pantalla ágil para vender (Mobile First) y Dashboard financiero.
 * **Descripción:** 
   * **Punto de Venta (POS):** Selector de Cliente -> Selector de Plataforma/Combo -> Botón "Vender y Asignar Automático". Modal de éxito con el PIN y email asignados. Botón dinámico hacia WhatsApp para enviar datos, consumiendo las plantillas de base de datos.
