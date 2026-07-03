@@ -92,14 +92,14 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 ## - [ ] 📱 Fase 3: Frontend Core (Mobile First UX)
 **Objetivo:** Interfaz gráfica para gestionar los catálogos e inventario consumiendo la API de la Fase 2.
 
-### - [ ] Tarea 3.1: Enrutamiento y Componentes UI Base
+### - [x] Tarea 3.1: Enrutamiento y Componentes UI Base
 * **Objetivo:** Configurar React Router y la librería de componentes genéricos (Tailwind).
 * **Descripción:** Configurar rutas (`/`, `/clientes`, `/inventario`, `/ventas`, `/configuracion`). Crear componentes reutilizables: `Card`, `Button`, `Modal`, `Input`, `Select`, `BottomNav`.
 * **Archivos/Módulos a crear:** `frontend/src/routes/`, `frontend/src/components/ui/`.
 * **Tecnologías:** React Router DOM, Tailwind CSS, Lucide React (iconos).
 * **Dependencias:** Tarea 1.3.
 
-### - [ ] Tarea 3.2: Vistas de Gestión de Actores y Configuración
+### - [x] Tarea 3.2: Vistas de Gestión de Actores y Configuración
 * **Objetivo:** Pantallas para listar, crear y banear clientes/proveedores, y configurar plantillas.
 * **Descripción:** Listado en formato Cards (para móvil) con función de búsqueda. Formularios modales para crear/editar. Pantalla de configuración para que el Administrador edite las plantillas base de WhatsApp (Opción A).
 * **Archivos/Módulos a crear:** `frontend/src/pages/ClientesPage.tsx`, `frontend/src/pages/ConfiguracionPage.tsx`, `frontend/src/components/clientes/`.
