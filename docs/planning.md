@@ -89,7 +89,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 
 ---
 
-## - [ ] 📱 Fase 3: Frontend Core (Mobile First UX)
+## - [x] 📱 Fase 3: Frontend Core (Mobile First UX)
 **Objetivo:** Interfaz gráfica para gestionar los catálogos e inventario consumiendo la API de la Fase 2.
 
 ### - [x] Tarea 3.1: Enrutamiento y Componentes UI Base
@@ -106,7 +106,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 * **Tecnologías:** React, Axios, React Query (opcional para manejo de estado).
 * **Dependencias:** Tarea 3.1 (UI), Tarea 2.1 y 2.2 (API).
 
-### - [ ] Tarea 3.3: Vistas de Inventario
+### - [x] Tarea 3.3: Vistas de Inventario
 * **Objetivo:** Visualización de Cuentas Madre y disponibilidad de Perfiles.
 * **Descripción:** Una vista que liste las Cuentas Madre. Al expandir/tocar una, muestra sus perfiles y el estado (Asignado/Libre). Formulario para registrar Nueva Cuenta Madre.
 * **Archivos/Módulos a crear:** `frontend/src/pages/InventarioPage.tsx`, `frontend/src/components/inventario/`.
