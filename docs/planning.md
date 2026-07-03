@@ -50,7 +50,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 
 ---
 
-## - [ ] 🛠️ Fase 2: Backend Core (API REST de Entidades Base)
+## - [x] 🛠️ Fase 2: Backend Core (API REST de Entidades Base)
 **Objetivo:** Desarrollar los endpoints y lógica de negocio (Controladores/Servicios) para las entidades maestras.
 *Nota: Desde aquí, Frontend (Fase 3) puede desarrollarse en paralelo usando Mocks o esperando a estas APIs.*
 
@@ -71,7 +71,7 @@ Este documento contiene la planificación estratégica y técnica para el desarr
 * **Dependencias:** Tarea 1.4.
 * **Criterios de Terminación:** Creación de clientes y proveedores exitosa, y actualización de estado a BANEADO funcionando.
 
-### - [ ] Tarea 2.3: Gestión de Inventario (Cuentas Madre, Credenciales y Perfiles) (UC-01)
+### - [x] Tarea 2.3: Gestión de Inventario (Cuentas Madre, Credenciales y Perfiles) (UC-01)
 * **Objetivo:** Automatizar la creación de perfiles fragmentados al registrar una cuenta madre.
 * **Descripción:**
   * **Subtarea 2.3.1:** Endpoint para registro de Credenciales.
