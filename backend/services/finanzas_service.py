@@ -1,19 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from decimal import Decimal
-from db.models import Venta, PagoVenta, Transaccion, EstadoPago
+from db.models import Venta, PagoVenta, Transaccion, EstadoPago, TipoTransaccion
+from db.database import get_or_404
 from schemas.finanzas_schemas import PagoVentaCreate, GastoManualCreate
-from fastapi import HTTPException, status
 
 async def registrar_pago_venta(db: AsyncSession, venta_id: int, pago: PagoVentaCreate):
     # 1. Validar la existencia de la venta
-    result = await db.execute(select(Venta).where(Venta.id == venta_id))
-    db_venta = result.scalar_one_or_none()
-    if not db_venta:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Venta con id {venta_id} no encontrada"
-        )
+    db_venta = await get_or_404(db, Venta, venta_id)
     
     try:
         # 2. Registrar el abono
@@ -27,7 +21,7 @@ async def registrar_pago_venta(db: AsyncSession, venta_id: int, pago: PagoVentaC
 
         # 3. Registrar transacción de INGRESO
         db_transaccion = Transaccion(
-            tipo="INGRESO",
+            tipo=TipoTransaccion.INGRESO,
             categoria="PAGO_VENTA",
             monto=pago.monto,
             entidad=pago.entidad,
@@ -56,7 +50,7 @@ async def registrar_pago_venta(db: AsyncSession, venta_id: int, pago: PagoVentaC
 async def registrar_gasto_manual(db: AsyncSession, gasto: GastoManualCreate):
     try:
         db_trans = Transaccion(
-            tipo="EGRESO",
+            tipo=TipoTransaccion.EGRESO,
             categoria=gasto.categoria,
             monto=gasto.monto,
             entidad=gasto.entidad,

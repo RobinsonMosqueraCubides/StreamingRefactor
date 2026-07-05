@@ -1,8 +1,14 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request, Response, status
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from core.exceptions import NotFoundError, BusinessRuleError
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+import time
+import logging
+
 from core.config import settings
+from core.logging_config import setup_logging
 from db.database import get_db
 
 from api.deps import get_current_user
@@ -15,10 +21,41 @@ from api.rutas.finanzas import finanzas_router, pagos_router
 from api.rutas.garantias import garantias_router
 from api.rutas.garantias_proveedores import garantias_prov_router
 
+# Inicializar configuración de logging
+setup_logging()
+logger = logging.getLogger("api")
+access_logger = logging.getLogger("api.access")
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+@app.exception_handler(NotFoundError)
+async def not_found_exception_handler(request: Request, exc: NotFoundError):
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": exc.message},
+    )
+
+@app.exception_handler(BusinessRuleError)
+async def business_rule_exception_handler(request: Request, exc: BusinessRuleError):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": exc.message},
+    )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = (time.time() - start_time) * 1000
+    formatted_process_time = f"{process_time:.2f}ms"
+    access_logger.info(
+        f"Method: {request.method} Path: {request.url.path} Status: {response.status_code} Duration: {formatted_process_time}"
+    )
+    return response
+
 
 # Configuración de CORS
 if settings.BACKEND_CORS_ORIGINS:
@@ -64,7 +101,7 @@ app.include_router(garantias_router, prefix=settings.API_V1_STR, dependencies=au
 app.include_router(garantias_prov_router, prefix=settings.API_V1_STR, dependencies=auth_dep)
 
 @app.get("/health")
-async def health_check(db: AsyncSession = Depends(get_db)):
+async def health_check(response: Response, db: AsyncSession = Depends(get_db)):
     db_status = "connected"
     error_detail = None
     try:
@@ -73,9 +110,10 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         db_status = "disconnected"
         error_detail = str(e)
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     
     return {
-        "status": "ok",
+        "status": "ok" if db_status == "connected" else "error",
         "database": db_status,
         "database_error": error_detail
     }

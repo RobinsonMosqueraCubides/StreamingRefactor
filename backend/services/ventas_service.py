@@ -1,9 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Plataforma, EstadoCuenta, EstadoPago, PlantillaMensaje, PagoVenta, Transaccion
+from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Plataforma, EstadoCuenta, EstadoPago, PlantillaMensaje, PagoVenta, Transaccion, TipoTransaccion
+from db.database import get_or_404
 from schemas.ventas_schemas import VentaCreate
-from fastapi import HTTPException, status
+from core.exceptions import BusinessRuleError
 from decimal import Decimal
 import urllib.parse
 
@@ -21,22 +22,16 @@ async def get_ventas(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def get_venta(db: AsyncSession, venta_id: int):
-    result = await db.execute(
-        select(Venta)
-        .options(
+    return await get_or_404(
+        db,
+        Venta,
+        venta_id,
+        options=[
             selectinload(Venta.cliente),
             selectinload(Venta.detalles).selectinload(DetalleVenta.cuenta_madre).selectinload(CuentaMadre.credencial),
             selectinload(Venta.detalles).selectinload(DetalleVenta.cuenta_madre).selectinload(CuentaMadre.plataforma),
-        )
-        .where(Venta.id == venta_id)
+        ]
     )
-    db_venta = result.scalar_one_or_none()
-    if not db_venta:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Venta con id {venta_id} no encontrada"
-        )
-    return db_venta
 
 async def create_venta(db: AsyncSession, venta: VentaCreate):
     try:
@@ -85,10 +80,7 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
                 db_cm = res_cm.scalar_one_or_none()
 
                 if not db_cm:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"No hay cuentas completas disponibles para la plataforma {plat_name}"
-                    )
+                    raise BusinessRuleError(f"No hay cuentas completas disponibles para la plataforma {plat_name}")
 
                 stmt_p = (
                     select(Perfil)
@@ -99,10 +91,7 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
                 perfiles = res_p.scalars().all()
 
                 if not perfiles:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"La Cuenta Madre #{db_cm.id} no posee perfiles configurados."
-                    )
+                    raise BusinessRuleError(f"La Cuenta Madre #{db_cm.id} no posee perfiles configurados.")
 
                 # Calcular valor unitario por pantalla dentro del combo
                 precio_unitario = Decimal(str(item.precio_aplicado)) / Decimal(len(perfiles))
@@ -137,10 +126,7 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
                 perfil = result.scalar_one_or_none()
 
                 if not perfil:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"No hay perfiles disponibles para la plataforma {plat_name}"
-                    )
+                    raise BusinessRuleError(f"No hay perfiles disponibles para la plataforma {plat_name}")
 
                 perfil.asignado = True
                 
@@ -183,24 +169,18 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
     res_v = await db.execute(stmt_v)
     venta = res_v.scalar_one_or_none()
     if not venta:
-        raise HTTPException(status_code=404, detail="Venta no encontrada")
+        raise BusinessRuleError("Venta no encontrada")
     
-    stmt_d = select(DetalleVenta).where(DetalleVenta.id == detail_id)
-    res_d = await db.execute(stmt_d)
-    detail = res_d.scalar_one_or_none()
-    if not detail:
-        raise HTTPException(status_code=404, detail="Detalle no encontrado")
+    db_detalle = await get_or_404(db, DetalleVenta, detail_id)
         
-    stmt_cm = select(CuentaMadre).where(CuentaMadre.id == detail.cuenta_madre_id).options(
+    stmt_cm = select(CuentaMadre).where(CuentaMadre.id == db_detalle.cuenta_madre_id).options(
         selectinload(CuentaMadre.plataforma),
         selectinload(CuentaMadre.credencial)
     )
     res_cm = await db.execute(stmt_cm)
     cm = res_cm.scalar_one_or_none()
     
-    stmt_p = select(Perfil).where(Perfil.id == detail.perfil_id)
-    res_p = await db.execute(stmt_p)
-    perfil = res_p.scalar_one_or_none()
+    perfil = await get_or_404(db, Perfil, db_detalle.perfil_id)
     
     stmt_temp = select(PlantillaMensaje).where(PlantillaMensaje.nombre == template_type)
     res_temp = await db.execute(stmt_temp)
@@ -214,7 +194,7 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
         elif template_type == 'corte':
             mensaje_base = "Hola [Nombre Cliente], tu suscripción de {plataforma} ha vencido y los perfiles asociados han sido suspendidos. Realiza tu pago de {monto} COP para reactivarlos."
         else:
-            mensaje_base = "Hola [Nombre Cliente], aquí tienes tus credenciales para {plataforma}: Usuario: {usuario}, Clave: {password}, Perfil: {perfil}, PIN: {pin}."
+            mensaje_base = "Hola [Nombre Cliente], aquí tienes tus credenciales para {plataforma}: Correo: {usuario}, Clave: {password}, Perfil: {perfil}, PIN: {pin}."
 
     # Obtener credenciales
     plataforma = cm.plataforma.nombre if (cm and cm.plataforma) else "N/A"
@@ -227,9 +207,9 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
                       .replace('{plataforma}', plataforma) \
                       .replace('{usuario}', usuario) \
                       .replace('{password}', password) \
-                      .replace('{usuario}', profile_name) \
+                      .replace('{perfil}', profile_name) \
                       .replace('{pin}', pin_val) \
-                      .replace('{monto}', f"{detail.precio_aplicado:,.2f}" if isinstance(detail.precio_aplicado, Decimal) else str(detail.precio_aplicado)) \
+                      .replace('{monto}', f"{db_detalle.precio_aplicado:,.2f}" if isinstance(db_detalle.precio_aplicado, Decimal) else str(db_detalle.precio_aplicado)) \
                       .replace('{fecha_corte}', venta.fecha_corte.strftime("%Y-%m-%d"))
 
     phone = venta.cliente.telefono.replace('+', '').replace(' ', '')
@@ -244,7 +224,7 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
     res_v = await db.execute(stmt_v)
     venta = res_v.scalar_one_or_none()
     if not venta:
-        raise HTTPException(status_code=404, detail="Venta no encontrada")
+        raise BusinessRuleError("Venta no encontrada")
         
     # 1. Agrupar detalles por cuenta_madre_id
     detalles_por_cuenta = {}
@@ -303,14 +283,15 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
     return f"https://wa.me/{phone}?text={encoded_msg}"
 
 async def confirmar_pago_completo(db: AsyncSession, venta_id: int) -> Venta:
-    stmt = select(Venta).where(Venta.id == venta_id).options(
-        selectinload(Venta.cliente),
-        selectinload(Venta.detalles)
+    venta = await get_or_404(
+        db,
+        Venta,
+        venta_id,
+        options=[
+            selectinload(Venta.cliente),
+            selectinload(Venta.detalles)
+        ]
     )
-    res = await db.execute(stmt)
-    venta = res.scalar_one_or_none()
-    if not venta:
-        raise HTTPException(status_code=404, detail="Venta no encontrada")
         
     # Calcular pagos ya realizados
     stmt_pagos = select(func.sum(PagoVenta.monto)).where(PagoVenta.venta_id == venta_id)
@@ -331,7 +312,7 @@ async def confirmar_pago_completo(db: AsyncSession, venta_id: int) -> Venta:
             
             # Registrar la transacción contable
             transaccion = Transaccion(
-                tipo="INGRESO",
+                tipo=TipoTransaccion.INGRESO,
                 categoria="PAGO_VENTA",
                 monto=saldo_restante,
                 entidad="NEQUI",

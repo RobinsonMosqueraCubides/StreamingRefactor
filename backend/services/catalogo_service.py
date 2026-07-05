@@ -1,12 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from db.models import Plataforma, Combo, PlantillaMensaje
+from db.database import get_or_404
 from schemas.catalogo_schemas import (
     PlataformaCreate, PlataformaUpdate,
     ComboCreate, ComboUpdate,
     PlantillaMensajeCreate, PlantillaMensajeUpdate
 )
-from fastapi import HTTPException, status
+from core.exceptions import BusinessRuleError
 
 # --- Plataforma Services ---
 
@@ -15,23 +16,13 @@ async def get_plataformas(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def get_plataforma(db: AsyncSession, plataforma_id: int):
-    result = await db.execute(select(Plataforma).where(Plataforma.id == plataforma_id))
-    db_plataforma = result.scalar_one_or_none()
-    if not db_plataforma:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Plataforma con id {plataforma_id} no encontrada"
-        )
-    return db_plataforma
+    return await get_or_404(db, Plataforma, plataforma_id)
 
 async def create_plataforma(db: AsyncSession, plataforma: PlataformaCreate):
     # Validar si ya existe
     existing = await db.execute(select(Plataforma).where(Plataforma.nombre == plataforma.nombre))
     if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe una plataforma con este nombre"
-        )
+        raise BusinessRuleError("Ya existe una plataforma con este nombre")
     
     try:
         db_plataforma = Plataforma(nombre=plataforma.nombre)
@@ -50,10 +41,7 @@ async def update_plataforma(db: AsyncSession, plataforma_id: int, plataforma: Pl
     if db_plataforma.nombre != plataforma.nombre:
         existing = await db.execute(select(Plataforma).where(Plataforma.nombre == plataforma.nombre))
         if existing.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya existe otra plataforma con este nombre"
-            )
+            raise BusinessRuleError("Ya existe otra plataforma con este nombre")
             
     try:
         db_plataforma.nombre = plataforma.nombre
@@ -82,14 +70,7 @@ async def get_combos(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def get_combo(db: AsyncSession, combo_id: int):
-    result = await db.execute(select(Combo).where(Combo.id == combo_id))
-    db_combo = result.scalar_one_or_none()
-    if not db_combo:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Combo con id {combo_id} no encontrado"
-        )
-    return db_combo
+    return await get_or_404(db, Combo, combo_id)
 
 async def create_combo(db: AsyncSession, combo: ComboCreate):
     try:
@@ -132,23 +113,13 @@ async def get_plantillas(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def get_plantilla(db: AsyncSession, plantilla_id: int):
-    result = await db.execute(select(PlantillaMensaje).where(PlantillaMensaje.id == plantilla_id))
-    db_plantilla = result.scalar_one_or_none()
-    if not db_plantilla:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Plantilla de mensaje con id {plantilla_id} no encontrada"
-        )
-    return db_plantilla
+    return await get_or_404(db, PlantillaMensaje, plantilla_id)
 
 async def create_plantilla(db: AsyncSession, plantilla: PlantillaMensajeCreate):
     # Validar si ya existe
     existing = await db.execute(select(PlantillaMensaje).where(PlantillaMensaje.nombre == plantilla.nombre))
     if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe una plantilla con este nombre"
-        )
+        raise BusinessRuleError("Ya existe una plantilla con este nombre")
         
     try:
         db_plantilla = PlantillaMensaje(nombre=plantilla.nombre, mensaje=plantilla.mensaje)
@@ -167,10 +138,7 @@ async def update_plantilla(db: AsyncSession, plantilla_id: int, plantilla: Plant
     if db_plantilla.nombre != plantilla.nombre:
         existing = await db.execute(select(PlantillaMensaje).where(PlantillaMensaje.nombre == plantilla.nombre))
         if existing.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya existe otra plantilla con este nombre"
-            )
+            raise BusinessRuleError("Ya existe otra plantilla con este nombre")
             
     try:
         db_plantilla.nombre = plantilla.nombre

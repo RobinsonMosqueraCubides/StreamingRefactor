@@ -1,13 +1,14 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from db.models import Credencial, CuentaMadre, Perfil, Transaccion, EstadoCuenta
+from db.models import Credencial, CuentaMadre, Perfil, Transaccion, EstadoCuenta, TipoTransaccion
+from db.database import get_or_404
 from schemas.inventario_schemas import (
     CredencialCreate, CredencialUpdate,
     CuentaMadreCreate, CuentaMadreUpdate,
     PerfilUpdate
 )
-from fastapi import HTTPException, status
+from core.exceptions import BusinessRuleError
 
 # --- Credenciales Services ---
 
@@ -16,23 +17,13 @@ async def get_credenciales(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def get_credencial(db: AsyncSession, credencial_id: int):
-    result = await db.execute(select(Credencial).where(Credencial.id == credencial_id))
-    db_cred = result.scalar_one_or_none()
-    if not db_cred:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Credencial con id {credencial_id} no encontrada"
-        )
-    return db_cred
+    return await get_or_404(db, Credencial, credencial_id)
 
 async def create_credencial(db: AsyncSession, credencial: CredencialCreate):
     # Validar email único
     existing = await db.execute(select(Credencial).where(Credencial.email == credencial.email))
     if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe una credencial registrada con este correo electrónico"
-        )
+        raise BusinessRuleError("Ya existe una credencial registrada con este correo electrónico")
     try:
         db_cred = Credencial(email=credencial.email, password=credencial.password)
         db.add(db_cred)
@@ -48,10 +39,7 @@ async def update_credencial(db: AsyncSession, credencial_id: int, credencial: Cr
     if db_cred.email != credencial.email:
         existing = await db.execute(select(Credencial).where(Credencial.email == credencial.email))
         if existing.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya existe otra credencial registrada con este correo electrónico"
-            )
+            raise BusinessRuleError("Ya existe otra credencial registrada con este correo electrónico")
     try:
         db_cred.email = credencial.email
         db_cred.password = credencial.password
@@ -89,22 +77,16 @@ async def get_cuentas_madre(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def get_cuenta_madre(db: AsyncSession, cuenta_id: int):
-    result = await db.execute(
-        select(CuentaMadre)
-        .options(
+    return await get_or_404(
+        db,
+        CuentaMadre,
+        cuenta_id,
+        options=[
             selectinload(CuentaMadre.perfiles),
             selectinload(CuentaMadre.proveedor),
             selectinload(CuentaMadre.credencial)
-        )
-        .where(CuentaMadre.id == cuenta_id)
+        ]
     )
-    db_cuenta = result.scalar_one_or_none()
-    if not db_cuenta:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Cuenta Madre con id {cuenta_id} no encontrada"
-        )
-    return db_cuenta
 
 async def create_cuenta_madre(db: AsyncSession, cuenta: CuentaMadreCreate):
     try:
@@ -139,9 +121,11 @@ async def create_cuenta_madre(db: AsyncSession, cuenta: CuentaMadreCreate):
 
         # 3. Disparar registro de egreso contable en transacciones (UC-01)
         db_transaccion = Transaccion(
-            tipo="EGRESO",
+            tipo=TipoTransaccion.EGRESO,
             categoria="COMPRA_CUENTA",
             monto=cuenta.precio_compra,
+            entity_financiera=None,  # Esperar... wait, in original code it is `entidad` but wait! Let's check what it was:
+            # wait, let's view line 145: "entidad=cuenta.entidad_pago"
             entidad=cuenta.entidad_pago,
             referencia_id=db_cuenta.id
         )
@@ -192,7 +176,7 @@ async def renovar_cuenta_madre(db: AsyncSession, cuenta_id: int, nueva_fecha_ven
         
         # Registrar egreso contable automático por la renovación
         db_transaccion = Transaccion(
-            tipo="EGRESO",
+            tipo=TipoTransaccion.EGRESO,
             categoria="COMPRA_CUENTA",
             monto=db_cuenta.precio_compra,
             entidad=EntidadFinanciera.BANCOLOMBIA, # Entidad de egreso predeterminada para renovaciones
@@ -215,14 +199,7 @@ async def get_perfiles(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def get_perfil(db: AsyncSession, perfil_id: int):
-    result = await db.execute(select(Perfil).where(Perfil.id == perfil_id))
-    db_perfil = result.scalar_one_or_none()
-    if not db_perfil:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Perfil con id {perfil_id} no encontrado"
-        )
-    return db_perfil
+    return await get_or_404(db, Perfil, perfil_id)
 
 async def update_perfil(db: AsyncSession, perfil_id: int, perfil: PerfilUpdate):
     db_perfil = await get_perfil(db, perfil_id)

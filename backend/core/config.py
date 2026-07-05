@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Streaming ERP API"
-    API_V1_STR: str = "/api"
+    API_V1_STR: str = "/api/v1"
     
     # Base de datos
     DATABASE_URL: str = "sqlite+aiosqlite:///./streaming_erp.db"

@@ -1,24 +1,27 @@
 import os
 import sys
 import asyncio
+import logging
 from datetime import date, timedelta, datetime
 from decimal import Decimal
 
 # Configurar el path de Python para encontrar los módulos locales del backend
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+logger = logging.getLogger("seed")
+
 from sqlalchemy import select, delete
 from db.database import SessionLocal
 from db.models import (
     Plataforma, PlantillaMensaje, Usuario, Proveedor, Credencial, CuentaMadre, Perfil, 
     Cliente, Combo, Venta, DetalleVenta, PagoVenta, Transaccion, GarantiaCliente, GarantiaProveedor,
-    TipoCliente, EstadoCliente, EstadoCuenta, EstadoPago, EntidadFinanciera
+    TipoCliente, EstadoCliente, EstadoCuenta, EstadoPago, EntidadFinanciera, TipoTransaccion, TipoGarantiaProveedor
 )
 from core.security import get_password_hash
 from core.encryption import encrypt_password
 
 async def seed_data():
-    print("Iniciando la siembra de datos semilla realistas y completos...")
+    logger.info("Iniciando la siembra de datos semilla realistas y completos...")
     async with SessionLocal() as session:
         async with session.begin():
             # 1. Limpiar tablas existentes en orden de dependencia para evitar conflictos de datos anteriores
@@ -38,7 +41,7 @@ async def seed_data():
             await session.execute(delete(Plataforma))
             await session.execute(delete(PlantillaMensaje))
             await session.execute(delete(Usuario))
-            print("Tablas limpiadas con éxito.")
+            logger.info("Tablas limpiadas con éxito.")
 
             # 2. Sembrar Usuario Administrador
             admin_user = Usuario(
@@ -47,7 +50,7 @@ async def seed_data():
                 role="admin"
             )
             session.add(admin_user)
-            print("Usuario 'admin' agregado.")
+            logger.info("Usuario 'admin' agregado.")
 
             # 3. Sembrar Plataformas
             plataforma_map = {}
@@ -56,7 +59,7 @@ async def seed_data():
                 plat = Plataforma(nombre=nombre)
                 session.add(plat)
                 plataforma_map[nombre] = plat
-            print("Plataformas agregadas.")
+            logger.info("Plataformas agregadas.")
 
             # 4. Sembrar Proveedores Reales (ETB, Claro, Movistar, etc.)
             proveedor_map = {}
@@ -74,7 +77,7 @@ async def seed_data():
                 )
                 session.add(prov)
                 proveedor_map[prov_data["nombre"]] = prov
-            print("Proveedores agregados.")
+            logger.info("Proveedores agregados.")
 
             # 5. Sembrar Credenciales de Cuentas (correos reales de inventario)
             credenciales_data = [
@@ -93,7 +96,7 @@ async def seed_data():
                 )
                 session.add(cred)
                 credencial_map[cred_d["email"]] = cred
-            print("Credenciales agregadas.")
+            logger.info("Credenciales agregadas.")
 
             # 6. Sembrar Cuentas Madre
             hoy = date.today()
@@ -169,7 +172,7 @@ async def seed_data():
             session.add(cm_max)
             cuenta_madre_map["max"] = cm_max
             
-            print("Cuentas Madre agregadas.")
+            logger.info("Cuentas Madre agregadas.")
 
             # 7. Sembrar Perfiles para las Cuentas Madre
             perfiles_map = {}
@@ -234,7 +237,7 @@ async def seed_data():
                 session.add(p)
                 perfiles_map[f"max_p{i}"] = p
 
-            print("Perfiles privados y compartidos agregados.")
+            logger.info("Perfiles privados y compartidos agregados.")
 
             # 8. Sembrar Clientes Reales
             cliente_map = {}
@@ -254,7 +257,7 @@ async def seed_data():
                 )
                 session.add(cli)
                 cliente_map[cl_d["nombre"]] = cli
-            print("Clientes agregados.")
+            logger.info("Clientes agregados.")
 
             # 9. Sembrar Combos (Ej: Combo Netflix + Spotify)
             combo_duo = Combo(
@@ -262,7 +265,7 @@ async def seed_data():
                 precio_combo=Decimal("18000.00")
             )
             session.add(combo_duo)
-            print("Combos agregados.")
+            logger.info("Combos agregados.")
 
             # 10. Marcar algunos perfiles como asignados para las ventas a sembrar
             perfiles_map["netflix1_p1"].asignado = True
@@ -350,14 +353,14 @@ async def seed_data():
             session.add(dv3_1)
             session.add(dv3_2)
 
-            print("Ventas, detalles y pagos sembrados.")
+            logger.info("Ventas, detalles y pagos sembrados.")
 
             # 12. Sembrar Transacciones de Caja (Ingresos y Egresos)
             # Primero hacemos un flush para que SQLAlchemy asigne los IDs autoincrementales a las ventas y cuentas
             await session.flush()
 
             t1 = Transaccion(
-                tipo="INGRESO",
+                tipo=TipoTransaccion.INGRESO,
                 categoria="PAGO_VENTA",
                 monto=Decimal("12000.00"),
                 entidad=EntidadFinanciera.NEQUI,
@@ -365,7 +368,7 @@ async def seed_data():
                 fecha=datetime.now() - timedelta(days=15)
             )
             t2 = Transaccion(
-                tipo="INGRESO",
+                tipo=TipoTransaccion.INGRESO,
                 categoria="PAGO_VENTA",
                 monto=Decimal("10000.00"),
                 entidad=EntidadFinanciera.DAVIPLATA,
@@ -373,7 +376,7 @@ async def seed_data():
                 fecha=datetime.now() - timedelta(days=10)
             )
             t3 = Transaccion(
-                tipo="EGRESO",
+                tipo=TipoTransaccion.EGRESO,
                 categoria="COMPRA_CUENTA",
                 monto=Decimal("28000.00"),
                 entidad=EntidadFinanciera.BANCOLOMBIA,
@@ -381,7 +384,7 @@ async def seed_data():
                 fecha=datetime.now() - timedelta(days=15)
             )
             t4 = Transaccion(
-                tipo="EGRESO",
+                tipo=TipoTransaccion.EGRESO,
                 categoria="COMPRA_CUENTA",
                 monto=Decimal("28000.00"),
                 entidad=EntidadFinanciera.BANCOLOMBIA,
@@ -389,7 +392,7 @@ async def seed_data():
                 fecha=datetime.now() - timedelta(days=35)
             )
             t5 = Transaccion(
-                tipo="EGRESO",
+                tipo=TipoTransaccion.EGRESO,
                 categoria="COMPRA_CUENTA",
                 monto=Decimal("15000.00"),
                 entidad=EntidadFinanciera.NEQUI,
@@ -397,7 +400,7 @@ async def seed_data():
                 fecha=datetime.now() - timedelta(days=10)
             )
             t6 = Transaccion(
-                tipo="EGRESO",
+                tipo=TipoTransaccion.EGRESO,
                 categoria="COMPRA_CUENTA",
                 monto=Decimal("20000.00"),
                 entidad=EntidadFinanciera.BANCOLOMBIA,
@@ -405,7 +408,7 @@ async def seed_data():
                 fecha=datetime.now() - timedelta(days=5)
             )
             t7 = Transaccion(
-                tipo="EGRESO",
+                tipo=TipoTransaccion.EGRESO,
                 categoria="COMPRA_CUENTA",
                 monto=Decimal("22000.00"),
                 entidad=EntidadFinanciera.DAVIPLATA,
@@ -413,7 +416,7 @@ async def seed_data():
                 fecha=datetime.now() - timedelta(days=2)
             )
             session.add_all([t1, t2, t3, t4, t5, t6, t7])
-            print("Transacciones de caja agregadas de forma coherente para todo el inventario.")
+            logger.info("Transacciones de caja agregadas de forma coherente para todo el inventario.")
 
             # 13. Garantías de Cliente y de Proveedor
             # Garantía de Cliente: Disney+ cayó, por lo tanto reportamos garantía
@@ -427,11 +430,11 @@ async def seed_data():
             # Garantía de Proveedor: La cuenta Disney+ del Claro Mayorista cayó
             g_prov = GarantiaProveedor(
                 cuenta_madre=cm_disney,
-                tipo_garantia="CAMBIO_CUENTA",
+                tipo_garantia=TipoGarantiaProveedor.CAMBIO_CUENTA,
                 resuelto=False
             )
             session.add(g_prov)
-            print("Garantías agregadas.")
+            logger.info("Garantías agregadas.")
 
             # 14. Plantillas de Mensaje para Notificaciones
             plantillas = [
@@ -450,9 +453,9 @@ async def seed_data():
             ]
             for p in plantillas:
                 session.add(PlantillaMensaje(nombre=p["nombre"], mensaje=p["mensaje"]))
-            print("Plantillas de mensaje agregadas.")
+            logger.info("Plantillas de mensaje agregadas.")
 
-        print("¡Datos semilla sembrados con éxito de manera realista y estructurada!")
+        logger.info("¡Datos semilla sembrados con éxito de manera realista y estructurada!")
 
 if __name__ == "__main__":
     asyncio.run(seed_data())

@@ -30,3 +30,18 @@ SessionLocal = async_sessionmaker(
 async def get_db():
     async with SessionLocal() as session:
         yield session
+
+from sqlalchemy import select
+from core.exceptions import NotFoundError
+
+async def get_or_404(db: AsyncSession, model, ident: int, options=None):
+    stmt = select(model).where(model.id == ident)
+    if options:
+        for opt in options:
+            stmt = stmt.options(opt)
+    result = await db.execute(stmt)
+    entity = result.scalar_one_or_none()
+    if not entity:
+        raise NotFoundError(f"{model.__name__} con id {ident} no encontrado/a")
+    return entity
+

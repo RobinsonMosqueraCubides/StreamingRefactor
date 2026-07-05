@@ -2,10 +2,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from datetime import timedelta
-from fastapi import HTTPException, status
-
-from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Transaccion, GarantiaCliente, EstadoCuenta
+from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Transaccion, GarantiaCliente, EstadoCuenta, TipoTransaccion
+from db.database import get_or_404
 from schemas.garantias_schemas import GarantiaCreate
+from core.exceptions import BusinessRuleError
 
 async def get_garantias(db: AsyncSession, skip: int = 0, limit: int = 100):
     result = await db.execute(select(GarantiaCliente).order_by(GarantiaCliente.id.desc()).offset(skip).limit(limit))
@@ -13,34 +13,21 @@ async def get_garantias(db: AsyncSession, skip: int = 0, limit: int = 100):
 
 async def registrar_garantia(db: AsyncSession, garantia: GarantiaCreate):
     # 1. Obtener el detalle de la venta
-    stmt_det = (
-        select(DetalleVenta)
-        .options(selectinload(DetalleVenta.cuenta_madre))
-        .where(DetalleVenta.id == garantia.detalle_venta_id)
+    db_detalle = await get_or_404(
+        db,
+        DetalleVenta,
+        garantia.detalle_venta_id,
+        options=[selectinload(DetalleVenta.cuenta_madre)]
     )
-    res_det = await db.execute(stmt_det)
-    db_detalle = res_det.scalar_one_or_none()
-    if not db_detalle:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Detalle de venta con id {garantia.detalle_venta_id} no encontrado"
-        )
 
     # 2. Obtener la venta asociada y el perfil anterior
-    stmt_venta = select(Venta).where(Venta.id == db_detalle.venta_id)
-    res_venta = await db.execute(stmt_venta)
-    db_venta = res_venta.scalar_one()
+    db_venta = await get_or_404(db, Venta, db_detalle.venta_id)
 
     perfil_anterior_id = db_detalle.perfil_id
     if not perfil_anterior_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Este detalle de venta no tiene un perfil asociado para aplicar garantía."
-        )
+        raise BusinessRuleError("Este detalle de venta no tiene un perfil asociado para aplicar garantía.")
 
-    stmt_perf = select(Perfil).where(Perfil.id == perfil_anterior_id)
-    res_perf = await db.execute(stmt_perf)
-    perfil_anterior = res_perf.scalar_one()
+    perfil_anterior = await get_or_404(db, Perfil, perfil_anterior_id)
 
     # 3. Lógica según el tipo de garantía
     tipo = garantia.tipo_garantia.upper()
@@ -49,10 +36,7 @@ async def registrar_garantia(db: AsyncSession, garantia: GarantiaCreate):
     try:
         if tipo == 'REEMBOLSO':
             if not garantia.monto_reembolso or not garantia.entidad_reembolso:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Para la garantía de REEMBOLSO son obligatorios el monto_reembolso y la entidad_reembolso."
-                )
+                raise BusinessRuleError("Para la garantía de REEMBOLSO son obligatorios el monto_reembolso y la entidad_reembolso.")
             
             # Devolución de dinero: No se permite cambiar recurso ni extender días
             # Liberar o reportar el recurso anterior
@@ -65,7 +49,7 @@ async def registrar_garantia(db: AsyncSession, garantia: GarantiaCreate):
 
             # Crear egreso contable
             db_trans = Transaccion(
-                tipo="EGRESO",
+                tipo=TipoTransaccion.EGRESO,
                 categoria="REEMBOLSO_GARANTIA",
                 monto=garantia.monto_reembolso,
                 entidad=garantia.entidad_reembolso,
@@ -109,10 +93,7 @@ async def registrar_garantia(db: AsyncSession, garantia: GarantiaCreate):
             nuevo_perfil = res_new.scalar_one_or_none()
 
             if not nuevo_perfil:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="No hay perfiles disponibles en el inventario para realizar la reasignación."
-                )
+                raise BusinessRuleError("No hay perfiles disponibles en el inventario para realizar la reasignación.")
 
             # Asignar nuevo perfil al cliente
             nuevo_perfil.asignado = True
@@ -144,10 +125,7 @@ async def registrar_garantia(db: AsyncSession, garantia: GarantiaCreate):
                 resuelto=True
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Tipo de garantía '{garantia.tipo_garantia}' no reconocido."
-            )
+            raise BusinessRuleError(f"Tipo de garantía '{garantia.tipo_garantia}' no reconocido.")
 
         db.add(db_gar)
         await db.commit()

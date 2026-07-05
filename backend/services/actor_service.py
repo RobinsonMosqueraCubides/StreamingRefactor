@@ -1,11 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from db.models import Cliente, Proveedor, EstadoCliente
+from db.database import get_or_404
 from schemas.actor_schemas import (
     ClienteCreate, ClienteUpdate,
     ProveedorCreate, ProveedorUpdate
 )
-from fastapi import HTTPException, status
+from core.exceptions import BusinessRuleError
 
 # --- Cliente Services ---
 
@@ -14,23 +15,13 @@ async def get_clientes(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def get_cliente(db: AsyncSession, cliente_id: int):
-    result = await db.execute(select(Cliente).where(Cliente.id == cliente_id))
-    db_cliente = result.scalar_one_or_none()
-    if not db_cliente:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Cliente con id {cliente_id} no encontrado"
-        )
-    return db_cliente
+    return await get_or_404(db, Cliente, cliente_id)
 
 async def create_cliente(db: AsyncSession, cliente: ClienteCreate):
     # Validar teléfono único
     existing = await db.execute(select(Cliente).where(Cliente.telefono == cliente.telefono))
     if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe un cliente registrado con este número de teléfono"
-        )
+        raise BusinessRuleError("Ya existe un cliente registrado con este número de teléfono")
     
     try:
         db_cliente = Cliente(
@@ -55,10 +46,7 @@ async def update_cliente(db: AsyncSession, cliente_id: int, cliente: ClienteUpda
     if db_cliente.telefono != cliente.telefono:
         existing = await db.execute(select(Cliente).where(Cliente.telefono == cliente.telefono))
         if existing.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya existe otro cliente registrado con este número de teléfono"
-            )
+            raise BusinessRuleError("Ya existe otro cliente registrado con este número de teléfono")
             
     try:
         db_cliente.nombre = cliente.nombre
@@ -103,23 +91,13 @@ async def get_proveedores(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def get_proveedor(db: AsyncSession, proveedor_id: int):
-    result = await db.execute(select(Proveedor).where(Proveedor.id == proveedor_id))
-    db_proveedor = result.scalar_one_or_none()
-    if not db_proveedor:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Proveedor con id {proveedor_id} no encontrado"
-        )
-    return db_proveedor
+    return await get_or_404(db, Proveedor, proveedor_id)
 
 async def create_proveedor(db: AsyncSession, proveedor: ProveedorCreate):
     # Validar teléfono único
     existing = await db.execute(select(Proveedor).where(Proveedor.telefono == proveedor.telefono))
     if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe un proveedor registrado con este número de teléfono"
-        )
+        raise BusinessRuleError("Ya existe un proveedor registrado con este número de teléfono")
         
     try:
         db_proveedor = Proveedor(
@@ -142,10 +120,7 @@ async def update_proveedor(db: AsyncSession, proveedor_id: int, proveedor: Prove
     if db_proveedor.telefono != proveedor.telefono:
         existing = await db.execute(select(Proveedor).where(Proveedor.telefono == proveedor.telefono))
         if existing.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya existe otro proveedor registrado con este número de teléfono"
-            )
+            raise BusinessRuleError("Ya existe otro proveedor registrado con este número de teléfono")
             
     try:
         db_proveedor.nombre = proveedor.nombre
