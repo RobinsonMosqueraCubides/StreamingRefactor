@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -43,8 +44,8 @@ interface POSPanelProps {
   handleAddItem: () => void;
   handleRemoveItem: (index: number) => void;
   handleToggleCombo: () => void;
-  handleComboTotalPriceChange: (total: number | "") => void;
-  handleEditItemPrice: (index: number, val: number | "") => void;
+  handleComboTotalPriceChange: (val: number | "") => void;
+  handleEditItemPrice: (index: number, newVal: number | "") => void;
   calculateTotal: () => number;
 }
 
@@ -95,10 +96,12 @@ export default function POSPanel({
     return plataformas.find(p => p.id === platId)?.nombre || `Plataforma #${platId}`;
   };
 
-  const filteredClientes = clientes.filter(c =>
-    c.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) ||
-    c.telefono.includes(clienteSearch)
-  );
+  const filteredClientes = useMemo(() => {
+    return clientes.filter(c =>
+      c.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) ||
+      c.telefono.includes(clienteSearch)
+    );
+  }, [clientes, clienteSearch]);
 
   const handleSelectCliente = (c: Cliente) => {
     setClienteId(String(c.id));
@@ -106,7 +109,7 @@ export default function POSPanel({
     setShowClientDropdown(false);
   };
 
-  const getAvailableStockCuentas = () => {
+  const availableStockCuentas = useMemo(() => {
     if (!selectedPlatId) return [];
     const platIdNum = parseInt(selectedPlatId);
 
@@ -121,16 +124,18 @@ export default function POSPanel({
         return freePerfiles.length === c.max_perfiles;
       }
     });
-  };
+  }, [cuentas, selectedPlatId, tipoUnidad]);
 
-  const filteredStockCuentas = getAvailableStockCuentas().filter(c => {
-    const cred = credenciales.find(cr => cr.id === c.credencial_id);
-    const email = cred?.email || '';
-    const provName = getProveedorName(c.proveedor_id);
-    
-    const searchString = `${email} ${provName}`.toLowerCase();
-    return searchString.includes(cuentaSearchText.toLowerCase());
-  });
+  const filteredStockCuentas = useMemo(() => {
+    return availableStockCuentas.filter(c => {
+      const cred = credenciales.find(cr => cr.id === c.credencial_id);
+      const email = cred?.email || '';
+      const provName = getProveedorName(c.proveedor_id);
+      
+      const searchString = `${email} ${provName}`.toLowerCase();
+      return searchString.includes(cuentaSearchText.toLowerCase());
+    });
+  }, [availableStockCuentas, credenciales, proveedores, cuentaSearchText]);
 
   const handleSelectCuentaMadre = (c: CuentaMadre) => {
     const cred = credenciales.find(cr => cr.id === c.credencial_id);

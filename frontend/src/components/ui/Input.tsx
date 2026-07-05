@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef, useId } from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -7,7 +7,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   rightIcon?: React.ReactNode;
 }
 
-export default function Input({
+const Input = forwardRef<HTMLInputElement, InputProps>(({
   label,
   error,
   leftIcon,
@@ -15,11 +15,14 @@ export default function Input({
   className = '',
   id,
   ...props
-}: InputProps) {
+}, ref) => {
+  const generatedId = useId();
+  const inputId = id || generatedId;
+
   return (
     <div className="flex flex-col gap-1.5 w-full">
       {label && (
-        <label htmlFor={id} className="text-xs font-medium text-slate-400">
+        <label htmlFor={inputId} className="text-xs font-medium text-slate-400">
           {label}
         </label>
       )}
@@ -30,7 +33,8 @@ export default function Input({
           </span>
         )}
         <input
-          id={id}
+          id={inputId}
+          ref={ref}
           className={`w-full bg-slate-950/60 border rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all duration-300 disabled:opacity-50
             ${leftIcon ? 'pl-10' : ''} 
             ${rightIcon ? 'pr-10' : ''} 
@@ -61,4 +65,8 @@ export default function Input({
       )}
     </div>
   );
-}
+});
+
+Input.displayName = 'Input';
+
+export default Input;

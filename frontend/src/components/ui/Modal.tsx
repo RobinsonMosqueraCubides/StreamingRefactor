@@ -41,11 +41,16 @@ export default function Modal({
       />
 
       {/* Modal Content Wrapper */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl relative z-10 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+      <div 
+        role="dialog" 
+        aria-modal="true" 
+        aria-labelledby="modal-title"
+        className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl relative z-10 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200"
+      >
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-          <h3 className="text-lg font-semibold text-slate-100">{title}</h3>
+          <h3 id="modal-title" className="text-lg font-semibold text-slate-100">{title}</h3>
           <button 
             onClick={onClose} 
             className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"

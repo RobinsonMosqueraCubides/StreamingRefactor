@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef, useId } from 'react';
 
 interface Option {
   value: string | number;
@@ -11,24 +11,28 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   error?: string;
 }
 
-export default function Select({
+const Select = forwardRef<HTMLSelectElement, SelectProps>(({
   label,
   options,
   error,
   className = '',
   id,
   ...props
-}: SelectProps) {
+}, ref) => {
+  const generatedId = useId();
+  const selectId = id || generatedId;
+
   return (
     <div className="flex flex-col gap-1.5 w-full">
       {label && (
-        <label htmlFor={id} className="text-xs font-medium text-slate-400">
+        <label htmlFor={selectId} className="text-xs font-medium text-slate-400">
           {label}
         </label>
       )}
       <div className="relative">
         <select
-          id={id}
+          id={selectId}
+          ref={ref}
           className={`w-full bg-slate-950/60 border rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all duration-300 disabled:opacity-50 appearance-none cursor-pointer
             ${error ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-800 hover:border-slate-700'} 
             ${className}`}
@@ -54,4 +58,8 @@ export default function Select({
       )}
     </div>
   );
-}
+});
+
+Select.displayName = 'Select';
+
+export default Select;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -81,19 +81,19 @@ export default function DashboardPage() {
   };
 
   // Financial Calculations
-  const calculateIngresos = () => {
+  const ingresos = useMemo(() => {
     return transactions
       .filter(t => t.tipo === 'INGRESO')
       .reduce((sum, t) => sum + Number(t.monto), 0);
-  };
+  }, [transactions]);
 
-  const calculateEgresos = () => {
+  const egresos = useMemo(() => {
     return transactions
       .filter(t => t.tipo === 'EGRESO')
       .reduce((sum, t) => sum + Number(t.monto), 0);
-  };
+  }, [transactions]);
 
-  const calculateCuentasPorCobrar = () => {
+  const cuentasPorCobrar = useMemo(() => {
     let debt = 0;
     sales.forEach(v => {
       if (v.estado_pago === 'PENDIENTE') {
@@ -106,9 +106,9 @@ export default function DashboardPage() {
       }
     });
     return debt;
-  };
+  }, [sales, transactions]);
 
-  const balanceNeto = calculateIngresos() - calculateEgresos();
+  const balanceNeto = useMemo(() => ingresos - egresos, [ingresos, egresos]);
 
   return (
     <div className="space-y-6">
@@ -133,7 +133,7 @@ export default function DashboardPage() {
                   <TrendingUp className="w-5 h-5" />
                 </div>
               </div>
-              <h3 className="text-2xl font-extrabold mt-3 text-slate-100">${calculateIngresos().toLocaleString('es-CO')}</h3>
+              <h3 className="text-2xl font-extrabold mt-3 text-slate-100">${ingresos.toLocaleString('es-CO')}</h3>
               <p className="text-[10px] text-slate-450 mt-1">Caja y abonos consolidados</p>
             </Card>
 
@@ -144,7 +144,7 @@ export default function DashboardPage() {
                   <TrendingDown className="w-5 h-5" />
                 </div>
               </div>
-              <h3 className="text-2xl font-extrabold mt-3 text-slate-100">${calculateEgresos().toLocaleString('es-CO')}</h3>
+              <h3 className="text-2xl font-extrabold mt-3 text-slate-100">${egresos.toLocaleString('es-CO')}</h3>
               <p className="text-[10px] text-slate-450 mt-1">Gastos e inventario comprado</p>
             </Card>
 
@@ -166,7 +166,7 @@ export default function DashboardPage() {
                   <BarChart3 className="w-5 h-5" />
                 </div>
               </div>
-              <h3 className="text-2xl font-extrabold mt-3 text-slate-100">${calculateCuentasPorCobrar().toLocaleString('es-CO')}</h3>
+              <h3 className="text-2xl font-extrabold mt-3 text-slate-100">${cuentasPorCobrar.toLocaleString('es-CO')}</h3>
               <p className="text-[10px] text-slate-450 mt-1">Suscripciones sin liquidar</p>
             </Card>
           </div>

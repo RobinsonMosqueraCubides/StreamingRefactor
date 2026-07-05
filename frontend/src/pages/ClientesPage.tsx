@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -6,22 +9,17 @@ import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import api from '../api/axios';
 import { Search, UserPlus, Phone, ShieldAlert, ShieldCheck, Edit } from 'lucide-react';
+import type { Cliente, Proveedor } from '../types';
 
-interface Cliente {
-  id: number;
-  nombre: string;
-  telefono: string;
-  tipo: 'FINAL' | 'REVENDEDOR';
-  estado: 'ACTIVO' | 'BANEADO';
-  dias_gracia_max: number;
-}
+const actorFormSchema = z.object({
+  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  telefono: z.string().regex(/^\+?[0-9]{7,15}$/, 'Número de teléfono inválido (ej: +573001234567 o 3001234567)'),
+  tipo: z.enum(['FINAL', 'REVENDEDOR']),
+  dias_gracia_max: z.number().int().min(0, 'No puede ser negativo'),
+  saldo_a_favor: z.number().min(0, 'No puede ser negativo'),
+});
 
-interface Proveedor {
-  id: number;
-  nombre: string;
-  telefono: string;
-  saldo_a_favor: number;
-}
+type ActorFormValues = z.infer<typeof actorFormSchema>;
 
 export default function ClientesPage() {
   const [activeTab, setActiveTab] = useState<'clientes' | 'proveedores'>('clientes');
@@ -37,21 +35,25 @@ export default function ClientesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedActorId, setSelectedActorId] = useState<number | null>(null);
-
-  // Form states
-  const [formName, setFormName] = useState('');
-  const [formPhone, setFormPhone] = useState('');
-  const [formTipo, setFormTipo] = useState<'FINAL' | 'REVENDEDOR'>('FINAL');
-  const [formDiasGracia, setFormDiasGracia] = useState<number | "">(3);
-  const [formSaldo, setFormSaldo] = useState<number | "">(0);
   const [formError, setFormError] = useState('');
+
+  const { register, handleSubmit: handleFormSubmit, reset, formState: { errors } } = useForm<ActorFormValues>({
+    resolver: zodResolver(actorFormSchema),
+    defaultValues: {
+      nombre: '',
+      telefono: '',
+      tipo: 'FINAL',
+      dias_gracia_max: 3,
+      saldo_a_favor: 0,
+    }
+  });
 
   const fetchClientes = async () => {
     try {
       setLoading(true);
       const res = await api.get('/clientes/');
       setClientes(res.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError('Error al cargar clientes');
     } finally {
       setLoading(false);
@@ -63,7 +65,7 @@ export default function ClientesPage() {
       setLoading(true);
       const res = await api.get('/proveedores/');
       setProveedores(res.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError('Error al cargar proveedores');
     } finally {
       setLoading(false);
@@ -78,41 +80,41 @@ export default function ClientesPage() {
   const handleOpenAdd = () => {
     setModalMode('add');
     setSelectedActorId(null);
-    setFormName('');
-    setFormPhone('');
-    setFormTipo('FINAL');
-    setFormDiasGracia(3);
-    setFormSaldo(0);
+    reset({
+      nombre: '',
+      telefono: '',
+      tipo: 'FINAL',
+      dias_gracia_max: 3,
+      saldo_a_favor: 0,
+    });
     setFormError('');
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (actor: any) => {
+  const handleOpenEdit = (actor: Cliente | Proveedor) => {
     setModalMode('edit');
     setSelectedActorId(actor.id);
-    setFormName(actor.nombre);
-    setFormPhone(actor.telefono);
-    if (activeTab === 'clientes') {
-      setFormTipo(actor.tipo);
-      setFormDiasGracia(actor.dias_gracia_max);
-    } else {
-      setFormSaldo(actor.saldo_a_favor);
-    }
+    reset({
+      nombre: actor.nombre,
+      telefono: actor.telefono,
+      tipo: 'tipo' in actor ? actor.tipo : 'FINAL',
+      dias_gracia_max: 'dias_gracia_max' in actor ? actor.dias_gracia_max : 3,
+      saldo_a_favor: 'saldo_a_favor' in actor ? actor.saldo_a_favor : 0,
+    });
     setFormError('');
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: ActorFormValues) => {
     setFormError('');
     try {
       if (activeTab === 'clientes') {
         const payload = {
-          nombre: formName,
-          telefono: formPhone,
-          tipo: formTipo,
+          nombre: data.nombre,
+          telefono: data.telefono,
+          tipo: data.tipo,
           estado: 'ACTIVO',
-          dias_gracia_max: Number(formDiasGracia) || 0,
+          dias_gracia_max: data.dias_gracia_max,
         };
         if (modalMode === 'add') {
           await api.post('/clientes/', payload);
@@ -122,9 +124,9 @@ export default function ClientesPage() {
         fetchClientes();
       } else {
         const payload = {
-          nombre: formName,
-          telefono: formPhone,
-          saldo_a_favor: Number(formSaldo) || 0,
+          nombre: data.nombre,
+          telefono: data.telefono,
+          saldo_a_favor: data.saldo_a_favor,
         };
         if (modalMode === 'add') {
           await api.post('/proveedores/', payload);
@@ -142,7 +144,6 @@ export default function ClientesPage() {
   const handleBanToggle = async (cliente: Cliente) => {
     try {
       if (cliente.estado === 'BANEADO') {
-        // En este ERP simple, para desbanear podemos hacer un PUT con estado ACTIVO
         await api.put(`/clientes/${cliente.id}`, {
           nombre: cliente.nombre,
           telefono: cliente.telefono,
@@ -151,11 +152,10 @@ export default function ClientesPage() {
           dias_gracia_max: cliente.dias_gracia_max,
         });
       } else {
-        // Banear usando endpoint específico
         await api.put(`/clientes/${cliente.id}/ban`);
       }
       fetchClientes();
-    } catch (err: any) {
+    } catch (err: unknown) {
       alert('Error al cambiar el estado del cliente');
     }
   };
@@ -188,8 +188,12 @@ export default function ClientesPage() {
       </div>
 
       {/* Tabs Selector */}
-      <div className="flex border-b border-slate-800 gap-6">
+      <div className="flex border-b border-slate-800 gap-6" role="tablist" aria-label="Actor Tabs">
         <button
+          role="tab"
+          aria-selected={activeTab === 'clientes'}
+          aria-controls="panel-clientes"
+          id="tab-clientes"
           onClick={() => { setActiveTab('clientes'); setSearchQuery(''); }}
           className={`py-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === 'clientes' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -198,6 +202,10 @@ export default function ClientesPage() {
           Clientes
         </button>
         <button
+          role="tab"
+          aria-selected={activeTab === 'proveedores'}
+          aria-controls="panel-proveedores"
+          id="tab-proveedores"
           onClick={() => { setActiveTab('proveedores'); setSearchQuery(''); }}
           className={`py-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === 'proveedores' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -210,7 +218,7 @@ export default function ClientesPage() {
       {/* Barra de búsqueda */}
       <div className="max-w-md">
         <Input
-          placeholder={`Buscar por nombre o teléfono...`}
+          placeholder="Buscar por nombre o teléfono..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           leftIcon={<Search className="w-4 h-4 text-slate-500" />}
@@ -223,7 +231,12 @@ export default function ClientesPage() {
       ) : error ? (
         <p className="text-red-400 text-sm">{error}</p>
       ) : activeTab === 'clientes' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div 
+          id="panel-clientes" 
+          role="tabpanel" 
+          aria-labelledby="tab-clientes"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           {filteredClientes.map((cliente) => (
             <Card 
               key={cliente.id} 
@@ -247,7 +260,7 @@ export default function ClientesPage() {
                   </p>
                   <p>Días de gracia: <span className="text-slate-200 font-medium">{cliente.dias_gracia_max}</span></p>
                   <p>
-                    Estado: {' '}
+                    Estado:{' '}
                     <span className={`font-semibold ${cliente.estado === 'BANEADO' ? 'text-red-400' : 'text-green-400'}`}>
                       {cliente.estado}
                     </span>
@@ -282,7 +295,12 @@ export default function ClientesPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div 
+          id="panel-proveedores" 
+          role="tabpanel" 
+          aria-labelledby="tab-proveedores"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           {filteredProveedores.map((proveedor) => (
             <Card key={proveedor.id} className="flex flex-col justify-between">
               <div>
@@ -332,11 +350,11 @@ export default function ClientesPage() {
         footer={
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button variant="primary" onClick={handleSubmit}>Guardar</Button>
+            <Button variant="primary" onClick={() => handleFormSubmit(onSubmit)()}>Guardar</Button>
           </div>
         }
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleFormSubmit(onSubmit)} className="space-y-4">
           {formError && (
             <p className="text-xs text-red-400 font-semibold">{formError}</p>
           )}
@@ -344,25 +362,23 @@ export default function ClientesPage() {
           <Input
             label="Nombre"
             placeholder="Ej: Juan Pérez"
-            value={formName}
-            onChange={(e) => setFormName(e.target.value)}
-            required
+            error={errors.nombre?.message}
+            {...register('nombre')}
           />
 
           <Input
             label="Teléfono Celular"
             placeholder="Ej: +573001234567"
-            value={formPhone}
-            onChange={(e) => setFormPhone(e.target.value)}
-            required
+            error={errors.telefono?.message}
+            {...register('telefono')}
           />
 
           {activeTab === 'clientes' ? (
             <>
               <Select
                 label="Tipo de Cliente"
-                value={formTipo}
-                onChange={(e) => setFormTipo(e.target.value as any)}
+                error={errors.tipo?.message}
+                {...register('tipo')}
                 options={[
                   { value: 'FINAL', label: 'Cliente Final' },
                   { value: 'REVENDEDOR', label: 'Revendedor (Mayorista)' },
@@ -372,11 +388,8 @@ export default function ClientesPage() {
               <Input
                 label="Días de gracia máximos"
                 type="number"
-                value={formDiasGracia}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setFormDiasGracia(val === "" ? "" : parseInt(val) || 0);
-                }}
+                error={errors.dias_gracia_max?.message}
+                {...register('dias_gracia_max', { valueAsNumber: true })}
                 min={0}
               />
             </>
@@ -384,11 +397,8 @@ export default function ClientesPage() {
             <Input
               label="Saldo a Favor (COP)"
               type="number"
-              value={formSaldo}
-              onChange={(e) => {
-                const val = e.target.value;
-                setFormSaldo(val === "" ? "" : parseFloat(val) || 0);
-              }}
+              error={errors.saldo_a_favor?.message}
+              {...register('saldo_a_favor', { valueAsNumber: true })}
               min={0}
             />
           )}
