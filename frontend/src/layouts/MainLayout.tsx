@@ -1,24 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Database, ShoppingCart, Settings, LogOut, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Users, Database, ShoppingCart, Settings, LogOut } from 'lucide-react';
 
 export default function MainLayout() {
   const navigate = useNavigate();
-  const [theme, setTheme] = useState<'dark' | 'light'>(
-    (localStorage.getItem('theme') as 'dark' | 'light') || 'dark'
-  );
 
   useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme === 'light') {
-      root.classList.add('light');
-      root.classList.remove('dark');
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      const root = window.document.documentElement;
+      if (e.matches) {
+        root.classList.add('dark');
+        root.classList.remove('light');
+      } else {
+        root.classList.add('light');
+        root.classList.remove('dark');
+      }
+    };
+
+    // Initial check
+    handleChange(mediaQuery);
+
+    // Listen for changes
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
     } else {
-      root.classList.add('dark');
-      root.classList.remove('light');
+      // Fallback for older browsers
+      mediaQuery.addListener(handleChange);
+      return () => mediaQuery.removeListener(handleChange);
     }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+  }, []);
 
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -44,13 +57,6 @@ export default function MainLayout() {
             </h1>
             <p className="text-xs text-slate-500">Panel de Control</p>
           </div>
-          <button 
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors border-none cursor-pointer"
-            title="Cambiar Tema"
-          >
-            {theme === 'light' ? <Moon className="w-4 h-4 text-slate-600" /> : <Sun className="w-4 h-4 text-amber-400" />}
-          </button>
         </div>
         <nav className="flex flex-col gap-2 flex-grow">
           {navItems.map((item) => {
@@ -119,15 +125,6 @@ export default function MainLayout() {
             </NavLink>
           );
         })}
-        <button
-          onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-          className="flex flex-col items-center gap-1 flex-1 py-1 cursor-pointer border-none bg-transparent text-slate-500"
-        >
-          <div className="p-2 rounded-xl text-slate-500">
-            {theme === 'light' ? <Moon className="w-5 h-5 text-slate-600" /> : <Sun className="w-5 h-5 text-amber-400" />}
-          </div>
-          <span className="text-[10px] text-slate-500">Tema</span>
-        </button>
         <button
           onClick={handleLogout}
           className="flex flex-col items-center gap-1 flex-1 py-1 cursor-pointer border-none bg-transparent text-rose-500"

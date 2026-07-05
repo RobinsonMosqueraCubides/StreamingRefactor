@@ -6,14 +6,16 @@
 :root {
   --bg-app: #fdfaf4;
   --bg-sidebar: #f7edd9;
-  --bg-card: #ffffff;
+  --bg-card: #f7edd9;       /* Crema suave */
   --text-primary: #2b2b2b;
   --text-muted: #6b6b6b;
   --btn-primary: #8b5fbf;
   --btn-primary-hover: #7b4faf;
-  --btn-primary-text: #fdfaf4;
+  --btn-primary-text: #fdfaf4; /* Blanco hueso */
   --alert-pending: #d4af37;
   --border-ui: #a8a8a8;
+  --bg-hover: rgba(43, 43, 43, 0.05);
+  --bg-active-nav: rgba(139, 95, 191, 0.15); /* Lavanda 15% */
 }
 
 /* La app inicia en modo oscuro (dark) por defecto */
@@ -28,6 +30,8 @@ html.dark, html:not(.light) {
   --btn-primary-text: #2b2b2b; /* Texto oscuro sobre lila */
   --alert-pending: #d4af37;   /* Oro */
   --border-ui: rgba(141, 141, 146, 0.4); /* #8d8d92 con opacidad */
+  --bg-hover: rgba(253, 250, 244, 0.05);
+  --bg-active-nav: rgba(160, 132, 202, 0.15);
 }
 
 /* Reglas Base */
@@ -49,11 +53,15 @@ html.dark, html:not(.light) {
 
   /* Inputs, Selects y Textareas de la App */
   input, select, textarea {
-    background-color: var(--bg-app) !important;
+    background-color: var(--bg-app) !important; /* #fdfaf4 */
     color: var(--text-primary) !important;
     border-color: var(--border-ui) !important;
   }
   
+  html.light input, html.light select, html.light textarea {
+    background-color: #fdfaf4 !important; /* Blanco hueso */
+  }
+
   input::placeholder {
     color: var(--text-muted) !important;
     opacity: 0.6;
@@ -69,14 +77,54 @@ html.dark, html:not(.light) {
 
 /* Modificadores globales para adecuar Tailwind a los Tokens */
 @layer components {
-  /* Cards */
-  .bg-slate-900, .bg-slate-950, .bg-slate-955, .bg-slate-900\/60, .bg-slate-950\/60, .bg-slate-900\/40, .bg-slate-950\/40, .bg-slate-900\/80 {
+  /* Cards y Contenedores */
+  .bg-slate-900, .bg-slate-955, .bg-slate-950, 
+  .bg-slate-900\/60, .bg-slate-955\/60, .bg-slate-950\/60, .bg-slate-900\/40, .bg-slate-955\/40, .bg-slate-950\/40, 
+  .bg-slate-900\/80, .bg-slate-955\/30, .bg-slate-950\/30, .bg-slate-955\/20, .bg-slate-950\/20, .bg-slate-955\/80, .bg-slate-950\/80, .bg-slate-950\/50, .bg-slate-900\/10 {
     background-color: var(--bg-card) !important;
     transition: background-color 0.2s ease;
   }
 
+  /* Botones principales y acciones (lavanda #8b5fbf / lila #a084ca) */
+  .bg-cyan-500, .hover\:bg-cyan-400:hover, .bg-cyan-600,
+  .bg-emerald-500, .hover\:bg-emerald-400:hover {
+    background-color: var(--btn-primary) !important;
+    color: var(--btn-primary-text) !important;
+  }
+  
+  .bg-cyan-550, .hover\:bg-cyan-550:hover {
+    background-color: var(--btn-primary) !important;
+    color: var(--btn-primary-text) !important;
+  }
+
+  .bg-cyan-500:hover, .hover\:bg-cyan-400:hover, .bg-emerald-500:hover, .hover\:bg-emerald-400:hover {
+    background-color: var(--btn-primary-hover) !important;
+  }
+
+  /* Acentos de texto cian/esmeralda */
+  .text-cyan-400, .text-cyan-500, .hover\:text-cyan-400:hover,
+  .text-emerald-400, .text-emerald-500 {
+    color: var(--btn-primary) !important;
+  }
+
+  /* Active states in Navigation menu */
+  .bg-cyan-500\/10, .bg-cyan-500\/20 {
+    background-color: var(--bg-active-nav) !important;
+  }
+  .text-cyan-400 {
+    color: var(--btn-primary) !important;
+  }
+  .border-cyan-400 {
+    border-color: var(--btn-primary) !important;
+  }
+
+  /* Hover states on items/rows */
+  .bg-slate-900\/5, .bg-slate-900\/10, .hover\:bg-slate-900\/10:hover {
+    background-color: var(--bg-hover) !important;
+  }
+
   /* Bordes generales */
-  .border-slate-800, .border-slate-850, .border-slate-700, .border-slate-800\/80 {
+  .border-slate-800, .border-slate-850, .border-slate-700, .border-slate-800\/80, .border-slate-850\/50 {
     border-color: var(--border-ui) !important;
     transition: border-color 0.2s ease;
   }
@@ -89,18 +137,6 @@ html.dark, html:not(.light) {
     color: var(--text-muted) !important;
   }
 
-  /* Acentos cian y botones principales */
-  .bg-cyan-500, .hover\:bg-cyan-400:hover, .bg-cyan-600 {
-    background-color: var(--btn-primary) !important;
-    color: var(--btn-primary-text) !important;
-  }
-  .bg-cyan-500:hover, .hover\:bg-cyan-400:hover {
-    background-color: var(--btn-primary-hover) !important;
-  }
-  .text-cyan-400, .text-cyan-500, .hover\:text-cyan-400:hover {
-    color: var(--btn-primary) !important;
-  }
-  
   /* Estados Pendiente / Alerta de pago */
   .text-amber-400, .text-amber-500 {
     color: var(--alert-pending) !important;
@@ -115,5 +151,77 @@ html.dark, html:not(.light) {
   }
   html:not(.light) input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(1);
+  }
+
+  /* --- Overrides Específicos de Modo Claro --- */
+  
+  /* Deshabilitar gradientes en fondo en modo claro */
+  html.light .bg-gradient-to-br,
+  html.light .bg-gradient-to-r,
+  html.light [class*="bg-gradient-to-"] {
+    background-image: none !important;
+  }
+
+  /* Forzar color lavanda en CTA principales (degradados cian/peligro) */
+  html.light .bg-gradient-to-r.from-cyan-500.to-blue-600,
+  html.light .bg-gradient-to-r.from-red-600.to-rose-700,
+  html.light .bg-gradient-to-r.from-red-550.to-rose-600 {
+    background-color: var(--btn-primary) !important;
+    color: var(--btn-primary-text) !important;
+  }
+  html.light .hover\:from-cyan-400:hover,
+  html.light .hover\:from-red-550:hover,
+  html.light .hover\:to-rose-600:hover {
+    background-color: var(--btn-primary-hover) !important;
+  }
+
+  /* Logo/Brand text color */
+  html.light .bg-clip-text.text-transparent {
+    background-image: none !important;
+    -webkit-background-clip: unset !important;
+    background-clip: unset !important;
+    color: var(--text-primary) !important;
+  }
+
+  /* Tarjetas de Métricas - Textos */
+  html.light .kpi-metrics-grid .text-emerald-400,
+  html.light .kpi-metrics-grid .text-rose-400,
+  html.light .kpi-metrics-grid .text-cyan-400,
+  html.light .kpi-metrics-grid .text-amber-400,
+  html.light .kpi-metrics-grid .text-slate-100,
+  html.light .kpi-metrics-grid .text-slate-200,
+  html.light .kpi-metrics-grid .text-slate-400,
+  html.light .kpi-metrics-grid .text-slate-450 {
+    color: var(--text-primary) !important;
+  }
+
+  /* Iconos de métricas */
+  html.light .kpi-metrics-grid .bg-emerald-500\/20,
+  html.light .kpi-metrics-grid .bg-rose-500\/20,
+  html.light .kpi-metrics-grid .bg-cyan-500\/20,
+  html.light .kpi-metrics-grid .bg-amber-500\/20 {
+    background-color: var(--bg-app) !important;
+    color: var(--text-primary) !important;
+  }
+
+  /* Badge de salud general en cabecera de cliente (Alerta en rojo de alto contraste) */
+  html.light .rounded-full.text-rose-400.bg-rose-500\/10 {
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.25) !important;
+    background-color: rgba(239, 68, 68, 0.1) !important;
+  }
+
+  /* Overrides para evitar fondos oscuros con texto oscuro en componentes internos */
+  html.light .bg-slate-800,
+  html.light .bg-slate-900\/50,
+  html.light .bg-slate-950\/50,
+  html.light .bg-slate-950\/80,
+  html.light .bg-slate-900\/80 {
+    background-color: var(--bg-app) !important;
+  }
+
+  /* Evitar fondos oscuros en inputs de tipo date en modo claro */
+  html.light input[type="date"] {
+    background-color: #fdfaf4 !important;
   }
 }

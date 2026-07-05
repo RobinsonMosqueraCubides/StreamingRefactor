@@ -281,7 +281,7 @@ export default function POSPanel({
                 type="button"
                 onClick={handleAddItem}
                 disabled={!selectedPlatId}
-                className="bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-500/20 font-bold flex items-center gap-1.5 px-5 py-2 rounded-xl cursor-pointer"
+                className="bg-cyan-500 hover:bg-cyan-400 text-white font-bold flex items-center gap-1.5 px-5 py-2 rounded-xl cursor-pointer border-none shadow-md shadow-cyan-500/10"
               >
                 <Plus className="w-4 h-4" /> Añadir al Carrito
               </Button>

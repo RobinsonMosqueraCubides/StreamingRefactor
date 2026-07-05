@@ -543,6 +543,10 @@ export default function VentasPage() {
             setIsRenovacionOpen(true);
           }}
           onConfirmarPago={handleConfirmarPago}
+          onRefreshData={async () => {
+            await fetchCuentas();
+            await fetchSalesHistory();
+          }}
         />
       )}
 

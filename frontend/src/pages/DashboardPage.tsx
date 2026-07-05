@@ -125,7 +125,7 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* Tarjetas KPI */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 kpi-metrics-grid">
             <Card hoverEffect className="relative overflow-hidden bg-gradient-to-br from-emerald-500/10 to-slate-900 border-emerald-500/10">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-emerald-400 font-bold uppercase tracking-wider">Ingresos Totales</p>
