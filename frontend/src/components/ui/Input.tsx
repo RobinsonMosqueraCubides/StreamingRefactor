@@ -36,6 +36,16 @@ export default function Input({
             ${rightIcon ? 'pr-10' : ''} 
             ${error ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-800 hover:border-slate-700'} 
             ${className}`}
+          onClick={(e) => {
+            if (props.type === 'date') {
+              try {
+                e.currentTarget.showPicker();
+              } catch (err) {
+                // Fallback silencioso si no es soportado
+              }
+            }
+            if (props.onClick) props.onClick(e);
+          }}
           {...props}
         />
         {rightIcon && (

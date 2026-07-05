@@ -34,7 +34,7 @@ export default function InventarioPage() {
   const [selectedProv, setSelectedProv] = useState<Proveedor | null>(null);
   const [provNombre, setProvNombre] = useState('');
   const [provTelefono, setProvTelefono] = useState('');
-  const [provSaldo, setProvSaldo] = useState(0);
+  const [provSaldo, setProvSaldo] = useState<number | "">(0);
   const [provError, setProvError] = useState('');
 
   // Platforms CRUD Modals
@@ -115,7 +115,7 @@ export default function InventarioPage() {
       const payload = {
         nombre: provNombre,
         telefono: provTelefono,
-        saldo_a_favor: provSaldo
+        saldo_a_favor: Number(provSaldo) || 0
       };
 
       if (selectedProv) {
@@ -333,7 +333,10 @@ export default function InventarioPage() {
             label="Saldo a Favor (COP)"
             type="number"
             value={provSaldo}
-            onChange={(e) => setProvSaldo(parseFloat(e.target.value) || 0)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setProvSaldo(val === "" ? "" : parseFloat(val) || 0);
+            }}
             min="0"
           />
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-850">

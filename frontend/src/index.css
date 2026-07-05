@@ -2,9 +2,118 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  background-color: #020617; /* slate-950 */
-  color: #f8fafc; /* slate-50 */
-  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+/* Configuración de Tokens de Color para Agaray ERP (Modo Light y Dark) */
+:root {
+  --bg-app: #fdfaf4;
+  --bg-sidebar: #f7edd9;
+  --bg-card: #ffffff;
+  --text-primary: #2b2b2b;
+  --text-muted: #6b6b6b;
+  --btn-primary: #8b5fbf;
+  --btn-primary-hover: #7b4faf;
+  --btn-primary-text: #fdfaf4;
+  --alert-pending: #d4af37;
+  --border-ui: #a8a8a8;
+}
+
+/* La app inicia en modo oscuro (dark) por defecto */
+html.dark, html:not(.light) {
+  --bg-app: #2b2b2b;
+  --bg-sidebar: #432357; /* Púrpura oscuro */
+  --bg-card: #1c1c1c;    /* Gris oscuro */
+  --text-primary: #fdfaf4; /* Blanco hueso */
+  --text-muted: #a8a8a8;   /* Gris medio */
+  --btn-primary: #a084ca;  /* Lila suave */
+  --btn-primary-hover: #8f73b9;
+  --btn-primary-text: #2b2b2b; /* Texto oscuro sobre lila */
+  --alert-pending: #d4af37;   /* Oro */
+  --border-ui: rgba(141, 141, 146, 0.4); /* #8d8d92 con opacidad */
+}
+
+/* Reglas Base */
+@layer base {
+  body {
+    margin: 0;
+    background-color: var(--bg-app) !important;
+    color: var(--text-primary) !important;
+    font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Sidebar */
+  aside {
+    background-color: var(--bg-sidebar) !important;
+    border-color: var(--border-ui) !important;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  /* Inputs, Selects y Textareas de la App */
+  input, select, textarea {
+    background-color: var(--bg-app) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-ui) !important;
+  }
+  
+  input::placeholder {
+    color: var(--text-muted) !important;
+    opacity: 0.6;
+  }
+
+  /* Datepickers - Ajustar el color de icono según tema */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+}
+
+/* Modificadores globales para adecuar Tailwind a los Tokens */
+@layer components {
+  /* Cards */
+  .bg-slate-900, .bg-slate-950, .bg-slate-955, .bg-slate-900\/60, .bg-slate-950\/60, .bg-slate-900\/40, .bg-slate-950\/40, .bg-slate-900\/80 {
+    background-color: var(--bg-card) !important;
+    transition: background-color 0.2s ease;
+  }
+
+  /* Bordes generales */
+  .border-slate-800, .border-slate-850, .border-slate-700, .border-slate-800\/80 {
+    border-color: var(--border-ui) !important;
+    transition: border-color 0.2s ease;
+  }
+
+  /* Acentos de texto */
+  .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400 {
+    color: var(--text-primary) !important;
+  }
+  .text-slate-500, .text-slate-600 {
+    color: var(--text-muted) !important;
+  }
+
+  /* Acentos cian y botones principales */
+  .bg-cyan-500, .hover\:bg-cyan-400:hover, .bg-cyan-600 {
+    background-color: var(--btn-primary) !important;
+    color: var(--btn-primary-text) !important;
+  }
+  .bg-cyan-500:hover, .hover\:bg-cyan-400:hover {
+    background-color: var(--btn-primary-hover) !important;
+  }
+  .text-cyan-400, .text-cyan-500, .hover\:text-cyan-400:hover {
+    color: var(--btn-primary) !important;
+  }
+  
+  /* Estados Pendiente / Alerta de pago */
+  .text-amber-400, .text-amber-500 {
+    color: var(--alert-pending) !important;
+  }
+  .bg-amber-500\/10, .bg-amber-500\/20, .border-amber-500\/20 {
+    border-color: var(--alert-pending) !important;
+  }
+
+  /* Asegurar visibilidad de inputs de fecha según tema */
+  html.light input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: none;
+  }
+  html:not(.light) input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
 }

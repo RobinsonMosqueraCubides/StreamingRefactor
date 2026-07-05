@@ -16,7 +16,7 @@ export default function GarantiaModal({ isOpen, onClose, selectedDetail, onSubmi
   const [tipoGarantia, setTipoGarantia] = useState('CAMBIO_RECURSO');
   const [diasExtendidos, setDiasExtendidos] = useState(0);
   const [liberarRecursoAnterior, setLiberarRecursoAnterior] = useState(false);
-  const [montoReembolso, setMontoReembolso] = useState(0);
+  const [montoReembolso, setMontoReembolso] = useState<number | "">(0);
   const [entidadReembolso, setEntidadReembolso] = useState('NEQUI');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -42,6 +42,7 @@ export default function GarantiaModal({ isOpen, onClose, selectedDetail, onSubmi
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedDetail) return;
     setError('');
     setSuccess('');
     setLoading(true);
@@ -55,7 +56,7 @@ export default function GarantiaModal({ isOpen, onClose, selectedDetail, onSubmi
       };
 
       if (tipoGarantia === 'REEMBOLSO') {
-        payload.monto_reembolso = montoReembolso;
+        payload.monto_reembolso = Number(montoReembolso) || 0;
         payload.entidad_reembolso = entidadReembolso;
       }
 
@@ -117,7 +118,10 @@ export default function GarantiaModal({ isOpen, onClose, selectedDetail, onSubmi
               label="Monto Reembolso (COP)"
               type="number"
               value={montoReembolso}
-              onChange={(e) => setMontoReembolso(parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setMontoReembolso(val === "" ? "" : parseFloat(val) || 0);
+              }}
               min="0"
               required
             />

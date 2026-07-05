@@ -34,7 +34,7 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
 
   // Quick Expense Form States
-  const [gastoMonto, setGastoMonto] = useState(10000);
+  const [gastoMonto, setGastoMonto] = useState<number | "">(10000);
   const [gastoCategoria, setGastoCategoria] = useState('Servicios (Luz/Internet)');
   const [gastoEntidad, setGastoEntidad] = useState('NEQUI');
   const [formSuccess, setFormSuccess] = useState('');
@@ -68,7 +68,7 @@ export default function DashboardPage() {
     try {
       await api.post('/finanzas/gastos', {
         categoria: gastoCategoria,
-        monto: gastoMonto,
+        monto: Number(gastoMonto) || 0,
         entidad: gastoEntidad
       });
       setFormSuccess('Gasto registrado con éxito.');
@@ -84,25 +84,25 @@ export default function DashboardPage() {
   const calculateIngresos = () => {
     return transactions
       .filter(t => t.tipo === 'INGRESO')
-      .reduce((sum, t) => sum + t.monto, 0);
+      .reduce((sum, t) => sum + Number(t.monto), 0);
   };
 
   const calculateEgresos = () => {
     return transactions
       .filter(t => t.tipo === 'EGRESO')
-      .reduce((sum, t) => sum + t.monto, 0);
+      .reduce((sum, t) => sum + Number(t.monto), 0);
   };
 
   const calculateCuentasPorCobrar = () => {
     let debt = 0;
     sales.forEach(v => {
       if (v.estado_pago === 'PENDIENTE') {
-        debt += v.monto_total;
+        debt += Number(v.monto_total);
       } else if (v.estado_pago === 'PAGO_PARCIAL') {
         const abonos = transactions
           .filter(t => t.tipo === 'INGRESO' && t.referencia_id === v.id)
-          .reduce((sum, t) => sum + t.monto, 0);
-        debt += Math.max(0, v.monto_total - abonos);
+          .reduce((sum, t) => sum + Number(t.monto), 0);
+        debt += Math.max(0, Number(v.monto_total) - abonos);
       }
     });
     return debt;
@@ -195,7 +195,10 @@ export default function DashboardPage() {
                   label="Monto del Gasto (COP)"
                   type="number"
                   value={gastoMonto}
-                  onChange={(e) => setGastoMonto(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setGastoMonto(val === "" ? "" : parseFloat(val) || 0);
+                  }}
                   leftIcon={<DollarSign className="w-4 h-4 text-slate-500" />}
                   min={1}
                   required

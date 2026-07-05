@@ -56,7 +56,7 @@ export default function LoginPage() {
             <KeyRound className="w-7 h-7 text-slate-950" />
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-            Streaming ERP
+            Agaray ERP
           </h1>
           <p className="text-xs text-slate-400 mt-2">
             Inicia sesión para gestionar cuentas y revendedores

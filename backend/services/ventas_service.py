@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Plataforma, EstadoCuenta, EstadoPago, PlantillaMensaje
+from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Plataforma, EstadoCuenta, EstadoPago, PlantillaMensaje, PagoVenta, Transaccion
 from schemas.ventas_schemas import VentaCreate
 from fastapi import HTTPException, status
 from decimal import Decimal
@@ -161,9 +161,16 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
         raise e
 
 async def renovar_venta(db: AsyncSession, venta_id: int, nueva_fecha_corte):
+    from sqlalchemy import delete
+    from db.models import PagoVenta
     try:
         db_venta = await get_venta(db, venta_id)
         db_venta.fecha_corte = nueva_fecha_corte
+        db_venta.estado_pago = EstadoPago.PENDIENTE
+        
+        # Eliminar los abonos antiguos registrados para esta venta en el ciclo anterior
+        await db.execute(delete(PagoVenta).where(PagoVenta.venta_id == venta_id))
+        
         await db.commit()
         await db.refresh(db_venta)
         return db_venta
@@ -239,31 +246,54 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
     if not venta:
         raise HTTPException(status_code=404, detail="Venta no encontrada")
         
+    # 1. Agrupar detalles por cuenta_madre_id
+    detalles_por_cuenta = {}
+    for detail in venta.detalles:
+        if detail.cuenta_madre_id:
+            if detail.cuenta_madre_id not in detalles_por_cuenta:
+                detalles_por_cuenta[detail.cuenta_madre_id] = []
+            detalles_por_cuenta[detail.cuenta_madre_id].append(detail)
+            
     msg = f"Hola *{venta.cliente.nombre}*, aquí tienes los accesos para tus suscripciones de streaming:\n\n"
+    item_idx = 1
     
-    for idx, detail in enumerate(venta.detalles):
-        stmt_cm = select(CuentaMadre).where(CuentaMadre.id == detail.cuenta_madre_id).options(
+    for cm_id, list_detalles in detalles_por_cuenta.items():
+        stmt_cm = select(CuentaMadre).where(CuentaMadre.id == cm_id).options(
             selectinload(CuentaMadre.plataforma),
             selectinload(CuentaMadre.credencial)
         )
         res_cm = await db.execute(stmt_cm)
         cm = res_cm.scalar_one_or_none()
         
-        stmt_p = select(Perfil).where(Perfil.id == detail.perfil_id)
-        res_p = await db.execute(stmt_p)
-        perfil = res_p.scalar_one_or_none()
-        
-        plat_name = cm.plataforma.nombre if (cm and cm.plataforma) else f"Plataforma #{detail.cuenta_madre_id}"
+        plat_name = cm.plataforma.nombre if (cm and cm.plataforma) else f"Plataforma #{cm_id}"
         email = cm.credencial.email if (cm and cm.credencial) else "N/A"
         password = cm.credencial.password if (cm and cm.credencial) else "N/A"
-        profile_name = perfil.nombre_perfil if perfil else venta.cliente.nombre
-        pin_val = perfil.pin if (perfil and perfil.pin) else "N/A"
         
-        msg += f"*{idx + 1}. {plat_name}*\n"
-        msg += f"   • Correo: `{email}`\n"
-        msg += f"   • Clave: `{password}`\n"
-        msg += f"   • Perfil (Usuario): *{profile_name}*\n"
-        msg += f"   • PIN: *{pin_val}*\n\n"
+        # Verificar si es cuenta completa (los perfiles vendidos en esta orden coinciden con los max_perfiles de la cuenta madre)
+        es_cuenta_completa = cm and (len(list_detalles) == cm.max_perfiles)
+        
+        if es_cuenta_completa:
+            # Reportar como cuenta completa simplificada
+            msg += f"*{item_idx}. {plat_name}*\n"
+            msg += f"   • Correo: `{email}`\n"
+            msg += f"   • Clave: `{password}`\n\n"
+            item_idx += 1
+        else:
+            # Reportar perfiles individuales
+            for detail in list_detalles:
+                stmt_p = select(Perfil).where(Perfil.id == detail.perfil_id)
+                res_p = await db.execute(stmt_p)
+                perfil = res_p.scalar_one_or_none()
+                
+                profile_name = perfil.nombre_perfil if perfil else venta.cliente.nombre
+                pin_val = perfil.pin if (perfil and perfil.pin) else "N/A"
+                
+                msg += f"*{item_idx}. {plat_name}*\n"
+                msg += f"   • Correo: `{email}`\n"
+                msg += f"   • Clave: `{password}`\n"
+                msg += f"   • Perfil (Usuario): *{profile_name}*\n"
+                msg += f"   • PIN: *{pin_val}*\n\n"
+                item_idx += 1
         
     msg += f"Fecha de Vencimiento: *{venta.fecha_corte.strftime('%Y-%m-%d')}*\n\n"
     msg += "¡Gracias por tu confianza y preferencia! 🚀"
@@ -271,3 +301,48 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
     phone = venta.cliente.telefono.replace('+', '').replace(' ', '')
     encoded_msg = urllib.parse.quote(msg)
     return f"https://wa.me/{phone}?text={encoded_msg}"
+
+async def confirmar_pago_completo(db: AsyncSession, venta_id: int) -> Venta:
+    stmt = select(Venta).where(Venta.id == venta_id).options(
+        selectinload(Venta.cliente),
+        selectinload(Venta.detalles)
+    )
+    res = await db.execute(stmt)
+    venta = res.scalar_one_or_none()
+    if not venta:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+        
+    # Calcular pagos ya realizados
+    stmt_pagos = select(func.sum(PagoVenta.monto)).where(PagoVenta.venta_id == venta_id)
+    res_pagos = await db.execute(stmt_pagos)
+    pagado = res_pagos.scalar() or Decimal("0.00")
+    
+    saldo_restante = venta.monto_total - pagado
+    
+    try:
+        if saldo_restante > 0:
+            # Registrar el pago por el saldo restante
+            pago_restante = PagoVenta(
+                venta_id=venta_id,
+                monto=saldo_restante,
+                entidad="NEQUI"  # Por defecto
+            )
+            db.add(pago_restante)
+            
+            # Registrar la transacción contable
+            transaccion = Transaccion(
+                tipo="INGRESO",
+                categoria="PAGO_VENTA",
+                monto=saldo_restante,
+                entidad="NEQUI",
+                referencia_id=venta_id
+            )
+            db.add(transaccion)
+            
+        venta.estado_pago = EstadoPago.PAGADO
+        await db.commit()
+        await db.refresh(venta)
+        return venta
+    except Exception as e:
+        await db.rollback()
+        raise e

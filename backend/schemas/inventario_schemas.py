@@ -78,3 +78,7 @@ class CuentaMadreResponse(CuentaMadreBase):
     perfiles: List[PerfilResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+class CuentaMadreRenovar(BaseModel):
+    nueva_fecha_vencimiento: date
+

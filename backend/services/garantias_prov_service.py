@@ -36,6 +36,7 @@ async def registrar_garantia_proveedor(db: AsyncSession, garantia: GarantiaProve
                     detail="Se requiere la 'nueva_clave' para aplicar el cambio de clave."
                 )
             db_cm.credencial.password = garantia.nueva_clave
+            db_cm.estado = EstadoCuenta.ACTIVA
 
         elif tipo == 'CAMBIO_CUENTA':
             if not garantia.nueva_clave:
@@ -46,6 +47,7 @@ async def registrar_garantia_proveedor(db: AsyncSession, garantia: GarantiaProve
             if garantia.nuevo_email:
                 db_cm.credencial.email = garantia.nuevo_email
             db_cm.credencial.password = garantia.nueva_clave
+            db_cm.estado = EstadoCuenta.ACTIVA
 
         elif tipo == 'SALDO_A_FAVOR':
             if not garantia.monto_saldo_a_favor:

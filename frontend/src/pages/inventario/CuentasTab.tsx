@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Card from '../../components/ui/Card';
 import Select from '../../components/ui/Select';
 import { 
-  ChevronDown, ChevronUp, Database, Calendar, DollarSign, RefreshCw, AlertTriangle, KeyRound, Eye, EyeOff
+  ChevronDown, ChevronUp, Database, Calendar, DollarSign, RefreshCw, AlertTriangle, KeyRound, Eye, EyeOff, Users
 } from 'lucide-react';
 
 import type { CuentaMadre, Proveedor, Plataforma, Credencial } from '../../types';
@@ -29,6 +29,7 @@ export default function CuentasTab({
   onOpenRenew
 }: CuentasTabProps) {
   const [vencimientoFilter, setVencimientoFilter] = useState<'todas' | 'por_vencer'>('todas');
+  const [groupBy, setGroupBy] = useState<'none' | 'proveedor' | 'plataforma'>('none');
   const [showPasswords, setShowPasswords] = useState<{[key: number]: boolean}>({});
 
   const getProveedorName = (provId: number) => {
@@ -64,7 +65,7 @@ export default function CuentasTab({
     return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
   };
 
-  // Filter accounts
+  // Filter accounts (Por Vencer o Todas)
   const filteredCuentas = cuentas.filter(c => {
     if (vencimientoFilter === 'por_vencer') {
       const days = getDaysDiff(c.fecha_vencimiento);
@@ -73,22 +74,272 @@ export default function CuentasTab({
     return true;
   });
 
+  // Función para renderizar una cuenta individual
+  const renderCuentaItem = (cuenta: CuentaMadre) => {
+    const isExpanded = expandedCuentaId === cuenta.id;
+    const diffDays = getDaysDiff(cuenta.fecha_vencimiento);
+    const totalPerfiles = cuenta.perfiles?.length || 0;
+    const asignadosCount = cuenta.perfiles?.filter(p => p.asignado)?.length || 0;
+    const credEmail = getCredencialEmail(cuenta.credencial_id);
+    const credPassword = getCredencialPassword(cuenta.credencial_id);
+
+    return (
+      <div 
+        key={cuenta.id} 
+        className="bg-slate-950/40 border border-slate-850 rounded-xl overflow-hidden transition-all duration-200"
+      >
+        {/* Header Acordeón */}
+        <div 
+          onClick={() => onToggleExpand(cuenta.id)}
+          className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 gap-4 cursor-pointer hover:bg-slate-800/10"
+        >
+          <div className="space-y-1">
+            <p className="text-sm font-bold text-slate-200">
+              {getPlataformaName(cuenta.plataforma_id)}
+            </p>
+            <p className="text-xs text-slate-400 font-mono select-all bg-slate-950/40 px-2 py-0.5 rounded border border-slate-850 inline-block">{credEmail}</p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-xs text-slate-400">Proveedor: <strong>{getProveedorName(cuenta.proveedor_id)}</strong></p>
+              <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border ${getEstadoBadgeColor(cuenta.estado)}`}>
+                {cuenta.estado}
+              </span>
+            </div>
+
+            <div className="text-right hidden sm:block">
+              <p className="text-xs text-slate-400 flex items-center gap-1.5 justify-end">
+                <Calendar className="w-3.5 h-3.5" /> Vence: {cuenta.fecha_vencimiento}
+              </p>
+              <span className={`text-[10px] font-semibold ${
+                diffDays <= 0 ? 'text-rose-400 font-bold' : diffDays <= 5 ? 'text-amber-400 font-bold' : 'text-slate-500'
+              }`}>
+                {diffDays <= 0 ? 'Vencida' : `Faltan ${diffDays} días`}
+              </span>
+            </div>
+
+            {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
+          </div>
+        </div>
+
+        {/* Body Acordeón */}
+        {isExpanded && (
+          <div className="p-4 bg-slate-950/20 border-t border-slate-850 space-y-4 animate-in fade-in duration-200">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Detalles financieros / stock */}
+              <Card className="bg-slate-900/40 p-3 space-y-2 border-slate-850">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Detalles de Costo</h4>
+                <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                  <DollarSign className="w-4 h-4 text-cyan-400" /> Precio Compra: <strong>${cuenta.precio_compra.toLocaleString('es-CO')} COP</strong>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                  <Database className="w-4 h-4 text-cyan-400" /> Perfiles Asignados: <strong>{asignadosCount} / {totalPerfiles}</strong>
+                </div>
+              </Card>
+
+              {/* Credenciales de Acceso con toggle de show/hide */}
+              <Card className="bg-slate-900/40 p-3 space-y-2 border-slate-850">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                  <KeyRound className="w-3.5 h-3.5" /> Credenciales Acceso
+                </h4>
+                <p className="text-xs text-slate-300 truncate">Usuario: <strong className="font-mono">{credEmail}</strong></p>
+                <div className="text-xs text-slate-300 flex items-center gap-1.5 truncate">
+                  <span>Clave:</span>
+                  <strong className="font-mono">
+                    {showPasswords[cuenta.credencial_id] ? credPassword : '••••••••'}
+                  </strong>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPasswords(prev => ({ ...prev, [cuenta.credencial_id]: !prev[cuenta.credencial_id] }));
+                    }}
+                    className="text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-none"
+                    type="button"
+                  >
+                    {showPasswords[cuenta.credencial_id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </Card>
+
+              {/* Acciones de Cuenta Madre */}
+              <Card className="bg-slate-900/40 p-3 flex flex-col gap-2 justify-center border-slate-850">
+                <button
+                  onClick={() => onOpenRenew(cuenta)}
+                  className="flex items-center justify-center gap-1.5 text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 px-3 py-2 rounded-xl transition-all cursor-pointer bg-transparent"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Renovar Cuenta
+                </button>
+                <button
+                  onClick={() => onOpenProvGarantia(cuenta)}
+                  className="flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 px-3 py-2 rounded-xl transition-all cursor-pointer bg-transparent"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" /> Reportar Caída (Garantía)
+                </button>
+              </Card>
+            </div>
+
+            {/* Tabla de perfiles internos */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Perfiles Individuales ({totalPerfiles})</h4>
+              
+              <div className="overflow-hidden border border-slate-850 rounded-xl divide-y divide-slate-850">
+                {cuenta.perfiles && cuenta.perfiles.length > 0 ? (
+                  cuenta.perfiles.map((p: any) => (
+                    <div key={p.id} className="flex justify-between items-center p-3 text-xs bg-slate-950/20">
+                      <div className="space-y-1">
+                        <p className="font-bold text-slate-300">{p.nombre_perfil}</p>
+                        <p className="text-[10px] text-slate-500 font-mono">PIN: {p.pin || 'N/A'}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold ${
+                          p.asignado 
+                            ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' 
+                            : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                        }`}>
+                          {p.asignado ? 'ASIGNADO' : 'LIBRE'}
+                        </span>
+                        {p.reportado && (
+                          <span className="px-2 py-0.5 rounded-full border border-rose-500/20 text-rose-400 bg-rose-500/10 text-[9px] font-bold flex items-center gap-0.5">
+                            <AlertTriangle className="w-2.5 h-2.5" /> FALLA RECIENTE
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-slate-500 text-xs">
+                    No hay perfiles configurados para esta Cuenta Madre.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Lógica de agrupamiento
+  const renderAgrupado = () => {
+    if (groupBy === 'proveedor') {
+      const grouped = proveedores.map(prov => {
+        const provCuentas = filteredCuentas.filter(c => c.proveedor_id === prov.id);
+        return { prov, cuentas: provCuentas };
+      }).filter(g => g.cuentas.length > 0);
+
+      // Huérfanos
+      const sinProv = filteredCuentas.filter(c => !proveedores.some(p => p.id === c.proveedor_id));
+
+      return (
+        <div className="space-y-6">
+          {grouped.map(({ prov, cuentas }) => (
+            <div key={prov.id} className="space-y-3">
+              <div className="flex items-center gap-2 border-b border-slate-800 pb-1.5">
+                <Users className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Proveedor: {prov.nombre} <span className="text-slate-500 font-normal">({cuentas.length} {cuentas.length === 1 ? 'cuenta' : 'cuentas'})</span>
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {cuentas.map(renderCuentaItem)}
+              </div>
+            </div>
+          ))}
+          {sinProv.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 border-b border-slate-800 pb-1.5">
+                <Users className="w-4 h-4 text-slate-500" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Sin Proveedor Asignado <span className="text-slate-500 font-normal">({sinProv.length})</span>
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {sinProv.map(renderCuentaItem)}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (groupBy === 'plataforma') {
+      const grouped = plataformas.map(plat => {
+        const platCuentas = filteredCuentas.filter(c => c.plataforma_id === plat.id);
+        return { plat, cuentas: platCuentas };
+      }).filter(g => g.cuentas.length > 0);
+
+      // Huérfanos
+      const sinPlat = filteredCuentas.filter(c => !plataformas.some(p => p.id === c.plataforma_id));
+
+      return (
+        <div className="space-y-6">
+          {grouped.map(({ plat, cuentas }) => (
+            <div key={plat.id} className="space-y-3">
+              <div className="flex items-center gap-2 border-b border-slate-800 pb-1.5">
+                <Database className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Plataforma: {plat.nombre} <span className="text-slate-500 font-normal">({cuentas.length} {cuentas.length === 1 ? 'cuenta' : 'cuentas'})</span>
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {cuentas.map(renderCuentaItem)}
+              </div>
+            </div>
+          ))}
+          {sinPlat.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 border-b border-slate-800 pb-1.5">
+                <Database className="w-4 h-4 text-slate-500" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Sin Plataforma Asignada <span className="text-slate-500 font-normal">({sinPlat.length})</span>
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {sinPlat.map(renderCuentaItem)}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Sin agrupar (lista plana actual)
+    return (
+      <div className="space-y-3">
+        {filteredCuentas.map(renderCuentaItem)}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Controles de Filtros */}
-      <div className="flex justify-between items-center bg-slate-900/60 p-4 rounded-xl border border-slate-850">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-900/60 p-4 rounded-xl border border-slate-850 gap-4">
         <div>
           <h2 className="text-sm font-bold text-slate-200">Listado de Cuentas Madre</h2>
           <p className="text-xs text-slate-500">Maneja accesos, perfiles de streaming e inventario general.</p>
         </div>
-        <div className="w-56">
-          <Select
-            value={vencimientoFilter}
-            onChange={(e) => setVencimientoFilter(e.target.value as any)}
-          >
-            <option value="todas">Todos los Inventarios</option>
-            <option value="por_vencer">Por vencer en 5 días o menos</option>
-          </Select>
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-stretch">
+          <div className="w-full sm:w-48">
+            <Select
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value as any)}
+            >
+              <option value="none">Sin Agrupar</option>
+              <option value="proveedor">Agrupar por Proveedor</option>
+              <option value="plataforma">Agrupar por Plataforma</option>
+            </Select>
+          </div>
+          <div className="w-full sm:w-56">
+            <Select
+              value={vencimientoFilter}
+              onChange={(e) => setVencimientoFilter(e.target.value as any)}
+            >
+              <option value="todas">Todos los Inventarios</option>
+              <option value="por_vencer">Por vencer en 5 días o menos</option>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -98,154 +349,7 @@ export default function CuentasTab({
           <p className="font-semibold text-sm">No se encontraron cuentas madre registradas</p>
           <p className="text-xs">Modifica el filtro o añade una nueva cuenta madre.</p>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredCuentas.map((cuenta) => {
-            const isExpanded = expandedCuentaId === cuenta.id;
-            const diffDays = getDaysDiff(cuenta.fecha_vencimiento);
-            const totalPerfiles = cuenta.perfiles?.length || 0;
-            const asignadosCount = cuenta.perfiles?.filter(p => p.asignado)?.length || 0;
-            const credEmail = getCredencialEmail(cuenta.credencial_id);
-            const credPassword = getCredencialPassword(cuenta.credencial_id);
-
-            return (
-              <div 
-                key={cuenta.id} 
-                className="bg-slate-950/40 border border-slate-850 rounded-xl overflow-hidden transition-all duration-200"
-              >
-                {/* Header Acordeón */}
-                <div 
-                  onClick={() => onToggleExpand(cuenta.id)}
-                  className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 gap-4 cursor-pointer hover:bg-slate-800/10"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-bold text-slate-200">
-                      {getPlataformaName(cuenta.plataforma_id)}
-                    </p>
-                    <p className="text-xs text-slate-400 font-mono select-all bg-slate-950/40 px-2 py-0.5 rounded border border-slate-850 inline-block">{credEmail}</p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-xs text-slate-400">Proveedor: <strong>{getProveedorName(cuenta.proveedor_id)}</strong></p>
-                      <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border ${getEstadoBadgeColor(cuenta.estado)}`}>
-                        {cuenta.estado}
-                      </span>
-                    </div>
-
-                    <div className="text-right hidden sm:block">
-                      <p className="text-xs text-slate-400 flex items-center gap-1.5 justify-end">
-                        <Calendar className="w-3.5 h-3.5" /> Vence: {cuenta.fecha_vencimiento}
-                      </p>
-                      <span className={`text-[10px] font-semibold ${
-                        diffDays <= 0 ? 'text-rose-400 font-bold' : diffDays <= 5 ? 'text-amber-400 font-bold' : 'text-slate-500'
-                      }`}>
-                        {diffDays <= 0 ? 'Vencida' : `Faltan ${diffDays} días`}
-                      </span>
-                    </div>
-
-                    {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
-                  </div>
-                </div>
-
-                {/* Body Acordeón */}
-                {isExpanded && (
-                  <div className="p-4 bg-slate-950/20 border-t border-slate-850 space-y-4 animate-in fade-in duration-200">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Detalles financieros / stock */}
-                      <Card className="bg-slate-900/40 p-3 space-y-2 border-slate-850">
-                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Detalles de Costo</h4>
-                        <div className="flex items-center gap-1.5 text-xs text-slate-300">
-                          <DollarSign className="w-4 h-4 text-cyan-400" /> Precio Compra: <strong>${cuenta.precio_compra.toLocaleString('es-CO')} COP</strong>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-slate-300">
-                          <Database className="w-4 h-4 text-cyan-400" /> Perfiles Asignados: <strong>{asignadosCount} / {totalPerfiles}</strong>
-                        </div>
-                      </Card>
-
-                      {/* Credenciales de Acceso con toggle de show/hide */}
-                      <Card className="bg-slate-900/40 p-3 space-y-2 border-slate-850">
-                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                          <KeyRound className="w-3.5 h-3.5" /> Credenciales Acceso
-                        </h4>
-                        <p className="text-xs text-slate-300 truncate">Usuario: <strong className="font-mono">{credEmail}</strong></p>
-                        <div className="text-xs text-slate-300 flex items-center gap-1.5 truncate">
-                          <span>Clave:</span>
-                          <strong className="font-mono">
-                            {showPasswords[cuenta.credencial_id] ? credPassword : '••••••••'}
-                          </strong>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowPasswords(prev => ({ ...prev, [cuenta.credencial_id]: !prev[cuenta.credencial_id] }));
-                            }}
-                            className="text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-none"
-                            type="button"
-                          >
-                            {showPasswords[cuenta.credencial_id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                      </Card>
-
-                      {/* Acciones de Cuenta Madre */}
-                      <Card className="bg-slate-900/40 p-3 flex flex-col gap-2 justify-center border-slate-850">
-                        <button
-                          onClick={() => onOpenRenew(cuenta)}
-                          className="flex items-center justify-center gap-1.5 text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 px-3 py-2 rounded-xl transition-all cursor-pointer bg-transparent"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" /> Renovar Cuenta
-                        </button>
-                        <button
-                          onClick={() => onOpenProvGarantia(cuenta)}
-                          className="flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 px-3 py-2 rounded-xl transition-all cursor-pointer bg-transparent"
-                        >
-                          <AlertTriangle className="w-3.5 h-3.5" /> Reportar Caída (Garantía)
-                        </button>
-                      </Card>
-                    </div>
-
-                    {/* Tabla de perfiles internos */}
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Perfiles Individuales ({totalPerfiles})</h4>
-                      
-                      <div className="overflow-hidden border border-slate-850 rounded-xl divide-y divide-slate-850">
-                        {cuenta.perfiles && cuenta.perfiles.length > 0 ? (
-                          cuenta.perfiles.map((p: any) => (
-                            <div key={p.id} className="flex justify-between items-center p-3 text-xs bg-slate-950/20">
-                              <div className="space-y-1">
-                                <p className="font-bold text-slate-300">{p.nombre_perfil}</p>
-                                <p className="text-[10px] text-slate-500 font-mono">PIN: {p.pin || 'N/A'}</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold ${
-                                  p.asignado 
-                                    ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' 
-                                    : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                                }`}>
-                                  {p.asignado ? 'ASIGNADO' : 'LIBRE'}
-                                </span>
-                                {p.reportado && (
-                                  <span className="px-2 py-0.5 rounded-full border border-rose-500/20 text-rose-400 bg-rose-500/10 text-[9px] font-bold flex items-center gap-0.5">
-                                    <AlertTriangle className="w-2.5 h-2.5" /> FALLA RECIENTE
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-4 text-center text-slate-500 text-xs">
-                            No hay perfiles configurados para esta Cuenta Madre.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      ) : renderAgrupado()}
     </div>
   );
 }

@@ -183,6 +183,30 @@ async def delete_cuenta_madre(db: AsyncSession, cuenta_id: int):
         await db.rollback()
         raise e
 
+async def renovar_cuenta_madre(db: AsyncSession, cuenta_id: int, nueva_fecha_vencimiento):
+    from db.models import EntidadFinanciera
+    db_cuenta = await get_cuenta_madre(db, cuenta_id)
+    try:
+        db_cuenta.fecha_vencimiento = nueva_fecha_vencimiento
+        db_cuenta.estado = EstadoCuenta.ACTIVA
+        
+        # Registrar egreso contable automático por la renovación
+        db_transaccion = Transaccion(
+            tipo="EGRESO",
+            categoria="COMPRA_CUENTA",
+            monto=db_cuenta.precio_compra,
+            entidad=EntidadFinanciera.BANCOLOMBIA, # Entidad de egreso predeterminada para renovaciones
+            referencia_id=db_cuenta.id
+        )
+        db.add(db_transaccion)
+        
+        await db.commit()
+        await db.refresh(db_cuenta)
+        return db_cuenta
+    except Exception as e:
+        await db.rollback()
+        raise e
+
 
 # --- Perfil Services ---
 

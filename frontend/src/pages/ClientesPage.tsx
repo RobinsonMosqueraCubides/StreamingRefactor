@@ -42,8 +42,8 @@ export default function ClientesPage() {
   const [formName, setFormName] = useState('');
   const [formPhone, setFormPhone] = useState('');
   const [formTipo, setFormTipo] = useState<'FINAL' | 'REVENDEDOR'>('FINAL');
-  const [formDiasGracia, setFormDiasGracia] = useState(3);
-  const [formSaldo, setFormSaldo] = useState(0);
+  const [formDiasGracia, setFormDiasGracia] = useState<number | "">(3);
+  const [formSaldo, setFormSaldo] = useState<number | "">(0);
   const [formError, setFormError] = useState('');
 
   const fetchClientes = async () => {
@@ -71,12 +71,9 @@ export default function ClientesPage() {
   };
 
   useEffect(() => {
-    if (activeTab === 'clientes') {
-      fetchClientes();
-    } else {
-      fetchProveedores();
-    }
-  }, [activeTab]);
+    fetchClientes();
+    fetchProveedores();
+  }, []);
 
   const handleOpenAdd = () => {
     setModalMode('add');
@@ -95,13 +92,13 @@ export default function ClientesPage() {
     setSelectedActorId(actor.id);
     setFormName(actor.nombre);
     setFormPhone(actor.telefono);
-    setFormError('');
     if (activeTab === 'clientes') {
       setFormTipo(actor.tipo);
       setFormDiasGracia(actor.dias_gracia_max);
     } else {
       setFormSaldo(actor.saldo_a_favor);
     }
+    setFormError('');
     setIsModalOpen(true);
   };
 
@@ -115,7 +112,7 @@ export default function ClientesPage() {
           telefono: formPhone,
           tipo: formTipo,
           estado: 'ACTIVO',
-          dias_gracia_max: formDiasGracia,
+          dias_gracia_max: Number(formDiasGracia) || 0,
         };
         if (modalMode === 'add') {
           await api.post('/clientes/', payload);
@@ -127,7 +124,7 @@ export default function ClientesPage() {
         const payload = {
           nombre: formName,
           telefono: formPhone,
-          saldo_a_favor: formSaldo,
+          saldo_a_favor: Number(formSaldo) || 0,
         };
         if (modalMode === 'add') {
           await api.post('/proveedores/', payload);
@@ -376,7 +373,10 @@ export default function ClientesPage() {
                 label="Días de gracia máximos"
                 type="number"
                 value={formDiasGracia}
-                onChange={(e) => setFormDiasGracia(parseInt(e.target.value) || 0)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormDiasGracia(val === "" ? "" : parseInt(val) || 0);
+                }}
                 min={0}
               />
             </>
@@ -385,7 +385,10 @@ export default function ClientesPage() {
               label="Saldo a Favor (COP)"
               type="number"
               value={formSaldo}
-              onChange={(e) => setFormSaldo(parseFloat(e.target.value) || 0.0)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFormSaldo(val === "" ? "" : parseFloat(val) || 0);
+              }}
               min={0}
             />
           )}

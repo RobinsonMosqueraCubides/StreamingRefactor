@@ -28,8 +28,8 @@ export default function CuentaMadreModal({
   const [formProveedorId, setFormProveedorId] = useState('');
   const [formPlataformaId, setFormPlataformaId] = useState('');
   const [formCredencialId, setFormCredencialId] = useState('');
-  const [formMaxPerfiles, setFormMaxPerfiles] = useState(5);
-  const [formPrecioCompra, setFormPrecioCompra] = useState(30000);
+  const [formMaxPerfiles, setFormMaxPerfiles] = useState<number | "">(5);
+  const [formPrecioCompra, setFormPrecioCompra] = useState<number | "">(30000);
   const [formFechaCompra, setFormFechaCompra] = useState(new Date().toISOString().split('T')[0]);
   const [formFechaVencimiento, setFormFechaVencimiento] = useState(
     new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]
@@ -149,8 +149,8 @@ export default function CuentaMadreModal({
         proveedor_id: finalProveedorId,
         credencial_id: finalCredencialId,
         plataforma_id: finalPlataformaId,
-        max_perfiles: formMaxPerfiles,
-        precio_compra: formPrecioCompra,
+        max_perfiles: Number(formMaxPerfiles) || 0,
+        precio_compra: Number(formPrecioCompra) || 0,
         fecha_compra: formFechaCompra,
         fecha_vencimiento: formFechaVencimiento,
         estado: 'ACTIVA',
@@ -317,7 +317,10 @@ export default function CuentaMadreModal({
             label="Máx Perfiles"
             type="number"
             value={formMaxPerfiles}
-            onChange={(e) => setFormMaxPerfiles(parseInt(e.target.value) || 0)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFormMaxPerfiles(val === "" ? "" : parseInt(val) || 0);
+            }}
             min="1"
             required
           />
@@ -325,7 +328,10 @@ export default function CuentaMadreModal({
             label="Precio Compra (COP)"
             type="number"
             value={formPrecioCompra}
-            onChange={(e) => setFormPrecioCompra(parseFloat(e.target.value) || 0)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFormPrecioCompra(val === "" ? "" : parseFloat(val) || 0);
+            }}
             min="0"
             required
           />

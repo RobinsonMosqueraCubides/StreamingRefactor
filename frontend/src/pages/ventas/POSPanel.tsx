@@ -22,27 +22,29 @@ interface POSPanelProps {
   setShowClientDropdown: (val: boolean) => void;
   fechaCorte: string;
   setFechaCorte: (val: string) => void;
+  fechaInicio: string;
+  setFechaInicio: (val: string) => void;
   items: VentaItem[];
   loading: boolean;
   selectedPlatId: string;
   setSelectedPlatId: (val: string) => void;
   tipoUnidad: 'PANTALLA' | 'CUENTA';
   setTipoUnidad: (val: 'PANTALLA' | 'CUENTA') => void;
-  selectedPrecio: number;
-  setSelectedPrecio: (val: number) => void;
+  selectedPrecio: number | "";
+  setSelectedPrecio: (val: number | "") => void;
   setSelectedCuentaId: (val: string) => void;
   cuentaSearchText: string;
   setCuentaSearchText: (val: string) => void;
   showCuentaDropdown: boolean;
   setShowCuentaDropdown: (val: boolean) => void;
   isComboActive: boolean;
-  comboTotalPrice: number;
+  comboTotalPrice: number | "";
   onProcessSale: (e: React.FormEvent) => void;
   handleAddItem: () => void;
   handleRemoveItem: (index: number) => void;
   handleToggleCombo: () => void;
-  handleComboTotalPriceChange: (total: number) => void;
-  handleEditItemPrice: (index: number, val: number) => void;
+  handleComboTotalPriceChange: (total: number | "") => void;
+  handleEditItemPrice: (index: number, val: number | "") => void;
   calculateTotal: () => number;
 }
 
@@ -59,6 +61,8 @@ export default function POSPanel({
   setShowClientDropdown,
   fechaCorte,
   setFechaCorte,
+  fechaInicio,
+  setFechaInicio,
   items,
   loading,
   selectedPlatId,
@@ -177,13 +181,22 @@ export default function POSPanel({
             )}
           </div>
 
-          <Input
-            label="Fecha de Corte"
-            type="date"
-            value={fechaCorte}
-            onChange={(e) => setFechaCorte(e.target.value)}
-            required
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Fecha de Inicio"
+              type="date"
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
+              required
+            />
+            <Input
+              label="Fecha de Corte"
+              type="date"
+              value={fechaCorte}
+              onChange={(e) => setFechaCorte(e.target.value)}
+              required
+            />
+          </div>
 
           {/* Agregar pantallas */}
           <div className="bg-slate-955/40 p-4 rounded-xl border border-slate-850 space-y-4">
@@ -216,7 +229,10 @@ export default function POSPanel({
                 label="Precio Sugerido Venta"
                 type="number"
                 value={selectedPrecio}
-                onChange={(e) => setSelectedPrecio(parseFloat(e.target.value) || 0)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedPrecio(val === "" ? "" : parseFloat(val) || 0);
+                }}
                 min="0"
               />
 
@@ -334,7 +350,10 @@ export default function POSPanel({
                     <input
                       type="number"
                       value={item.precio_aplicado}
-                      onChange={(e) => handleEditItemPrice(index, parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleEditItemPrice(index, val === "" ? "" : parseFloat(val) || 0);
+                      }}
                       className="w-20 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-right text-slate-200 font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
                     />
                     <button
@@ -358,7 +377,10 @@ export default function POSPanel({
                     <input
                       type="number"
                       value={comboTotalPrice}
-                      onChange={(e) => handleComboTotalPriceChange(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleComboTotalPriceChange(val === "" ? "" : parseFloat(val) || 0);
+                      }}
                       className="w-24 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-right text-slate-200 font-bold focus:outline-none focus:ring-1 focus:ring-cyan-500/40"
                     />
                   </div>

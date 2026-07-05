@@ -23,6 +23,7 @@ interface HistorialPanelProps {
   setExpandedSaleId: (val: number | null) => void;
   onOpenGarantiaModal: (detail: any) => void;
   onOpenRenovacionModal: (sale: any) => void;
+  onConfirmarPago: (ventaId: number) => Promise<void>;
 }
 
 export default function HistorialPanel({
@@ -38,7 +39,8 @@ export default function HistorialPanel({
   expandedSaleId,
   setExpandedSaleId,
   onOpenGarantiaModal,
-  onOpenRenovacionModal
+  onOpenRenovacionModal,
+  onConfirmarPago
 }: HistorialPanelProps) {
   const [showPasswords, setShowPasswords] = useState<{[key: number]: boolean}>({});
   const [waLoading, setWaLoading] = useState<{[key: string]: boolean}>({});
@@ -167,6 +169,25 @@ export default function HistorialPanel({
                       }`}>
                         {diffDays <= 0 ? 'Vencida' : `Faltan ${diffDays} días`}
                       </span>
+                    </div>
+
+                    {/* Botones de Acción Rápida */}
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      {((sale.estado_pago === 'PENDIENTE' || sale.estado_pago === 'PAGO_PARCIAL') && diffDays > 2) ? (
+                        <button
+                          onClick={() => onConfirmarPago(sale.id)}
+                          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[10px] font-bold px-3 py-1.5 rounded-lg border-none cursor-pointer transition-all shadow-sm"
+                        >
+                          Confirmar Pago
+                        </button>
+                      ) : (diffDays <= 2) ? (
+                        <button
+                          onClick={() => onOpenRenovacionModal(sale)}
+                          className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[10px] font-bold px-3 py-1.5 rounded-lg border-none cursor-pointer transition-all shadow-sm"
+                        >
+                          Renovar
+                        </button>
+                      ) : null}
                     </div>
 
                     {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}

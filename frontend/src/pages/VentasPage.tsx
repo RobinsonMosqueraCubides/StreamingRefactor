@@ -23,26 +23,38 @@ export default function VentasPage() {
   const [clienteId, setClienteId] = useState('');
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [fechaInicio, setFechaInicio] = useState(
+    new Date().toISOString().split('T')[0]
+  );
   const [fechaCorte, setFechaCorte] = useState(
     new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]
   );
+
+  // Recalcular la fecha de corte automáticamente al cambiar la fecha de inicio
+  useEffect(() => {
+    if (fechaInicio) {
+      const d = new Date(fechaInicio + 'T00:00:00');
+      d.setMonth(d.getMonth() + 1);
+      setFechaCorte(d.toISOString().split('T')[0]);
+    }
+  }, [fechaInicio]);
   const [items, setItems] = useState<VentaItem[]>([]);
 
   const [selectedPlatId, setSelectedPlatId] = useState('');
   const [tipoUnidad, setTipoUnidad] = useState<'PANTALLA' | 'CUENTA'>('PANTALLA');
-  const [selectedPrecio, setSelectedPrecio] = useState(15000);
+  const [selectedPrecio, setSelectedPrecio] = useState<number | "">(15000);
 
   const [selectedCuentaId, setSelectedCuentaId] = useState('');
   const [cuentaSearchText, setCuentaSearchText] = useState('');
   const [showCuentaDropdown, setShowCuentaDropdown] = useState(false);
 
   const [isComboActive, setIsComboActive] = useState(false);
-  const [comboTotalPrice, setComboTotalPrice] = useState(0);
+  const [comboTotalPrice, setComboTotalPrice] = useState<number | "">(0);
 
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [registeredVenta, setRegisteredVenta] = useState<any>(null);
 
-  const [abonoMonto, setAbonoMonto] = useState(0);
+  const [abonoMonto, setAbonoMonto] = useState<number | "">(0);
   const [abonoEntidad, setAbonoEntidad] = useState('NEQUI');
 
   const [editablePerfiles, setEditablePerfiles] = useState<{
@@ -108,11 +120,44 @@ export default function VentasPage() {
       const clientObj = clientes.find(c => c.id === registeredVenta.cliente_id);
       const defaultUser = clientObj ? clientObj.nombre : 'Usuario';
       
+      // Contar cuántos perfiles pertenecen a cada cuenta madre en esta venta
+      const perfilesPorCuenta: { [key: number]: number } = {};
       registeredVenta.detalles.forEach((det: any) => {
-        const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+        if (det.cuenta_madre_id) {
+          perfilesPorCuenta[det.cuenta_madre_id] = (perfilesPorCuenta[det.cuenta_madre_id] || 0) + 1;
+        }
+      });
+
+      const cuentaContadores: { [key: number]: number } = {};
+      
+      registeredVenta.detalles.forEach((det: any) => {
+        const cmId = det.cuenta_madre_id;
+        const cm = cuentas.find(c => c.id === cmId);
+        
+        let nombreSugerido = defaultUser;
+        let pinSugerido = "";
+        
+        if (cmId) {
+          cuentaContadores[cmId] = (cuentaContadores[cmId] || 0) + 1;
+          const tieneMultiples = perfilesPorCuenta[cmId] > 1;
+          if (tieneMultiples) {
+            nombreSugerido = `${defaultUser} ${cuentaContadores[cmId]}`;
+          }
+          
+          // Es cuenta completa si todos los perfiles de la cuenta madre se vendieron en esta misma orden
+          const esCuentaCompleta = cm ? (perfilesPorCuenta[cmId] === cm.max_perfiles) : false;
+          
+          // Solo sugerimos PIN aleatorio si es pantalla individual (no es cuenta completa)
+          if (!esCuentaCompleta) {
+            pinSugerido = Math.floor(1000 + Math.random() * 9000).toString();
+          }
+        } else {
+          pinSugerido = Math.floor(1000 + Math.random() * 9000).toString();
+        }
+
         initial[det.perfil_id] = {
-          nombre_perfil: defaultUser,
-          pin: randomPin
+          nombre_perfil: nombreSugerido,
+          pin: pinSugerido
         };
       });
       setEditablePerfiles(initial);
@@ -154,10 +199,12 @@ export default function VentasPage() {
     if (!selectedPlatId) return;
     const platIdNum = parseInt(selectedPlatId);
 
+    const priceVal = Number(selectedPrecio) || 0;
+
     const newItem: VentaItem = {
       plataforma_id: platIdNum,
-      precio_original: selectedPrecio,
-      precio_aplicado: selectedPrecio,
+      precio_original: priceVal,
+      precio_aplicado: priceVal,
       tipo_unidad: tipoUnidad,
       is_edited: false,
       cuenta_madre_id: selectedCuentaId ? parseInt(selectedCuentaId) : null
@@ -166,7 +213,8 @@ export default function VentasPage() {
     const nextItems = [...items, newItem];
 
     if (isComboActive) {
-      const newTotal = comboTotalPrice + selectedPrecio;
+      const currentComboTotal = Number(comboTotalPrice) || 0;
+      const newTotal = currentComboTotal + priceVal;
       setComboTotalPrice(newTotal);
 
       const editedItems = nextItems.filter(item => item.is_edited);
@@ -203,7 +251,8 @@ export default function VentasPage() {
         is_edited: false
       })));
     } else if (isComboActive) {
-      const newTotal = Math.max(0, comboTotalPrice - itemToRemove.precio_aplicado);
+      const currentComboTotal = Number(comboTotalPrice) || 0;
+      const newTotal = Math.max(0, currentComboTotal - itemToRemove.precio_aplicado);
       setComboTotalPrice(newTotal);
 
       const editedItems = nextItems.filter(item => item.is_edited);
@@ -231,13 +280,14 @@ export default function VentasPage() {
     }
   };
 
-  const handleComboTotalPriceChange = (newTotal: number) => {
+  const handleComboTotalPriceChange = (newTotal: number | "") => {
     setComboTotalPrice(newTotal);
 
+    const valNumeric = Number(newTotal) || 0;
     const editedItems = items.filter(item => item.is_edited);
     const uneditedItems = items.filter(item => !item.is_edited);
     const sumEdited = editedItems.reduce((acc, curr) => acc + curr.precio_aplicado, 0);
-    const remaining = newTotal - sumEdited;
+    const remaining = valNumeric - sumEdited;
 
     if (uneditedItems.length > 0) {
       const distributedValue = Math.max(0, remaining / uneditedItems.length);
@@ -251,10 +301,11 @@ export default function VentasPage() {
     }
   };
 
-  const handleEditItemPrice = (index: number, newVal: number) => {
+  const handleEditItemPrice = (index: number, newVal: number | "") => {
+    const numericVal = Number(newVal) || 0;
     const updatedList = items.map((item, idx) => {
       if (idx === index) {
-        return { ...item, precio_aplicado: newVal, is_edited: true };
+        return { ...item, precio_aplicado: numericVal, is_edited: true };
       }
       return item;
     });
@@ -264,12 +315,13 @@ export default function VentasPage() {
       const uneditedItems = updatedList.filter(item => !item.is_edited);
       const sumEdited = editedItems.reduce((acc, curr) => acc + curr.precio_aplicado, 0);
       
-      if (sumEdited > comboTotalPrice || uneditedItems.length === 0) {
+      const currentComboTotal = Number(comboTotalPrice) || 0;
+      if (sumEdited > currentComboTotal || uneditedItems.length === 0) {
         const newTotal = updatedList.reduce((acc, curr) => acc + curr.precio_aplicado, 0);
         setComboTotalPrice(newTotal);
         setItems(updatedList);
       } else {
-        const remaining = comboTotalPrice - sumEdited;
+        const remaining = currentComboTotal - sumEdited;
         const distributedValue = Math.max(0, remaining / uneditedItems.length);
         const finalItems = updatedList.map(item => {
           if (item.is_edited) return item;
@@ -285,8 +337,8 @@ export default function VentasPage() {
     }
   };
 
-  const calculateTotal = () => {
-    if (isComboActive) return comboTotalPrice;
+  const calculateTotal = (): number => {
+    if (isComboActive) return Number(comboTotalPrice) || 0;
     return items.reduce((acc, curr) => acc + curr.precio_aplicado, 0);
   };
 
@@ -348,9 +400,10 @@ export default function VentasPage() {
       });
       await Promise.all(savePromises);
 
-      if (abonoMonto > 0) {
+      const abonoNumeric = Number(abonoMonto) || 0;
+      if (abonoNumeric > 0) {
         await api.post(`/ventas/${registeredVenta.id}/pagos`, {
-          monto: abonoMonto,
+          monto: abonoNumeric,
           entidad: abonoEntidad
         });
       }
@@ -379,6 +432,19 @@ export default function VentasPage() {
       nueva_fecha_corte: nuevaFechaCorte
     });
     fetchSalesHistory();
+  };
+
+  const handleConfirmarPago = async (ventaId: number) => {
+    try {
+      setLoading(true);
+      await api.put(`/ventas/${ventaId}/confirmar-pago`);
+      await fetchSalesHistory();
+      await refreshMetadata();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Error al confirmar el pago.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -430,6 +496,8 @@ export default function VentasPage() {
           setShowClientDropdown={setShowClientDropdown}
           fechaCorte={fechaCorte}
           setFechaCorte={setFechaCorte}
+          fechaInicio={fechaInicio}
+          setFechaInicio={setFechaInicio}
           items={items}
           loading={loading}
           selectedPlatId={selectedPlatId}
@@ -474,6 +542,7 @@ export default function VentasPage() {
             setSelectedSaleToRenew(sale);
             setIsRenovacionOpen(true);
           }}
+          onConfirmarPago={handleConfirmarPago}
         />
       )}
 

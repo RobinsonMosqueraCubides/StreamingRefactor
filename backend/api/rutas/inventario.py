@@ -5,7 +5,7 @@ from typing import List
 from db.database import get_db
 from schemas.inventario_schemas import (
     CredencialCreate, CredencialUpdate, CredencialResponse,
-    CuentaMadreCreate, CuentaMadreUpdate, CuentaMadreResponse,
+    CuentaMadreCreate, CuentaMadreUpdate, CuentaMadreResponse, CuentaMadreRenovar,
     PerfilUpdate, PerfilResponse
 )
 import services.inventario_service as service
@@ -52,6 +52,10 @@ async def create_cuenta_madre(cuenta: CuentaMadreCreate, db: AsyncSession = Depe
 @cuentas_madre_router.put("/{id}", response_model=CuentaMadreResponse)
 async def update_cuenta_madre(id: int, cuenta: CuentaMadreUpdate, db: AsyncSession = Depends(get_db)):
     return await service.update_cuenta_madre(db, id, cuenta)
+
+@cuentas_madre_router.put("/{id}/renovar", response_model=CuentaMadreResponse)
+async def renovar_cuenta_madre(id: int, renovacion: CuentaMadreRenovar, db: AsyncSession = Depends(get_db)):
+    return await service.renovar_cuenta_madre(db, id, renovacion.nueva_fecha_vencimiento)
 
 @cuentas_madre_router.delete("/{id}", response_model=CuentaMadreResponse)
 async def delete_cuenta_madre(id: int, db: AsyncSession = Depends(get_db)):

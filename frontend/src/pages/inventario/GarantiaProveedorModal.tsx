@@ -16,7 +16,7 @@ export default function GarantiaProveedorModal({ isOpen, onClose, selectedCuenta
   const [tipoGarantiaProv, setTipoGarantiaProv] = useState('CAMBIO_CLAVE');
   const [nuevaClaveProv, setNuevaClaveProv] = useState('');
   const [nuevoEmailProv, setNuevoEmailProv] = useState('');
-  const [montoSaldoAFavorProv, setMontoSaldoAFavorProv] = useState(0);
+  const [montoSaldoAFavorProv, setMontoSaldoAFavorProv] = useState<number | "">(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,7 +50,7 @@ export default function GarantiaProveedorModal({ isOpen, onClose, selectedCuenta
     try {
       const payload: any = {
         cuenta_madre_id: selectedCuenta.id,
-        tipo_garantia: tipoGarantiaProv,
+        tipo: tipoGarantiaProv
       };
 
       if (tipoGarantiaProv === 'CAMBIO_CLAVE') {
@@ -59,7 +59,7 @@ export default function GarantiaProveedorModal({ isOpen, onClose, selectedCuenta
         payload.nueva_clave = nuevaClaveProv;
         if (nuevoEmailProv) payload.nuevo_email = nuevoEmailProv;
       } else if (tipoGarantiaProv === 'SALDO_A_FAVOR') {
-        payload.monto_saldo_a_favor = montoSaldoAFavorProv;
+        payload.monto_saldo_a_favor = Number(montoSaldoAFavorProv) || 0;
       }
 
       await onSubmit(payload);
@@ -128,7 +128,10 @@ export default function GarantiaProveedorModal({ isOpen, onClose, selectedCuenta
             label="Monto Saldo a Favor (COP)"
             type="number"
             value={montoSaldoAFavorProv}
-            onChange={(e) => setMontoSaldoAFavorProv(parseFloat(e.target.value) || 0)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setMontoSaldoAFavorProv(val === "" ? "" : parseFloat(val) || 0);
+            }}
             min="0"
             required
           />

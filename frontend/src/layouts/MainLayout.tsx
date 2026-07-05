@@ -1,8 +1,25 @@
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Database, ShoppingCart, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Database, ShoppingCart, Settings, LogOut, Sun, Moon } from 'lucide-react';
 
 export default function MainLayout() {
   const navigate = useNavigate();
+  const [theme, setTheme] = useState<'dark' | 'light'>(
+    (localStorage.getItem('theme') as 'dark' | 'light') || 'dark'
+  );
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'light') {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    } else {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/clientes', label: 'Clientes', icon: Users },
@@ -19,12 +36,21 @@ export default function MainLayout() {
   return (
     <div className="min-h-screen bg-slate-955 text-slate-100 flex flex-col md:flex-row pb-20 md:pb-0">
       {/* Sidebar para pantallas grandes (Desktop) */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 p-6 shrink-0">
-        <div className="mb-8">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-            Streaming ERP
-          </h1>
-          <p className="text-xs text-slate-500">Panel de Control</p>
+      <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 p-6 shrink-0 md:h-screen md:sticky md:top-0 overflow-y-auto">
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              Agaray ERP
+            </h1>
+            <p className="text-xs text-slate-500">Panel de Control</p>
+          </div>
+          <button 
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            className="p-2 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors border-none cursor-pointer"
+            title="Cambiar Tema"
+          >
+            {theme === 'light' ? <Moon className="w-4 h-4 text-slate-600" /> : <Sun className="w-4 h-4 text-amber-400" />}
+          </button>
         </div>
         <nav className="flex flex-col gap-2 flex-grow">
           {navItems.map((item) => {
@@ -93,6 +119,15 @@ export default function MainLayout() {
             </NavLink>
           );
         })}
+        <button
+          onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+          className="flex flex-col items-center gap-1 flex-1 py-1 cursor-pointer border-none bg-transparent text-slate-500"
+        >
+          <div className="p-2 rounded-xl text-slate-500">
+            {theme === 'light' ? <Moon className="w-5 h-5 text-slate-600" /> : <Sun className="w-5 h-5 text-amber-400" />}
+          </div>
+          <span className="text-[10px] text-slate-500">Tema</span>
+        </button>
         <button
           onClick={handleLogout}
           className="flex flex-col items-center gap-1 flex-1 py-1 cursor-pointer border-none bg-transparent text-rose-500"

@@ -25,6 +25,10 @@ async def create_venta(venta: VentaCreate, db: AsyncSession = Depends(get_db)):
 async def renovar_venta(id: int, renovacion: VentaRenovacion, db: AsyncSession = Depends(get_db)):
     return await service.renovar_venta(db, id, renovacion.nueva_fecha_corte)
 
+@ventas_router.put("/{id}/confirmar-pago", response_model=VentaResponse)
+async def confirmar_pago_venta(id: int, db: AsyncSession = Depends(get_db)):
+    return await service.confirmar_pago_completo(db, id)
+
 @ventas_router.get("/{id}/whatsapp-link")
 async def get_whatsapp_link(
     id: int,
