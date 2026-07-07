@@ -6,7 +6,7 @@ import SuccessModal from './ventas/SuccessModal';
 import GarantiaModal from './ventas/GarantiaModal';
 import RenovacionModal from './ventas/RenovacionModal';
 import { ShoppingCart, History } from 'lucide-react';
-import type { VentaItem, CuentaMadre } from '../types';
+import type { VentaItem, CuentaMadre, Venta, VentaDetalle } from '../types';
 import { useMetadata } from '../context/MetadataContext';
 
 export default function VentasPage() {
@@ -52,7 +52,7 @@ export default function VentasPage() {
   const [comboTotalPrice, setComboTotalPrice] = useState<number | "">(0);
 
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
-  const [registeredVenta, setRegisteredVenta] = useState<any>(null);
+  const [registeredVenta, setRegisteredVenta] = useState<Venta | null>(null);
 
   const [abonoMonto, setAbonoMonto] = useState<number | "">(0);
   const [abonoEntidad, setAbonoEntidad] = useState('NEQUI');
@@ -65,18 +65,18 @@ export default function VentasPage() {
   }>({});
 
   // --- HISTORIAL STUFF ---
-  const [sales, setSales] = useState<any[]>([]);
+  const [sales, setSales] = useState<Venta[]>([]);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFilter, setHistoryFilter] = useState<'todos' | 'vence_2_dias' | 'vence_hoy'>('todos');
   const [expandedSaleId, setExpandedSaleId] = useState<number | null>(null);
 
   // --- GARANTIA MODAL STUFF ---
   const [isGarantiaOpen, setIsGarantiaOpen] = useState(false);
-  const [selectedDetail, setSelectedDetail] = useState<any>(null);
+  const [selectedDetail, setSelectedDetail] = useState<VentaDetalle | null>(null);
   
   // --- RENOVACION MODAL STUFF ---
   const [isRenovacionOpen, setIsRenovacionOpen] = useState(false);
-  const [selectedSaleToRenew, setSelectedSaleToRenew] = useState<any>(null);
+  const [selectedSaleToRenew, setSelectedSaleToRenew] = useState<Venta | null>(null);
 
   const fetchSalesHistory = async () => {
     try {
@@ -97,12 +97,29 @@ export default function VentasPage() {
   };
 
   useEffect(() => {
-    fetchSalesHistory();
-    fetchCuentas();
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [salesRes, cuentasRes] = await Promise.all([
+          api.get('/ventas/'),
+          api.get('/cuentas_madre/')
+        ]);
+        setSales(salesRes.data);
+        setCuentas(cuentasRes.data);
+      } catch (err: any) {
+        setError(err.response?.data?.detail || err.message || 'Error al cargar datos.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  useEffect(() => {
     if (plataformas.length > 0 && !selectedPlatId) {
       setSelectedPlatId(String(plataformas[0].id));
     }
-  }, [plataformas]);
+  }, [plataformas, selectedPlatId]);
 
   // Clear errors when active tab changes (UX fix)
   useEffect(() => {

@@ -22,23 +22,23 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
   return (
     <div className="flex flex-col gap-1.5 w-full">
       {label && (
-        <label htmlFor={inputId} className="text-xs font-medium text-slate-400">
+        <label htmlFor={inputId} className="text-xs font-medium text-brand-textMuted">
           {label}
         </label>
       )}
       <div className="relative flex items-center">
         {leftIcon && (
-          <span className="absolute left-3.5 text-slate-500 shrink-0">
+          <span className="absolute left-3.5 text-brand-textMuted shrink-0">
             {leftIcon}
           </span>
         )}
         <input
           id={inputId}
           ref={ref}
-          className={`w-full bg-slate-950/60 border rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all duration-300 disabled:opacity-50
+          className={`w-full bg-brand-primary border rounded-xl py-3 px-3.5 text-sm text-brand-textPrimary placeholder-brand-textMuted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent transition-all duration-200 disabled:opacity-50 min-h-[44px]
             ${leftIcon ? 'pl-10' : ''} 
             ${rightIcon ? 'pr-10' : ''} 
-            ${error ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-800 hover:border-slate-700'} 
+            ${error ? 'border-brand-destructive focus:ring-brand-destructive/20 focus:border-brand-destructive' : 'border-brand-border hover:border-brand-textMuted/40'} 
             ${className}`}
           onClick={(e) => {
             if (props.type === 'date') {
@@ -53,13 +53,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
           {...props}
         />
         {rightIcon && (
-          <span className="absolute right-3.5 text-slate-500 shrink-0">
+          <span className="absolute right-3.5 text-brand-textMuted shrink-0">
             {rightIcon}
           </span>
         )}
       </div>
       {error && (
-        <span className="text-xs text-red-400 font-medium">
+        <span className="text-xs text-brand-destructive font-medium">
           {error}
         </span>
       )}

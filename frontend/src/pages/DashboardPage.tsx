@@ -126,54 +126,62 @@ export default function DashboardPage() {
         <>
           {/* Tarjetas KPI */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 kpi-metrics-grid">
-            <Card hoverEffect className="relative overflow-hidden bg-gradient-to-br from-emerald-500/10 to-slate-900 border-emerald-500/10">
+            <Card hoverEffect className="relative overflow-hidden bg-gradient-to-br from-emerald-500/45 to-emerald-500/5 dark:from-emerald-500/10 dark:to-slate-900 border-emerald-200/50 dark:border-emerald-500/10">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-emerald-400 font-bold uppercase tracking-wider">Ingresos Totales</p>
-                <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg">
+                <p className="text-xs text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wider">Ingresos Totales</p>
+                <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg">
                   <TrendingUp className="w-5 h-5" />
                 </div>
               </div>
-              <h3 className="text-2xl font-extrabold mt-3 text-slate-100">${ingresos.toLocaleString('es-CO')}</h3>
-              <p className="text-[10px] text-slate-450 mt-1">Caja y abonos consolidados</p>
+              <h3 className="text-2xl font-extrabold mt-3 text-black dark:text-slate-100">${ingresos.toLocaleString('es-CO')}</h3>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Caja y abonos consolidados</p>
             </Card>
 
-            <Card hoverEffect className="relative overflow-hidden bg-gradient-to-br from-rose-500/10 to-slate-900 border-rose-500/10">
+            <Card hoverEffect className="relative overflow-hidden bg-gradient-to-br from-rose-500/45 to-rose-500/5 dark:from-rose-500/10 dark:to-slate-900 border-rose-200/50 dark:border-rose-500/10">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-rose-400 font-bold uppercase tracking-wider">Egresos Totales</p>
-                <div className="p-2 bg-rose-500/20 text-rose-400 rounded-lg">
+                <p className="text-xs text-rose-700 dark:text-rose-400 font-bold uppercase tracking-wider">Egresos Totales</p>
+                <div className="p-2 bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-lg">
                   <TrendingDown className="w-5 h-5" />
                 </div>
               </div>
-              <h3 className="text-2xl font-extrabold mt-3 text-slate-100">${egresos.toLocaleString('es-CO')}</h3>
-              <p className="text-[10px] text-slate-450 mt-1">Gastos e inventario comprado</p>
+              <h3 className="text-2xl font-extrabold mt-3 text-black dark:text-slate-100">${egresos.toLocaleString('es-CO')}</h3>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Gastos e inventario comprado</p>
             </Card>
 
-            <Card hoverEffect className={`relative overflow-hidden bg-gradient-to-br border-cyan-500/10 ${balanceNeto >= 0 ? 'from-cyan-500/10 to-slate-900' : 'from-rose-500/10 to-slate-900'}`}>
+            <Card hoverEffect className={`relative overflow-hidden bg-gradient-to-br ${
+              balanceNeto >= 0 
+                ? 'from-blue-500/45 to-blue-500/5 dark:from-cyan-500/10 dark:to-slate-900 border-blue-200/50 dark:border-cyan-500/10' 
+                : 'from-rose-500/45 to-rose-500/5 dark:from-rose-500/10 dark:to-slate-900 border-rose-200/50 dark:border-rose-500/10'
+            }`}>
               <div className="flex items-center justify-between">
-                <p className="text-xs text-cyan-400 font-bold uppercase tracking-wider">Balance de Caja</p>
-                <div className="p-2 bg-cyan-500/20 text-cyan-400 rounded-lg">
+                <p className={`text-xs font-bold uppercase tracking-wider ${balanceNeto >= 0 ? 'text-blue-700 dark:text-cyan-400' : 'text-rose-700 dark:text-rose-400'}`}>Balance de Caja</p>
+                <div className={`p-2 rounded-lg ${
+                  balanceNeto >= 0 
+                    ? 'bg-blue-100 dark:bg-cyan-500/20 text-blue-600 dark:text-cyan-400' 
+                    : 'bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400'
+                }`}>
                   <Wallet className="w-5 h-5" />
                 </div>
               </div>
-              <h3 className="text-2xl font-extrabold mt-3 text-slate-100">${balanceNeto.toLocaleString('es-CO')}</h3>
-              <p className="text-[10px] text-slate-450 mt-1">Utilidad neta actual</p>
+              <h3 className="text-2xl font-extrabold mt-3 text-black dark:text-slate-100">${balanceNeto.toLocaleString('es-CO')}</h3>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Utilidad neta actual</p>
             </Card>
 
-            <Card hoverEffect className="relative overflow-hidden bg-gradient-to-br from-amber-500/10 to-slate-900 border-amber-500/10">
+            <Card hoverEffect className="relative overflow-hidden bg-gradient-to-br from-amber-500/45 to-amber-500/5 dark:from-amber-500/10 dark:to-slate-900 border-amber-200/50 dark:border-amber-500/10">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-amber-400 font-bold uppercase tracking-wider">Por Cobrar</p>
-                <div className="p-2 bg-amber-500/20 text-amber-400 rounded-lg">
+                <p className="text-xs text-amber-700 dark:text-amber-400 font-bold uppercase tracking-wider">Por Cobrar</p>
+                <div className="p-2 bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg">
                   <BarChart3 className="w-5 h-5" />
                 </div>
               </div>
-              <h3 className="text-2xl font-extrabold mt-3 text-slate-100">${cuentasPorCobrar.toLocaleString('es-CO')}</h3>
-              <p className="text-[10px] text-slate-450 mt-1">Suscripciones sin liquidar</p>
+              <h3 className="text-2xl font-extrabold mt-3 text-black dark:text-slate-100">${cuentasPorCobrar.toLocaleString('es-CO')}</h3>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Suscripciones sin liquidar</p>
             </Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Registro de Gastos Manuales */}
-            <Card className="bg-slate-900/40 space-y-4">
+            <Card className="bg-[#ffedd5] dark:bg-slate-900/40 space-y-4">
               <h2 className="text-lg font-bold text-slate-200 flex items-center gap-2">
                 <Plus className="w-5 h-5 text-rose-400" /> Registrar Gasto Rápido
               </h2>
@@ -218,17 +226,17 @@ export default function DashboardPage() {
                   required
                 />
 
-                <Button type="submit" variant="danger" className="w-full">
+                <Button type="submit" className="w-full !bg-red-600 !text-white hover:!bg-[#ffedd5] hover:!text-black border border-red-600 hover:border-orange-300 transition-all duration-200">
                   Registrar Egreso
                 </Button>
               </form>
             </Card>
 
             {/* Listado de Transacciones Recientes */}
-            <Card className="lg:col-span-2 bg-slate-900/40 space-y-4">
+            <Card className="lg:col-span-2 bg-[#ffedd5] dark:bg-slate-900/40 space-y-4">
               <h2 className="text-lg font-bold text-slate-200">Flujo de Caja Reciente</h2>
               
-              <div className="overflow-hidden rounded-xl border border-slate-850/80 bg-slate-950/20 divide-y divide-slate-850">
+              <div className="overflow-hidden rounded-xl border border-slate-850/80 bg-white/60 dark:bg-slate-950/20 divide-y divide-slate-850">
                 {transactions.slice(0, 5).map((trans) => (
                   <div key={trans.id} className="p-4 flex items-center justify-between text-xs sm:text-sm">
                     <div className="flex items-center gap-3">

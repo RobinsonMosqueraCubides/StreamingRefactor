@@ -201,7 +201,7 @@ class PagoVenta(Base):
     venta_id: Mapped[int] = mapped_column(ForeignKey("ventas.id", ondelete="CASCADE"))
     monto: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     entidad: Mapped[EntidadFinanciera] = mapped_column(Enum(EntidadFinanciera, name="entidad_financiera"), nullable=False)
-    fecha: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
     
     # Relationships
     venta: Mapped["Venta"] = relationship(back_populates="pagos")
@@ -216,7 +216,7 @@ class Transaccion(Base):
     monto: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     entidad: Mapped[EntidadFinanciera] = mapped_column(Enum(EntidadFinanciera, name="entidad_financiera"), nullable=False)
     referencia_id: Mapped[Optional[int]] = mapped_column(nullable=True)
-    fecha: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
     
     __table_args__ = (
         CheckConstraint("tipo IN ('INGRESO', 'EGRESO')", name="check_tipo_transaccion"),
@@ -246,7 +246,7 @@ class GarantiaProveedor(Base):
     cuenta_madre_id: Mapped[int] = mapped_column(ForeignKey("cuentas_madre.id", ondelete="CASCADE"))
     tipo_garantia: Mapped[TipoGarantiaProveedor] = mapped_column(Enum(TipoGarantiaProveedor, name="tipo_garantia_proveedor"), nullable=False)
     monto_saldo_a_favor: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
-    fecha: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
     resuelto: Mapped[bool] = mapped_column(default=False)
     
     # Relationships

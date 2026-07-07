@@ -10,9 +10,9 @@ export default function Card({
   hoverEffect = false,
   ...props
 }: CardProps) {
-  const baseStyles = 'bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 shadow-xl transition-all duration-300';
+  const baseStyles = 'bg-brand-secondary/60 backdrop-blur-xl border border-brand-border/80 rounded-2xl p-6 shadow-xl transition-all duration-200';
   const hoverStyles = hoverEffect 
-    ? 'hover:scale-[1.01] hover:border-slate-700/60 hover:shadow-cyan-500/5' 
+    ? 'hover:scale-[1.01] hover:border-brand-accent/60 hover:shadow-brand-accent/5' 
     : '';
 
   return (

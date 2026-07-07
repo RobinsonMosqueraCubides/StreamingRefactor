@@ -47,15 +47,15 @@ export default function MainLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-955 text-slate-100 flex flex-col md:flex-row pb-20 md:pb-0">
+    <div className="min-h-screen bg-brand-primary text-brand-textPrimary flex flex-col md:flex-row pb-20 md:pb-0 font-sans">
       {/* Sidebar para pantallas grandes (Desktop) */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 p-6 shrink-0 md:h-screen md:sticky md:top-0 overflow-y-auto">
+      <aside className="hidden md:flex flex-col w-64 bg-brand-sidebar border-r border-brand-border p-6 shrink-0 md:h-screen md:sticky md:top-0 overflow-y-auto">
         <div className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-brand-accent to-blue-500 bg-clip-text text-transparent font-mono">
               Agaray ERP
             </h1>
-            <p className="text-xs text-slate-500">Panel de Control</p>
+            <p className="text-xs text-brand-textMuted">Panel de Control</p>
           </div>
         </div>
         <nav className="flex flex-col gap-2 flex-grow">
@@ -67,10 +67,10 @@ export default function MainLayout() {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }: { isActive: boolean }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-205 text-left cursor-pointer ${
+                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left cursor-pointer active:scale-98 ${
                     isActive
-                      ? 'bg-cyan-500/10 text-cyan-400 border-l-4 border-cyan-400 font-medium'
-                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                      ? 'bg-brand-accent/15 text-brand-accent border-l-4 border-brand-accent font-medium'
+                      : 'text-brand-textMuted hover:bg-brand-secondary/50 hover:text-brand-textPrimary'
                   }`
                 }
               >
@@ -82,7 +82,7 @@ export default function MainLayout() {
 
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-205 text-left text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 mt-auto cursor-pointer border-none bg-transparent"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left text-brand-destructive hover:bg-brand-destructive/10 hover:text-brand-destructive mt-auto cursor-pointer border-none bg-transparent active:scale-98"
           >
             <LogOut className="w-5 h-5" />
             <span>Cerrar Sesión</span>
@@ -96,7 +96,7 @@ export default function MainLayout() {
       </main>
 
       {/* Bottom Navigation para pantallas móviles */}
-      <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-2xl shadow-lg px-4 py-2 flex justify-between items-center z-50">
+      <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-brand-sidebar/80 backdrop-blur-xl border border-brand-border/80 rounded-2xl shadow-lg px-4 py-2 flex justify-between items-center z-50">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -109,15 +109,15 @@ export default function MainLayout() {
               {({ isActive }: { isActive: boolean }) => (
                 <>
                   <div
-                    className={`p-2 rounded-xl transition-all duration-300 ${
+                    className={`p-2 rounded-xl transition-all duration-300 active:scale-95 ${
                       isActive 
-                        ? 'bg-cyan-500/20 text-cyan-400 scale-110' 
-                        : 'text-slate-500'
+                        ? 'bg-brand-accent/20 text-brand-accent scale-110' 
+                        : 'text-brand-textMuted'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
                   </div>
-                  <span className={`text-[10px] ${isActive ? 'text-cyan-400 font-medium' : 'text-slate-500'}`}>
+                  <span className={`text-[10px] ${isActive ? 'text-brand-accent font-medium' : 'text-brand-textMuted'}`}>
                     {item.label}
                   </span>
                 </>
@@ -127,12 +127,12 @@ export default function MainLayout() {
         })}
         <button
           onClick={handleLogout}
-          className="flex flex-col items-center gap-1 flex-1 py-1 cursor-pointer border-none bg-transparent text-rose-500"
+          className="flex flex-col items-center gap-1 flex-1 py-1 cursor-pointer border-none bg-transparent text-brand-destructive active:scale-95"
         >
-          <div className="p-2 rounded-xl text-rose-500">
+          <div className="p-2 rounded-xl text-brand-destructive">
             <LogOut className="w-5 h-5" />
           </div>
-          <span className="text-[10px] text-rose-500">Cerrar</span>
+          <span className="text-[10px] text-brand-destructive">Cerrar</span>
         </button>
       </nav>
     </div>

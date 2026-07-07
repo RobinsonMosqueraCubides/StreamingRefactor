@@ -25,7 +25,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(({
   return (
     <div className="flex flex-col gap-1.5 w-full">
       {label && (
-        <label htmlFor={selectId} className="text-xs font-medium text-slate-400">
+        <label htmlFor={selectId} className="text-xs font-medium text-brand-textMuted">
           {label}
         </label>
       )}
@@ -33,26 +33,26 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(({
         <select
           id={selectId}
           ref={ref}
-          className={`w-full bg-slate-950/60 border rounded-xl py-2.5 px-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all duration-300 disabled:opacity-50 appearance-none cursor-pointer
-            ${error ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-800 hover:border-slate-700'} 
+          className={`w-full bg-brand-primary border rounded-xl py-3 px-3.5 pr-10 text-sm text-brand-textPrimary placeholder-brand-textMuted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent transition-all duration-200 disabled:opacity-50 appearance-none cursor-pointer min-h-[44px]
+            ${error ? 'border-brand-destructive focus:ring-brand-destructive/20 focus:border-brand-destructive' : 'border-brand-border hover:border-brand-textMuted/40'} 
             ${className}`}
           {...props}
         >
           {options ? options.map((option) => (
-            <option key={option.value} value={option.value} className="bg-slate-900 text-slate-100">
+            <option key={option.value} value={option.value} className="bg-brand-secondary text-brand-textPrimary">
               {option.label}
             </option>
           )) : props.children}
         </select>
         {/* Custom Chevron Icon */}
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-500">
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-brand-textMuted">
           <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
             <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
           </svg>
         </div>
       </div>
       {error && (
-        <span className="text-xs text-red-400 font-medium">
+        <span className="text-xs text-brand-destructive font-medium">
           {error}
         </span>
       )}

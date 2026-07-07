@@ -4,224 +4,214 @@
 
 /* Configuración de Tokens de Color para Agaray ERP (Modo Light y Dark) */
 :root {
-  --bg-app: #fdfaf4;
-  --bg-sidebar: #f7edd9;
-  --bg-card: #f7edd9;       /* Crema suave */
-  --text-primary: #2b2b2b;
-  --text-muted: #6b6b6b;
-  --btn-primary: #8b5fbf;
-  --btn-primary-hover: #7b4faf;
-  --btn-primary-text: #fdfaf4; /* Blanco hueso */
-  --alert-pending: #d4af37;
-  --border-ui: #a8a8a8;
-  --bg-hover: rgba(43, 43, 43, 0.05);
-  --bg-active-nav: rgba(139, 95, 191, 0.15); /* Lavanda 15% */
+  /* Configuración de Tokens de Color para Agaray ERP (Modo Light) */
+  --bg-app: #f1f5f9;           /* Gris Slate 100 - Da estructura y contraste */
+  --bg-sidebar: #f8fafc;       /* Gris Slate 50 - Separa la barra lateral */
+  --bg-card: #ffffff;          /* Blanco puro - Hace que las cards resalten */
+  --text-primary: #0f172a;     /* Slate 900 */
+  --text-muted: #475569;       /* Slate 600 */
+  --btn-primary: #7c3aed;      /* Violeta vibrante */
+  --btn-primary-hover: #6d28d9;/* Violeta oscuro */
+  --btn-primary-text: #ffffff;
+  --alert-pending: #d97706;    /* Ámbar 600 */
+  --border-ui: #e2e8f0;        /* Borde gris slate muy suave */
+  --bg-hover: rgba(15, 23, 42, 0.04);
+  --bg-active-nav: rgba(124, 58, 237, 0.08);
+
+  /* Variables RGB para mapeo dinámico de clases de Tailwind */
+  --slate-50: 248, 250, 252;
+  --slate-100: 15, 23, 42;     /* Invertido: texto dark slate */
+  --slate-200: 30, 41, 59;     /* Invertido: texto slate 800 */
+  --slate-300: 51, 65, 85;     /* Invertido: texto slate 700 */
+  --slate-350: 71, 85, 105;    /* Invertido: texto slate 600 */
+  --slate-400: 71, 85, 105;    /* Invertido: texto slate 600 */
+  --slate-450: 100, 116, 139;  /* Invertido: texto slate 500 */
+  --slate-500: 100, 116, 139;  /* Invertido: slate 500 */
+  --slate-550: 148, 163, 184;  /* Invertido: slate 400 */
+  --slate-600: 148, 163, 184;  /* Invertido: slate 400 */
+  --slate-700: 203, 213, 225;  /* Invertido: slate 300 */
+  --slate-800: 226, 232, 240;  /* Invertido: border slate 200 */
+  --slate-850: 241, 245, 249;  /* Invertido: border slate 100 */
+  --slate-900: 255, 255, 255;  /* Invertido: card background white */
+  --slate-950: 248, 250, 252;  /* Invertido: table/main background slate 50 */
+  --slate-955: 243, 244, 246;  /* Invertido: slate 100 */
+
+  --cyan-50: 240, 249, 255;
+  --cyan-100: 224, 242, 254;
+  --cyan-200: 186, 230, 253;
+  --cyan-300: 125, 211, 252;
+  --cyan-400: 79, 70, 229;     /* Redirigido a Indigo para consistencia */
+  --cyan-500: 67, 56, 202;     /* Redirigido a Indigo 700 */
+  --cyan-600: 79, 70, 229;
+  --cyan-700: 67, 56, 202;
+  --cyan-800: 55, 48, 163;
+  --cyan-900: 49, 46, 129;
+  --cyan-950: 30, 27, 75;
+
+  --emerald-50: 240, 253, 244;
+  --emerald-100: 220, 252, 231;
+  --emerald-200: 187, 247, 208;
+  --emerald-300: 134, 239, 172;
+  --emerald-400: 5, 150, 105;  /* Emerald 600 para alto contraste */
+  --emerald-450: 5, 150, 105;  /* Emerald 600 */
+  --emerald-500: 4, 120, 87;   /* Emerald 700 */
+  --emerald-600: 5, 150, 105;
+  --emerald-700: 4, 120, 87;
+
+  --rose-50: 254, 242, 242;
+  --rose-100: 254, 226, 226;
+  --rose-200: 254, 205, 211;
+  --rose-300: 253, 164, 175;
+  --rose-400: 225, 29, 72;     /* Rose 600 */
+  --rose-500: 190, 18, 60;     /* Rose 700 */
+  --rose-600: 225, 29, 72;
+  --rose-700: 190, 18, 60;
+
+  --amber-50: 254, 252, 232;
+  --amber-100: 254, 249, 195;
+  --amber-200: 253, 230, 138;
+  --amber-300: 252, 211, 77;
+  --amber-400: 217, 119, 6;    /* Amber 600 */
+  --amber-500: 180, 83, 9;     /* Amber 700 */
+  --amber-600: 217, 119, 6;
+  --amber-700: 180, 83, 9;
 }
 
 /* La app inicia en modo oscuro (dark) por defecto */
 html.dark, html:not(.light) {
-  --bg-app: #2b2b2b;
-  --bg-sidebar: #432357; /* Púrpura oscuro */
-  --bg-card: #1c1c1c;    /* Gris oscuro */
-  --text-primary: #fdfaf4; /* Blanco hueso */
-  --text-muted: #a8a8a8;   /* Gris medio */
-  --btn-primary: #a084ca;  /* Lila suave */
-  --btn-primary-hover: #8f73b9;
-  --btn-primary-text: #2b2b2b; /* Texto oscuro sobre lila */
-  --alert-pending: #d4af37;   /* Oro */
-  --border-ui: rgba(141, 141, 146, 0.4); /* #8d8d92 con opacidad */
-  --bg-hover: rgba(253, 250, 244, 0.05);
-  --bg-active-nav: rgba(160, 132, 202, 0.15);
+  --bg-app: #121824;           /* Azul oscuro pizarra */
+  --bg-sidebar: #1e293b;       /* Slate medio */
+  --bg-card: #1e293b;          /* Slate medio */
+  --text-primary: #f8fafc;     /* Blanco pizarra */
+  --text-muted: #94a3b8;       /* Gris azulado pizarra */
+  --btn-primary: #10b981;      /* Esmeralda */
+  --btn-primary-hover: #059669;
+  --btn-primary-text: #ffffff;
+  --alert-pending: #f59e0b;    /* Ámbar */
+  --border-ui: #334155;        /* Slate borde */
+  --bg-hover: rgba(248, 250, 252, 0.05);
+  --bg-active-nav: rgba(16, 185, 129, 0.15);
+
+  /* Variables RGB para mapeo original en Modo Dark */
+  --slate-50: 248, 250, 252;
+  --slate-100: 241, 245, 249;
+  --slate-200: 226, 232, 240;
+  --slate-300: 203, 213, 225;
+  --slate-350: 148, 163, 184;  /* Fallback a 400 */
+  --slate-400: 148, 163, 184;
+  --slate-450: 133, 149, 176;
+  --slate-500: 100, 116, 139;
+  --slate-550: 86, 104, 133;
+  --slate-600: 71, 85, 105;
+  --slate-700: 51, 65, 85;
+  --slate-800: 30, 41, 59;
+  --slate-850: 21, 30, 46;
+  --slate-900: 15, 23, 42;
+  --slate-950: 2, 6, 23;
+  --slate-955: 6, 10, 19;
+
+  --cyan-50: 240, 249, 255;
+  --cyan-100: 224, 242, 254;
+  --cyan-200: 186, 230, 253;
+  --cyan-300: 125, 211, 252;
+  --cyan-400: 34, 211, 238;
+  --cyan-500: 6, 182, 212;
+  --cyan-600: 8, 145, 178;
+  --cyan-700: 14, 116, 144;
+  --cyan-800: 55, 48, 163;
+  --cyan-900: 49, 46, 129;
+  --cyan-950: 8, 51, 68;
+
+  --emerald-50: 240, 253, 244;
+  --emerald-100: 220, 252, 231;
+  --emerald-200: 187, 247, 208;
+  --emerald-300: 134, 239, 172;
+  --emerald-400: 52, 211, 153;
+  --emerald-450: 52, 211, 153;
+  --emerald-500: 16, 185, 129;
+  --emerald-600: 5, 150, 105;
+  --emerald-700: 4, 120, 87;
+
+  --rose-50: 254, 242, 242;
+  --rose-100: 254, 226, 226;
+  --rose-200: 254, 205, 211;
+  --rose-300: 253, 164, 175;
+  --rose-400: 251, 113, 133;
+  --rose-500: 244, 63, 94;
+  --rose-600: 225, 29, 72;
+  --rose-700: 190, 18, 60;
+
+  --amber-50: 254, 252, 232;
+  --amber-100: 254, 249, 195;
+  --amber-200: 253, 230, 138;
+  --amber-300: 252, 211, 77;
+  --amber-400: 251, 191, 36;
+  --amber-500: 245, 158, 11;
+  --amber-600: 217, 119, 6;
+  --amber-700: 180, 83, 9;
 }
 
 /* Reglas Base */
 @layer base {
   body {
     margin: 0;
-    background-color: var(--bg-app) !important;
-    color: var(--text-primary) !important;
-    font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    font-family: 'Fira Sans', ui-sans-serif, system-ui, sans-serif;
     transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* Sidebar */
+  /* Sidebar y Contenedores */
   aside {
-    background-color: var(--bg-sidebar) !important;
-    border-color: var(--border-ui) !important;
+    background-color: var(--bg-sidebar);
+    border-color: var(--border-ui);
     transition: background-color 0.2s ease, border-color 0.2s ease;
   }
 
-  /* Inputs, Selects y Textareas de la App */
+  /* Inputs, Selects y Textareas */
   input, select, textarea {
-    background-color: var(--bg-app) !important; /* #fdfaf4 */
-    color: var(--text-primary) !important;
-    border-color: var(--border-ui) !important;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    border-color: var(--border-ui);
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 0.75rem; /* 12px */
+    padding: 0.625rem 0.875rem;
+    outline: none;
+    transition: all 0.2s ease;
   }
-  
-  html.light input, html.light select, html.light textarea {
-    background-color: #fdfaf4 !important; /* Blanco hueso */
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--btn-primary);
+    box-shadow: 0 0 0 2px var(--bg-active-nav);
   }
 
   input::placeholder {
-    color: var(--text-muted) !important;
+    color: var(--text-muted);
     opacity: 0.6;
   }
 
-  /* Datepickers - Ajustar el color de icono según tema */
+  /* Calendar icon support */
   input[type="date"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
     opacity: 0.7;
     transition: opacity 0.2s;
   }
-}
-
-/* Modificadores globales para adecuar Tailwind a los Tokens */
-@layer components {
-  /* Cards y Contenedores */
-  .bg-slate-900, .bg-slate-955, .bg-slate-950, 
-  .bg-slate-900\/60, .bg-slate-955\/60, .bg-slate-950\/60, .bg-slate-900\/40, .bg-slate-955\/40, .bg-slate-950\/40, 
-  .bg-slate-900\/80, .bg-slate-955\/30, .bg-slate-950\/30, .bg-slate-955\/20, .bg-slate-950\/20, .bg-slate-955\/80, .bg-slate-950\/80, .bg-slate-950\/50, .bg-slate-900\/10 {
-    background-color: var(--bg-card) !important;
-    transition: background-color 0.2s ease;
-  }
-
-  /* Botones principales y acciones (lavanda #8b5fbf / lila #a084ca) */
-  .bg-cyan-500, .hover\:bg-cyan-400:hover, .bg-cyan-600,
-  .bg-emerald-500, .hover\:bg-emerald-400:hover {
-    background-color: var(--btn-primary) !important;
-    color: var(--btn-primary-text) !important;
-  }
   
-  .bg-cyan-550, .hover\:bg-cyan-550:hover {
-    background-color: var(--btn-primary) !important;
-    color: var(--btn-primary-text) !important;
-  }
-
-  .bg-cyan-500:hover, .hover\:bg-cyan-400:hover, .bg-emerald-500:hover, .hover\:bg-emerald-400:hover {
-    background-color: var(--btn-primary-hover) !important;
-  }
-
-  /* Acentos de texto cian/esmeralda */
-  .text-cyan-400, .text-cyan-500, .hover\:text-cyan-400:hover,
-  .text-emerald-400, .text-emerald-500 {
-    color: var(--btn-primary) !important;
-  }
-
-  /* Active states in Navigation menu */
-  .bg-cyan-500\/10, .bg-cyan-500\/20 {
-    background-color: var(--bg-active-nav) !important;
-  }
-  .text-cyan-400 {
-    color: var(--btn-primary) !important;
-  }
-  .border-cyan-400 {
-    border-color: var(--btn-primary) !important;
-  }
-
-  /* Hover states on items/rows */
-  .bg-slate-900\/5, .bg-slate-900\/10, .hover\:bg-slate-900\/10:hover {
-    background-color: var(--bg-hover) !important;
-  }
-
-  /* Bordes generales */
-  .border-slate-800, .border-slate-850, .border-slate-700, .border-slate-800\/80, .border-slate-850\/50 {
-    border-color: var(--border-ui) !important;
-    transition: border-color 0.2s ease;
-  }
-
-  /* Acentos de texto */
-  .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400 {
-    color: var(--text-primary) !important;
-  }
-  .text-slate-500, .text-slate-600 {
-    color: var(--text-muted) !important;
-  }
-
-  /* Estados Pendiente / Alerta de pago */
-  .text-amber-400, .text-amber-500 {
-    color: var(--alert-pending) !important;
-  }
-  .bg-amber-500\/10, .bg-amber-500\/20, .border-amber-500\/20 {
-    border-color: var(--alert-pending) !important;
-  }
-
-  /* Asegurar visibilidad de inputs de fecha según tema */
-  html.light input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: none;
-  }
-  html:not(.light) input[type="date"]::-webkit-calendar-picker-indicator {
+  html.dark input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(1);
   }
+}
 
-  /* --- Overrides Específicos de Modo Claro --- */
-  
-  /* Deshabilitar gradientes en fondo en modo claro */
-  html.light .bg-gradient-to-br,
-  html.light .bg-gradient-to-r,
-  html.light [class*="bg-gradient-to-"] {
-    background-image: none !important;
+/* Clases de componentes y animación reutilizables */
+@layer utilities {
+  .transition-duration-normal {
+    transition-duration: 200ms;
   }
-
-  /* Forzar color lavanda en CTA principales (degradados cian/peligro) */
-  html.light .bg-gradient-to-r.from-cyan-500.to-blue-600,
-  html.light .bg-gradient-to-r.from-red-600.to-rose-700,
-  html.light .bg-gradient-to-r.from-red-550.to-rose-600 {
-    background-color: var(--btn-primary) !important;
-    color: var(--btn-primary-text) !important;
+  .active-scale {
+    transition: transform 0.1s ease;
   }
-  html.light .hover\:from-cyan-400:hover,
-  html.light .hover\:from-red-550:hover,
-  html.light .hover\:to-rose-600:hover {
-    background-color: var(--btn-primary-hover) !important;
-  }
-
-  /* Logo/Brand text color */
-  html.light .bg-clip-text.text-transparent {
-    background-image: none !important;
-    -webkit-background-clip: unset !important;
-    background-clip: unset !important;
-    color: var(--text-primary) !important;
-  }
-
-  /* Tarjetas de Métricas - Textos */
-  html.light .kpi-metrics-grid .text-emerald-400,
-  html.light .kpi-metrics-grid .text-rose-400,
-  html.light .kpi-metrics-grid .text-cyan-400,
-  html.light .kpi-metrics-grid .text-amber-400,
-  html.light .kpi-metrics-grid .text-slate-100,
-  html.light .kpi-metrics-grid .text-slate-200,
-  html.light .kpi-metrics-grid .text-slate-400,
-  html.light .kpi-metrics-grid .text-slate-450 {
-    color: var(--text-primary) !important;
-  }
-
-  /* Iconos de métricas */
-  html.light .kpi-metrics-grid .bg-emerald-500\/20,
-  html.light .kpi-metrics-grid .bg-rose-500\/20,
-  html.light .kpi-metrics-grid .bg-cyan-500\/20,
-  html.light .kpi-metrics-grid .bg-amber-500\/20 {
-    background-color: var(--bg-app) !important;
-    color: var(--text-primary) !important;
-  }
-
-  /* Badge de salud general en cabecera de cliente (Alerta en rojo de alto contraste) */
-  html.light .rounded-full.text-rose-400.bg-rose-500\/10 {
-    color: #ef4444 !important;
-    border-color: rgba(239, 68, 68, 0.25) !important;
-    background-color: rgba(239, 68, 68, 0.1) !important;
-  }
-
-  /* Overrides para evitar fondos oscuros con texto oscuro en componentes internos */
-  html.light .bg-slate-800,
-  html.light .bg-slate-900\/50,
-  html.light .bg-slate-950\/50,
-  html.light .bg-slate-950\/80,
-  html.light .bg-slate-900\/80 {
-    background-color: var(--bg-app) !important;
-  }
-
-  /* Evitar fondos oscuros en inputs de tipo date en modo claro */
-  html.light input[type="date"] {
-    background-color: #fdfaf4 !important;
+  .active-scale:active {
+    transform: scale(0.96);
   }
 }

@@ -240,11 +240,11 @@ export default function ClientesPage() {
           {filteredClientes.map((cliente) => (
             <Card 
               key={cliente.id} 
-              className={`flex flex-col justify-between ${cliente.estado === 'BANEADO' ? 'opacity-60 border-red-900/50 bg-red-950/5' : ''}`}
+              className={`flex flex-col justify-between bg-gradient-to-br from-purple-500/40 to-white/10 dark:from-purple-950/20 dark:to-slate-900 border-purple-200/50 dark:border-slate-800 ${cliente.estado === 'BANEADO' ? 'opacity-60 !border-red-900/50 !from-red-950/10 !to-red-950/5' : ''}`}
             >
               <div>
                 <div className="flex justify-between items-start gap-2">
-                  <h3 className="font-bold text-slate-100 text-lg leading-tight">{cliente.nombre}</h3>
+                  <h3 className="font-bold text-black dark:text-slate-100 text-lg leading-tight">{cliente.nombre}</h3>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
                     cliente.tipo === 'REVENDEDOR' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-800 text-slate-300'
                   }`}>
@@ -261,7 +261,7 @@ export default function ClientesPage() {
                   <p>Días de gracia: <span className="text-slate-200 font-medium">{cliente.dias_gracia_max}</span></p>
                   <p>
                     Estado:{' '}
-                    <span className={`font-semibold ${cliente.estado === 'BANEADO' ? 'text-red-400' : 'text-green-400'}`}>
+                    <span className={`font-semibold ${cliente.estado === 'BANEADO' ? 'text-red-500' : 'text-green-700 dark:text-green-400'}`}>
                       {cliente.estado}
                     </span>
                   </p>
@@ -270,19 +270,21 @@ export default function ClientesPage() {
               
               <div className="flex gap-2 mt-5 border-t border-slate-800/80 pt-4">
                 <Button 
-                  variant="secondary" 
                   size="sm" 
                   leftIcon={<Edit className="w-3.5 h-3.5" />}
-                  className="flex-1"
+                  className="flex-1 !bg-[#8b5fbf] !text-white hover:!bg-[#7a50a9] border-none transition-all duration-200 shadow-sm"
                   onClick={() => handleOpenEdit(cliente)}
                 >
                   Editar
                 </Button>
                 <Button 
-                  variant={cliente.estado === 'BANEADO' ? 'ghost' : 'danger'} 
                   size="sm" 
                   leftIcon={cliente.estado === 'BANEADO' ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldAlert className="w-3.5 h-3.5" />}
-                  className="flex-1"
+                  className={`flex-1 !text-white border-none transition-all duration-200 shadow-sm ${
+                    cliente.estado === 'BANEADO' 
+                      ? '!bg-green-700 hover:!bg-green-800' 
+                      : '!bg-red-600 hover:!bg-red-700'
+                  }`}
                   onClick={() => handleBanToggle(cliente)}
                 >
                   {cliente.estado === 'BANEADO' ? 'Activar' : 'Banear'}
@@ -302,9 +304,9 @@ export default function ClientesPage() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
         >
           {filteredProveedores.map((proveedor) => (
-            <Card key={proveedor.id} className="flex flex-col justify-between">
+            <Card key={proveedor.id} className="flex flex-col justify-between bg-rose-50 dark:bg-slate-900 border-rose-100 dark:border-slate-800">
               <div>
-                <h3 className="font-bold text-slate-100 text-lg leading-tight">{proveedor.nombre}</h3>
+                <h3 className="font-bold text-black dark:text-slate-100 text-lg leading-tight">{proveedor.nombre}</h3>
                 <div className="mt-3 space-y-1.5 text-xs text-slate-400">
                   <p className="flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-slate-500" />
@@ -312,7 +314,7 @@ export default function ClientesPage() {
                   </p>
                   <p>
                     Saldo a favor:{' '}
-                    <span className="text-green-400 font-semibold">
+                    <span className="text-green-700 dark:text-green-400 font-semibold">
                       ${proveedor.saldo_a_favor.toLocaleString('es-CO')} COP
                     </span>
                   </p>
@@ -321,10 +323,9 @@ export default function ClientesPage() {
 
               <div className="flex gap-2 mt-5 border-t border-slate-800/80 pt-4">
                 <Button 
-                  variant="secondary" 
                   size="sm" 
                   leftIcon={<Edit className="w-3.5 h-3.5" />}
-                  className="w-full"
+                  className="w-full !bg-[#db8a9a] !text-black hover:!bg-[#c97888] border-none transition-all duration-200 shadow-sm"
                   onClick={() => handleOpenEdit(proveedor)}
                 >
                   Editar Proveedor

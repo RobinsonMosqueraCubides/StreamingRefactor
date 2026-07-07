@@ -56,8 +56,10 @@ export default function InventarioPage() {
   };
 
   const reloadAll = async () => {
-    await refreshMetadata();
-    await fetchCuentas();
+    await Promise.all([
+      refreshMetadata(),
+      fetchCuentas()
+    ]);
   };
 
   useEffect(() => {
