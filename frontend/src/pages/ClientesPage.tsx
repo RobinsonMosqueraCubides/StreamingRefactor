@@ -10,6 +10,7 @@ import Select from '../components/ui/Select';
 import api from '../api/axios';
 import { Search, UserPlus, Phone, ShieldAlert, ShieldCheck, Edit } from 'lucide-react';
 import type { Cliente, Proveedor } from '../types';
+import { useMetadata } from '../context/MetadataContext';
 
 const actorFormSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -22,6 +23,7 @@ const actorFormSchema = z.object({
 type ActorFormValues = z.infer<typeof actorFormSchema>;
 
 export default function ClientesPage() {
+  const { refreshMetadata } = useMetadata();
   const [activeTab, setActiveTab] = useState<'clientes' | 'proveedores'>('clientes');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -121,7 +123,8 @@ export default function ClientesPage() {
         } else if (selectedActorId !== null) {
           await api.put(`/clientes/${selectedActorId}`, payload);
         }
-        fetchClientes();
+        await fetchClientes();
+        await refreshMetadata();
       } else {
         const payload = {
           nombre: data.nombre,
@@ -133,7 +136,8 @@ export default function ClientesPage() {
         } else if (selectedActorId !== null) {
           await api.put(`/proveedores/${selectedActorId}`, payload);
         }
-        fetchProveedores();
+        await fetchProveedores();
+        await refreshMetadata();
       }
       setIsModalOpen(false);
     } catch (err: any) {
@@ -154,7 +158,8 @@ export default function ClientesPage() {
       } else {
         await api.put(`/clientes/${cliente.id}/ban`);
       }
-      fetchClientes();
+      await fetchClientes();
+      await refreshMetadata();
     } catch (err: unknown) {
       alert('Error al cambiar el estado del cliente');
     }

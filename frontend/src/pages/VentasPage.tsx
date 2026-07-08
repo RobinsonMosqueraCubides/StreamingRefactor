@@ -38,6 +38,11 @@ export default function VentasPage() {
       setFechaCorte(d.toISOString().split('T')[0]);
     }
   }, [fechaInicio]);
+
+  // Cargar metadatos frescos al montar la vista de ventas
+  useEffect(() => {
+    refreshMetadata();
+  }, []);
   const [items, setItems] = useState<VentaItem[]>([]);
 
   const [selectedPlatId, setSelectedPlatId] = useState('');
