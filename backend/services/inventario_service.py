@@ -124,8 +124,6 @@ async def create_cuenta_madre(db: AsyncSession, cuenta: CuentaMadreCreate):
             tipo=TipoTransaccion.EGRESO,
             categoria="COMPRA_CUENTA",
             monto=cuenta.precio_compra,
-            entity_financiera=None,  # Esperar... wait, in original code it is `entidad` but wait! Let's check what it was:
-            # wait, let's view line 145: "entidad=cuenta.entidad_pago"
             entidad=cuenta.entidad_pago,
             referencia_id=db_cuenta.id
         )
