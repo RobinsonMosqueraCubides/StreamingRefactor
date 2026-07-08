@@ -38,6 +38,9 @@ export default function CuentaMadreModal({
   );
   const [formEntidadPago, setFormEntidadPago] = useState('NEQUI');
   const [formEstado, setFormEstado] = useState('ACTIVA');
+  const [editCredEmail, setEditCredEmail] = useState('');
+  const [editCredPassword, setEditCredPassword] = useState('');
+  const [showEditCredPassword, setShowEditCredPassword] = useState(false);
 
   // Hot creates
   const [createNewCred, setCreateNewCred] = useState(false);
@@ -67,6 +70,16 @@ export default function CuentaMadreModal({
         setFormFechaVencimiento(cuentaAEditar.fecha_vencimiento);
         setFormEstado(cuentaAEditar.estado);
         setFormEntidadPago('NEQUI');
+
+        const currentCred = credenciales.find(c => c.id === cuentaAEditar.credencial_id);
+        if (currentCred) {
+          setEditCredEmail(currentCred.email);
+          setEditCredPassword(currentCred.password || '');
+        } else {
+          setEditCredEmail('');
+          setEditCredPassword('');
+        }
+        setShowEditCredPassword(false);
       } else {
         if (proveedores.length > 0) setFormProveedorId(String(proveedores[0].id));
         if (plataformas.length > 0) setFormPlataformaId(String(plataformas[0].id));
@@ -78,6 +91,9 @@ export default function CuentaMadreModal({
         setFormFechaVencimiento(new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]);
         setFormEntidadPago('NEQUI');
         setFormEstado('ACTIVA');
+        setEditCredEmail('');
+        setEditCredPassword('');
+        setShowEditCredPassword(false);
       }
 
       setCreateNewCred(false);
@@ -173,6 +189,13 @@ export default function CuentaMadreModal({
       };
 
       if (cuentaAEditar) {
+        // 1. Actualizar primero la credencial asociada
+        await api.put(`/credenciales/${cuentaAEditar.credencial_id}`, {
+          email: editCredEmail,
+          password: editCredPassword,
+        });
+
+        // 2. Actualizar la cuenta madre
         await api.put(`/cuentas_madre/${cuentaAEditar.id}`, payload);
       } else {
         payload.entidad_pago = formEntidadPago;
@@ -277,59 +300,92 @@ export default function CuentaMadreModal({
         </div>
 
         {/* CREDENCIALES (CUENTA) */}
-        <div className="bg-slate-955/40 p-3 rounded-xl border border-slate-850 space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Credenciales de Acceso</span>
-            <button
-              type="button"
-              onClick={() => setCreateNewCred(!createNewCred)}
-              className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 focus:outline-none flex items-center gap-1 cursor-pointer bg-transparent border-none"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              {createNewCred ? 'Seleccionar Existente' : 'Crear Nueva'}
-            </button>
-          </div>
-
-          {createNewCred ? (
+        {cuentaAEditar ? (
+          <div className="bg-slate-955/40 p-3 rounded-xl border border-slate-850 space-y-3">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Credenciales de Acceso</span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 label="Usuario (Email)"
                 placeholder="ejemplo@gmail.com"
                 type="email"
-                value={newCredEmail}
-                onChange={(e) => setNewCredEmail(e.target.value)}
+                value={editCredEmail}
+                onChange={(e) => setEditCredEmail(e.target.value)}
                 required
               />
               <div className="relative">
                 <Input
                   label="Contraseña"
                   placeholder="••••••••"
-                  type={showCredPassword ? 'text' : 'password'}
-                  value={newCredPassword}
-                  onChange={(e) => setNewCredPassword(e.target.value)}
+                  type={showEditCredPassword ? 'text' : 'password'}
+                  value={editCredPassword}
+                  onChange={(e) => setEditCredPassword(e.target.value)}
                   required
                 />
                 <button
                   type="button"
-                  onClick={() => setShowCredPassword(!showCredPassword)}
+                  onClick={() => setShowEditCredPassword(!showEditCredPassword)}
                   className="absolute right-2.5 top-8.5 text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-none"
                 >
-                  {showCredPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showEditCredPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-          ) : (
-            <Select
-              label="Seleccionar Credencial"
-              value={formCredencialId}
-              onChange={(e) => setFormCredencialId(e.target.value)}
-            >
-              {credenciales.map((c) => (
-                <option key={c.id} value={c.id}>{c.email}</option>
-              ))}
-            </Select>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="bg-slate-955/40 p-3 rounded-xl border border-slate-850 space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Credenciales de Acceso</span>
+              <button
+                type="button"
+                onClick={() => setCreateNewCred(!createNewCred)}
+                className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 focus:outline-none flex items-center gap-1 cursor-pointer bg-transparent border-none"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {createNewCred ? 'Seleccionar Existente' : 'Crear Nueva'}
+              </button>
+            </div>
+
+            {createNewCred ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Usuario (Email)"
+                  placeholder="ejemplo@gmail.com"
+                  type="email"
+                  value={newCredEmail}
+                  onChange={(e) => setNewCredEmail(e.target.value)}
+                  required
+                />
+                <div className="relative">
+                  <Input
+                    label="Contraseña"
+                    placeholder="••••••••"
+                    type={showCredPassword ? 'text' : 'password'}
+                    value={newCredPassword}
+                    onChange={(e) => setNewCredPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCredPassword(!showCredPassword)}
+                    className="absolute right-2.5 top-8.5 text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-none"
+                  >
+                    {showCredPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Select
+                label="Seleccionar Credencial"
+                value={formCredencialId}
+                onChange={(e) => setFormCredencialId(e.target.value)}
+              >
+                {credenciales.map((c) => (
+                  <option key={c.id} value={c.id}>{c.email}</option>
+                ))}
+              </Select>
+            )}
+          </div>
+        )}
 
         {/* METADATOS CUENTA MADRE */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
