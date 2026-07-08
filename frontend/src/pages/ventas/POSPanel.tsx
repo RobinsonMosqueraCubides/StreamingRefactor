@@ -47,6 +47,7 @@ interface POSPanelProps {
   handleComboTotalPriceChange: (val: number | "") => void;
   handleEditItemPrice: (index: number, newVal: number | "") => void;
   calculateTotal: () => number;
+  onOpenAddClient: () => void;
 }
 
 export default function POSPanel({
@@ -85,7 +86,8 @@ export default function POSPanel({
   handleToggleCombo,
   handleComboTotalPriceChange,
   handleEditItemPrice,
-  calculateTotal
+  calculateTotal,
+  onOpenAddClient
 }: POSPanelProps) {
 
   const getProveedorName = (provId: number) => {
@@ -157,8 +159,17 @@ export default function POSPanel({
         <form onSubmit={onProcessSale} className="space-y-4">
           {/* Buscador de clientes */}
           <div className="relative">
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-xs font-medium text-slate-400">Buscar Cliente</label>
+              <button
+                type="button"
+                onClick={onOpenAddClient}
+                className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 focus:outline-none flex items-center gap-1 cursor-pointer bg-transparent border-none animate-pulse-subtle"
+              >
+                <Plus className="w-3.5 h-3.5" /> Registrar Cliente
+              </button>
+            </div>
             <Input
-              label="Buscar Cliente"
               placeholder="Escribe el nombre o teléfono del cliente..."
               value={clienteSearch}
               onChange={(e) => {

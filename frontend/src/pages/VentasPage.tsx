@@ -8,6 +8,7 @@ import RenovacionModal from './ventas/RenovacionModal';
 import { ShoppingCart, History } from 'lucide-react';
 import type { VentaItem, CuentaMadre, Venta, VentaDetalle } from '../types';
 import { useMetadata } from '../context/MetadataContext';
+import ClienteRapidoModal from './ventas/ClienteRapidoModal';
 
 export default function VentasPage() {
   const { 
@@ -58,6 +59,7 @@ export default function VentasPage() {
 
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [registeredVenta, setRegisteredVenta] = useState<Venta | null>(null);
+  const [isAddClientOpen, setIsAddClientOpen] = useState(false);
 
   const [abonoMonto, setAbonoMonto] = useState<number | "">(0);
   const [abonoEntidad, setAbonoEntidad] = useState('NEQUI');
@@ -542,6 +544,7 @@ export default function VentasPage() {
           handleComboTotalPriceChange={handleComboTotalPriceChange}
           handleEditItemPrice={handleEditItemPrice}
           calculateTotal={calculateTotal}
+          onOpenAddClient={() => setIsAddClientOpen(true)}
         />
       ) : (
         <HistorialPanel
@@ -604,6 +607,16 @@ export default function VentasPage() {
         onClose={() => setIsRenovacionOpen(false)}
         selectedSale={selectedSaleToRenew}
         onSubmit={handleApplyRenovacion}
+      />
+
+      {/* Cliente Rapido Modal */}
+      <ClienteRapidoModal
+        isOpen={isAddClientOpen}
+        onClose={() => setIsAddClientOpen(false)}
+        onSuccess={(newClient) => {
+          setClienteId(String(newClient.id));
+          setClienteSearch(newClient.nombre);
+        }}
       />
     </div>
   );

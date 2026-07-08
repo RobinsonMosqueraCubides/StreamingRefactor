@@ -43,6 +43,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
   id,
   type,
   placeholder,
+  value,
+  onChange,
   ...props
 }, ref) => {
   const generatedId = useId();
@@ -53,11 +55,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
   const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isDateType && props.value !== undefined) {
-      const propStr = String(props.value);
+    if (isDateType && value !== undefined) {
+      const propStr = String(value);
       setDisplayVal(toDisplayFormat(propStr));
     }
-  }, [props.value, isDateType]);
+  }, [value, isDateType]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
@@ -71,7 +73,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
 
     const isoVal = toIsoFormat(val);
 
-    if (props.onChange) {
+    if (onChange) {
       const simulatedEvent = {
         ...e,
         target: {
@@ -80,7 +82,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
           name: props.name || ''
         }
       } as unknown as React.ChangeEvent<HTMLInputElement>;
-      props.onChange(simulatedEvent);
+      onChange(simulatedEvent);
     }
   };
 
@@ -89,7 +91,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
     if (isoVal) {
       const formatted = toDisplayFormat(isoVal);
       setDisplayVal(formatted);
-      if (props.onChange) {
+      if (onChange) {
         const simulatedEvent = {
           ...e,
           target: {
@@ -98,7 +100,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
             name: props.name || ''
           }
         } as unknown as React.ChangeEvent<HTMLInputElement>;
-        props.onChange(simulatedEvent);
+        onChange(simulatedEvent);
       }
     }
   };
@@ -148,8 +150,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
           ref={ref}
           type={actualType}
           placeholder={actualPlaceholder}
-          value={isDateType ? displayVal : props.value}
-          onChange={isDateType ? handleTextChange : props.onChange}
+          value={isDateType ? displayVal : value}
+          onChange={isDateType ? handleTextChange : onChange}
           className={`w-full bg-brand-primary border rounded-xl py-3 px-3.5 text-sm text-brand-textPrimary placeholder-brand-textMuted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent transition-all duration-200 disabled:opacity-50 min-h-[44px]
             ${leftIcon ? 'pl-10' : ''} 
             ${hasRightIcon ? 'pr-10' : ''} 
