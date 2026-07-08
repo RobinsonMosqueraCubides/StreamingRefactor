@@ -1,5 +1,5 @@
-import React, { forwardRef, useId, useState } from 'react';
-import { Calendar, Keyboard } from 'lucide-react';
+import React, { forwardRef, useId, useState, useEffect, useRef } from 'react';
+import { Calendar } from 'lucide-react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -7,6 +7,32 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
 }
+
+// Convert YYYY-MM-DD to DD/MM/YYYY
+const toDisplayFormat = (val: string): string => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    const [year, month, day] = val.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  return val;
+};
+
+// Convert DD/MM/YYYY to YYYY-MM-DD
+const toIsoFormat = (val: string): string => {
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+    const [day, month, year] = val.split('/');
+    return `${year}-${month}-${day}`;
+  }
+  return val;
+};
+
+const formatAsDateMask = (val: string) => {
+  const clean = val.replace(/\D/g, '');
+  if (clean.length === 0) return '';
+  if (clean.length <= 2) return clean;
+  if (clean.length <= 4) return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+  return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4, 8)}`;
+};
 
 const Input = forwardRef<HTMLInputElement, InputProps>(({
   label,
@@ -23,30 +49,85 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
   const inputId = id || generatedId;
 
   const isDateType = type === 'date';
-  const [isManualDate, setIsManualDate] = useState(false);
+  const [displayVal, setDisplayVal] = useState('');
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
-  const actualType = isDateType ? (isManualDate ? 'text' : 'date') : type;
-  const actualPlaceholder = isDateType && isManualDate ? (placeholder || 'AAAA-MM-DD') : placeholder;
+  useEffect(() => {
+    if (isDateType && props.value !== undefined) {
+      const propStr = String(props.value);
+      setDisplayVal(toDisplayFormat(propStr));
+    }
+  }, [props.value, isDateType]);
 
-  const toggleDateButton = isDateType ? (
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    const isAdding = val.length > displayVal.length;
+
+    if (isAdding) {
+      val = formatAsDateMask(val);
+    }
+
+    setDisplayVal(val);
+
+    const isoVal = toIsoFormat(val);
+
+    if (props.onChange) {
+      const simulatedEvent = {
+        ...e,
+        target: {
+          ...e.target,
+          value: isoVal,
+          name: props.name || ''
+        }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      props.onChange(simulatedEvent);
+    }
+  };
+
+  const handleHiddenDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isoVal = e.target.value;
+    if (isoVal) {
+      const formatted = toDisplayFormat(isoVal);
+      setDisplayVal(formatted);
+      if (props.onChange) {
+        const simulatedEvent = {
+          ...e,
+          target: {
+            ...e.target,
+            value: isoVal,
+            name: props.name || ''
+          }
+        } as unknown as React.ChangeEvent<HTMLInputElement>;
+        props.onChange(simulatedEvent);
+      }
+    }
+  };
+
+  // Sync hidden picker value
+  const currentIsoVal = toIsoFormat(displayVal);
+  const hiddenInputValue = /^\d{4}-\d{2}-\d{2}$/.test(currentIsoVal) ? currentIsoVal : '';
+
+  const calendarButton = isDateType ? (
     <button
       type="button"
       tabIndex={-1}
       onClick={(e) => {
         e.stopPropagation();
-        setIsManualDate(!isManualDate);
+        try {
+          hiddenInputRef.current?.showPicker();
+        } catch (err) {
+          // Fallback
+        }
       }}
-      className="absolute right-3.5 p-1 rounded-lg text-brand-textMuted hover:bg-brand-border/30 hover:text-brand-textPrimary transition-colors focus:outline-none focus:ring-1 focus:ring-brand-accent/30 flex items-center justify-center"
-      title={isManualDate ? "Seleccionar desde calendario" : "Escribir fecha manualmente"}
+      className="absolute right-3.5 p-1 rounded-lg text-brand-textMuted hover:bg-brand-border/30 hover:text-brand-textPrimary transition-colors focus:outline-none focus:ring-1 focus:ring-brand-accent/30 flex items-center justify-center cursor-pointer"
+      title="Seleccionar desde calendario"
     >
-      {isManualDate ? (
-        <Calendar className="w-4 h-4" />
-      ) : (
-        <Keyboard className="w-4 h-4" />
-      )}
+      <Calendar className="w-4 h-4" />
     </button>
   ) : null;
 
+  const actualType = isDateType ? 'text' : type;
+  const actualPlaceholder = isDateType ? (placeholder || 'DD/MM/AAAA') : placeholder;
   const hasRightIcon = !!rightIcon || isDateType;
 
   return (
@@ -67,21 +148,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
           ref={ref}
           type={actualType}
           placeholder={actualPlaceholder}
+          value={isDateType ? displayVal : props.value}
+          onChange={isDateType ? handleTextChange : props.onChange}
           className={`w-full bg-brand-primary border rounded-xl py-3 px-3.5 text-sm text-brand-textPrimary placeholder-brand-textMuted/60 focus:outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent transition-all duration-200 disabled:opacity-50 min-h-[44px]
             ${leftIcon ? 'pl-10' : ''} 
             ${hasRightIcon ? 'pr-10' : ''} 
             ${error ? 'border-brand-destructive focus:ring-brand-destructive/20 focus:border-brand-destructive' : 'border-brand-border hover:border-brand-textMuted/40'} 
             ${className}`}
-          onClick={(e) => {
-            if (actualType === 'date') {
-              try {
-                e.currentTarget.showPicker();
-              } catch (err) {
-                // Fallback silencioso si no es soportado
-              }
-            }
-            if (props.onClick) props.onClick(e);
-          }}
           {...props}
         />
         {rightIcon && !isDateType && (
@@ -89,7 +162,19 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
             {rightIcon}
           </span>
         )}
-        {toggleDateButton}
+        {calendarButton}
+        
+        {/* Hidden picker */}
+        {isDateType && (
+          <input
+            type="date"
+            ref={hiddenInputRef}
+            value={hiddenInputValue}
+            onChange={handleHiddenDateChange}
+            className="absolute w-0 h-0 opacity-0 pointer-events-none"
+            style={{ width: 0, height: 0 }}
+          />
+        )}
       </div>
       {error && (
         <span className="text-xs text-brand-destructive font-medium">

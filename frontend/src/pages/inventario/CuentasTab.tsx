@@ -3,7 +3,7 @@ import Card from '../../components/ui/Card';
 import Select from '../../components/ui/Select';
 import { 
   ChevronDown, ChevronUp, Database, DollarSign, RefreshCw, 
-  AlertTriangle, KeyRound, Eye, EyeOff, Users, Search, X
+  AlertTriangle, KeyRound, Eye, EyeOff, Users, Search, X, Edit
 } from 'lucide-react';
 
 import type { CuentaMadre, Proveedor, Plataforma, Credencial } from '../../types';
@@ -17,6 +17,7 @@ interface CuentasTabProps {
   onToggleExpand: (id: number) => void;
   onOpenProvGarantia: (cuenta: CuentaMadre) => void;
   onOpenRenew: (cuenta: CuentaMadre) => void;
+  onOpenEdit: (cuenta: CuentaMadre) => void;
 }
 
 export default function CuentasTab({
@@ -27,7 +28,8 @@ export default function CuentasTab({
   expandedCuentaId,
   onToggleExpand,
   onOpenProvGarantia,
-  onOpenRenew
+  onOpenRenew,
+  onOpenEdit
 }: CuentasTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPlatformId, setSelectedPlatformId] = useState<number | null>(null);
@@ -343,6 +345,12 @@ export default function CuentasTab({
 
               {/* Acciones de Cuenta Madre */}
               <Card className="bg-slate-900/40 p-3 flex flex-col gap-2 justify-center border-slate-850">
+                <button
+                  onClick={() => onOpenEdit(cuenta)}
+                  className="flex items-center justify-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 px-3 py-2 rounded-xl transition-all cursor-pointer bg-transparent"
+                >
+                  <Edit className="w-3.5 h-3.5" /> Editar Cuenta
+                </button>
                 <button
                   onClick={() => onOpenRenew(cuenta)}
                   className="flex items-center justify-center gap-1.5 text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 px-3 py-2 rounded-xl transition-all cursor-pointer bg-transparent"

@@ -15,6 +15,7 @@ interface CuentaMadreModalProps {
   plataformas: Plataforma[];
   credenciales: Credencial[];
   onSuccess: () => Promise<void>;
+  cuentaAEditar?: CuentaMadre | null;
 }
 
 export default function CuentaMadreModal({
@@ -23,7 +24,8 @@ export default function CuentaMadreModal({
   proveedores,
   plataformas,
   credenciales,
-  onSuccess
+  onSuccess,
+  cuentaAEditar = null
 }: CuentaMadreModalProps) {
   const [formProveedorId, setFormProveedorId] = useState('');
   const [formPlataformaId, setFormPlataformaId] = useState('');
@@ -35,6 +37,7 @@ export default function CuentaMadreModal({
     new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]
   );
   const [formEntidadPago, setFormEntidadPago] = useState('NEQUI');
+  const [formEstado, setFormEstado] = useState('ACTIVA');
 
   // Hot creates
   const [createNewCred, setCreateNewCred] = useState(false);
@@ -54,15 +57,28 @@ export default function CuentaMadreModal({
 
   useEffect(() => {
     if (isOpen) {
-      if (proveedores.length > 0) setFormProveedorId(String(proveedores[0].id));
-      if (plataformas.length > 0) setFormPlataformaId(String(plataformas[0].id));
-      if (credenciales.length > 0) setFormCredencialId(String(credenciales[0].id));
+      if (cuentaAEditar) {
+        setFormProveedorId(String(cuentaAEditar.proveedor_id));
+        setFormPlataformaId(String(cuentaAEditar.plataforma_id));
+        setFormCredencialId(String(cuentaAEditar.credencial_id));
+        setFormMaxPerfiles(cuentaAEditar.max_perfiles);
+        setFormPrecioCompra(Number(cuentaAEditar.precio_compra));
+        setFormFechaCompra(cuentaAEditar.fecha_compra);
+        setFormFechaVencimiento(cuentaAEditar.fecha_vencimiento);
+        setFormEstado(cuentaAEditar.estado);
+        setFormEntidadPago('NEQUI');
+      } else {
+        if (proveedores.length > 0) setFormProveedorId(String(proveedores[0].id));
+        if (plataformas.length > 0) setFormPlataformaId(String(plataformas[0].id));
+        if (credenciales.length > 0) setFormCredencialId(String(credenciales[0].id));
 
-      setFormMaxPerfiles(5);
-      setFormPrecioCompra(30000);
-      setFormFechaCompra(new Date().toISOString().split('T')[0]);
-      setFormFechaVencimiento(new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]);
-      setFormEntidadPago('NEQUI');
+        setFormMaxPerfiles(5);
+        setFormPrecioCompra(30000);
+        setFormFechaCompra(new Date().toISOString().split('T')[0]);
+        setFormFechaVencimiento(new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]);
+        setFormEntidadPago('NEQUI');
+        setFormEstado('ACTIVA');
+      }
 
       setCreateNewCred(false);
       setCreateNewProv(false);
@@ -75,7 +91,7 @@ export default function CuentaMadreModal({
       setError('');
       setShowCredPassword(false);
     }
-  }, [isOpen, proveedores, plataformas, credenciales]);
+  }, [isOpen, proveedores, plataformas, credenciales, cuentaAEditar]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,7 +161,7 @@ export default function CuentaMadreModal({
         return;
       }
 
-      const payload = {
+      const payload: any = {
         proveedor_id: finalProveedorId,
         credencial_id: finalCredencialId,
         plataforma_id: finalPlataformaId,
@@ -153,11 +169,15 @@ export default function CuentaMadreModal({
         precio_compra: Number(formPrecioCompra) || 0,
         fecha_compra: formFechaCompra,
         fecha_vencimiento: formFechaVencimiento,
-        estado: 'ACTIVA',
-        entidad_pago: formEntidadPago,
+        estado: cuentaAEditar ? formEstado : 'ACTIVA',
       };
 
-      await api.post('/cuentas_madre/', payload);
+      if (cuentaAEditar) {
+        await api.put(`/cuentas_madre/${cuentaAEditar.id}`, payload);
+      } else {
+        payload.entidad_pago = formEntidadPago;
+        await api.post('/cuentas_madre/', payload);
+      }
       await onSuccess();
       onClose();
     } catch (err: any) {
@@ -168,7 +188,7 @@ export default function CuentaMadreModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Registrar Nueva Cuenta Madre">
+    <Modal isOpen={isOpen} onClose={onClose} title={cuentaAEditar ? "Editar Cuenta Madre" : "Registrar Nueva Cuenta Madre"}>
       <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
         {error && (
           <div className="flex items-center gap-2 p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs">
@@ -335,17 +355,30 @@ export default function CuentaMadreModal({
             min="0"
             required
           />
-          <Select
-            label="Caja de Pago"
-            value={formEntidadPago}
-            onChange={(e) => setFormEntidadPago(e.target.value)}
-          >
-            <option value="NEQUI">Nequi</option>
-            <option value="DAVIPLATA">Daviplata</option>
-            <option value="BANCOLOMBIA">Bancolombia</option>
-            <option value="NU_BANK">Nu Bank</option>
-            <option value="EFECTIVO">Efectivo</option>
-          </Select>
+          {cuentaAEditar ? (
+            <Select
+              label="Estado de la Cuenta"
+              value={formEstado}
+              onChange={(e) => setFormEstado(e.target.value)}
+            >
+              <option value="ACTIVA">Activa</option>
+              <option value="RENOVADA">Renovada</option>
+              <option value="VENCIDA">Vencida</option>
+              <option value="CAIDA">Caída</option>
+            </Select>
+          ) : (
+            <Select
+              label="Caja de Pago"
+              value={formEntidadPago}
+              onChange={(e) => setFormEntidadPago(e.target.value)}
+            >
+              <option value="NEQUI">Nequi</option>
+              <option value="DAVIPLATA">Daviplata</option>
+              <option value="BANCOLOMBIA">Bancolombia</option>
+              <option value="NU_BANK">Nu Bank</option>
+              <option value="EFECTIVO">Efectivo</option>
+            </Select>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -370,7 +403,7 @@ export default function CuentaMadreModal({
             Cancelar
           </Button>
           <Button type="submit" disabled={loading} className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold">
-            {loading ? 'Registrando...' : 'Registrar Cuenta'}
+            {loading ? (cuentaAEditar ? 'Guardando...' : 'Registrando...') : (cuentaAEditar ? 'Guardar Cambios' : 'Registrar Cuenta')}
           </Button>
         </div>
       </form>

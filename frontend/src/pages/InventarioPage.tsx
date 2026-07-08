@@ -233,7 +233,7 @@ export default function InventarioPage() {
       {activeTab === 'cuentas' && (
         <div className="flex justify-end">
           <Button 
-            onClick={() => setIsCmModalOpen(true)}
+            onClick={() => { setSelectedCuenta(null); setIsCmModalOpen(true); }}
             className="bg-cyan-500 hover:bg-cyan-400 text-slate-955 font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-lg shadow-cyan-500/10"
           >
             <Plus className="w-4 h-4" /> Registrar Cuenta Madre
@@ -257,6 +257,10 @@ export default function InventarioPage() {
           onOpenRenew={(c) => {
             setSelectedCuenta(c);
             setIsRenewOpen(true);
+          }}
+          onOpenEdit={(c) => {
+            setSelectedCuenta(c);
+            setIsCmModalOpen(true);
           }}
         />
       )}
@@ -282,11 +286,15 @@ export default function InventarioPage() {
       {/* REGISTRO CUENTA MADRE MODAL */}
       <CuentaMadreModal
         isOpen={isCmModalOpen}
-        onClose={() => setIsCmModalOpen(false)}
+        onClose={() => {
+          setIsCmModalOpen(false);
+          setSelectedCuenta(null);
+        }}
         proveedores={proveedores}
         plataformas={plataformas}
         credenciales={credenciales}
         onSuccess={reloadAll}
+        cuentaAEditar={selectedCuenta}
       />
 
       {/* GARANTIA PROVEEDOR MODAL */}
