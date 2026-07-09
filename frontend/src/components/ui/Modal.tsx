@@ -7,6 +7,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  size?: 'md' | 'lg' | 'xl';
 }
 
 export default function Modal({
@@ -14,7 +15,8 @@ export default function Modal({
   onClose,
   title,
   children,
-  footer
+  footer,
+  size
 }: ModalProps) {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -45,7 +47,7 @@ export default function Modal({
         role="dialog" 
         aria-modal="true" 
         aria-labelledby="modal-title"
-        className="bg-brand-secondary border border-brand-border rounded-2xl w-full max-w-lg shadow-2xl relative z-10 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200"
+        className={`bg-brand-secondary border border-brand-border rounded-2xl w-full ${size === 'xl' ? 'max-w-3xl' : size === 'lg' ? 'max-w-xl' : 'max-w-lg'} shadow-2xl relative z-10 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200`}
       >
         
         {/* Header */}

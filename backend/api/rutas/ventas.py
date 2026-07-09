@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from db.database import get_db
-from schemas.ventas_schemas import VentaCreate, VentaResponse, VentaRenovacion
+from schemas.ventas_schemas import VentaCreate, VentaResponse, VentaRenovacion, VentaUpdate
 import services.ventas_service as service
 from api.deps import get_current_user
 
@@ -95,4 +95,29 @@ async def get_whatsapp_consolidated(
     """Generar un enlace `wa.me` con el mensaje consolidado que contiene las credenciales de todos los perfiles de la venta."""
     url = await service.generate_whatsapp_consolidated(db, id)
     return {"url": url}
+
+
+@ventas_router.put(
+    "/{id}",
+    response_model=VentaResponse,
+    summary="Actualizar venta",
+    responses={
+        400: {"description": "Datos de actualización inválidos"},
+        404: {"description": "Venta no encontrada"}
+    }
+)
+async def update_venta(id: int, update_data: VentaUpdate, db: AsyncSession = Depends(get_db)):
+    """Actualizar datos generales de una venta (cliente, fecha de corte, monto total, estado de pago)."""
+    return await service.update_venta(db, id, update_data)
+
+
+@ventas_router.delete(
+    "/{id}",
+    summary="Eliminar venta",
+    responses={404: {"description": "Venta no encontrada"}}
+)
+async def delete_venta(id: int, db: AsyncSession = Depends(get_db)):
+    """Eliminar físicamente una venta, liberando perfiles y eliminando sus transacciones de caja asociadas."""
+    await service.delete_venta(db, id)
+    return {"message": "Venta eliminada exitosamente"}
 

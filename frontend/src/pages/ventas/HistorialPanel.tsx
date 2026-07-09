@@ -25,6 +25,8 @@ interface HistorialPanelProps {
   onOpenRenovacionModal: (sale: any) => void;
   onConfirmarPago: (ventaId: number) => Promise<void>;
   onRefreshData?: () => Promise<void>;
+  onOpenEditarModal: (sale: any) => void;
+  onDeleteVenta: (ventaId: number) => Promise<void>;
 }
 
 export default function HistorialPanel({
@@ -40,7 +42,9 @@ export default function HistorialPanel({
   onOpenGarantiaModal,
   onOpenRenovacionModal,
   onConfirmarPago,
-  onRefreshData
+  onRefreshData,
+  onOpenEditarModal,
+  onDeleteVenta
 }: HistorialPanelProps) {
   const [showPasswords, setShowPasswords] = useState<{[key: string]: boolean}>({});
   const [waLoading, setWaLoading] = useState<{[key: string]: boolean}>({});
@@ -192,7 +196,7 @@ export default function HistorialPanel({
     try {
       // 1. Update credential if changed
       if (cred && (editEmail !== cred.email || editPassword !== cred.password)) {
-        await api.put(`/inventario/credenciales/${cred.id}`, {
+        await api.put(`/credenciales/${cred.id}`, {
           email: editEmail,
           password: editPassword
         });
@@ -200,7 +204,7 @@ export default function HistorialPanel({
       
       // 2. Update profile if changed
       if (detail.perfil_id) {
-        await api.put(`/inventario/perfiles/${detail.perfil_id}`, {
+        await api.put(`/perfiles/${detail.perfil_id}`, {
           nombre_perfil: editProfileName,
           pin: editPin || null
         });
@@ -465,8 +469,26 @@ export default function HistorialPanel({
                               ) : null}
 
                               <button
+                                onClick={() => onOpenEditarModal(sale)}
+                                className="text-xs font-bold text-cyan-400 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-500/40 bg-cyan-500/5 px-2 py-1.5 rounded-lg transition-all cursor-pointer select-none"
+                              >
+                                Editar
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`¿Estás seguro de que deseas eliminar la venta #${sale.id}? Esta acción liberará las pantallas/cuentas asignadas y removerá los abonos de caja contable.`)) {
+                                    onDeleteVenta(sale.id);
+                                  }
+                                }}
+                                className="text-xs font-bold text-rose-450 hover:text-rose-350 border border-rose-500/20 hover:border-rose-500/40 bg-rose-500/5 px-2 py-1.5 rounded-lg transition-all cursor-pointer select-none"
+                              >
+                                Eliminar
+                              </button>
+
+                              <button
                                 onClick={() => setShowPasswords(prev => ({ ...prev, [detailKey]: !prev[detailKey] }))}
-                                className="text-xs font-bold text-slate-450 hover:text-slate-200 border border-slate-800 hover:border-slate-700 bg-slate-950/20 px-2 py-1.5 rounded-lg transition-all cursor-pointer select-none"
+                                className="text-xs font-bold text-slate-450 hover:text-slate-200 border border-slate-800 hover:border-slate-700 bg-slate-955/20 px-2 py-1.5 rounded-lg transition-all cursor-pointer select-none"
                               >
                                 {isDetailCredsOpen ? 'Ocultar Accesos' : 'Ver Accesos'}
                               </button>

@@ -3,7 +3,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Plataforma, EstadoCuenta, EstadoPago, PlantillaMensaje, PagoVenta, Transaccion, TipoTransaccion
 from db.database import get_or_404
-from schemas.ventas_schemas import VentaCreate
+from schemas.ventas_schemas import VentaCreate, VentaUpdate
 from core.exceptions import BusinessRuleError
 from decimal import Decimal
 import urllib.parse
@@ -324,6 +324,110 @@ async def confirmar_pago_completo(db: AsyncSession, venta_id: int) -> Venta:
         await db.commit()
         await db.refresh(venta)
         return venta
+    except Exception as e:
+        await db.rollback()
+        raise e
+
+
+async def update_venta(db: AsyncSession, venta_id: int, venta_data: VentaUpdate) -> Venta:
+    db_venta = await get_venta(db, venta_id)
+    if venta_data.cliente_id is not None:
+        db_venta.cliente_id = venta_data.cliente_id
+    if venta_data.fecha_corte is not None:
+        db_venta.fecha_corte = venta_data.fecha_corte
+    if venta_data.monto_total is not None:
+        db_venta.monto_total = venta_data.monto_total
+    if venta_data.estado_pago is not None:
+        db_venta.estado_pago = venta_data.estado_pago
+        
+    if venta_data.detalles is not None:
+        for det_update in venta_data.detalles:
+            db_detail = None
+            for d in db_venta.detalles:
+                if d.id == det_update.id:
+                    db_detail = d
+                    break
+            
+            if db_detail is not None:
+                # Determinar si cambió el perfil o la cuenta
+                new_perfil_id = None if det_update.perfil_id == 0 else det_update.perfil_id
+                
+                profile_changed = (det_update.perfil_id is not None and db_detail.perfil_id != new_perfil_id)
+                account_changed = (det_update.cuenta_madre_id is not None and db_detail.cuenta_madre_id != det_update.cuenta_madre_id)
+                
+                if profile_changed or account_changed:
+                    # 1. Liberar perfil o cuenta anterior
+                    if db_detail.perfil_id is not None:
+                        old_perf = await db.get(Perfil, db_detail.perfil_id)
+                        if old_perf:
+                            old_perf.asignado = False
+                    elif db_detail.cuenta_madre_id is not None:
+                        res_old_perfiles = await db.execute(
+                            select(Perfil).where(Perfil.cuenta_madre_id == db_detail.cuenta_madre_id)
+                        )
+                        for p in res_old_perfiles.scalars().all():
+                            p.asignado = False
+                    
+                    # 2. Aplicar nuevos IDs
+                    if det_update.cuenta_madre_id is not None:
+                        db_detail.cuenta_madre_id = det_update.cuenta_madre_id
+                    if det_update.perfil_id is not None:
+                        db_detail.perfil_id = new_perfil_id
+                    
+                    # 3. Ocupar nuevo perfil o cuenta
+                    if db_detail.perfil_id is not None:
+                        new_perf = await db.get(Perfil, db_detail.perfil_id)
+                        if new_perf:
+                            new_perf.asignado = True
+                    elif db_detail.cuenta_madre_id is not None:
+                        res_new_perfiles = await db.execute(
+                            select(Perfil).where(Perfil.cuenta_madre_id == db_detail.cuenta_madre_id)
+                        )
+                        for p in res_new_perfiles.scalars().all():
+                            p.asignado = True
+                
+                if det_update.precio_aplicado is not None:
+                    db_detail.precio_aplicado = det_update.precio_aplicado
+        
+    try:
+        await db.commit()
+        return await get_venta(db, venta_id)
+    except Exception as e:
+        await db.rollback()
+        raise e
+
+
+async def delete_venta(db: AsyncSession, venta_id: int) -> bool:
+    from sqlalchemy import delete
+    db_venta = await get_venta(db, venta_id)
+    
+    # 1. Liberar perfiles asignados a la venta
+    for detail in db_venta.detalles:
+        if detail.perfil_id is not None:
+            perf = await db.get(Perfil, detail.perfil_id)
+            if perf:
+                perf.asignado = False
+        elif detail.cuenta_madre_id is not None:
+            res_perfiles = await db.execute(
+                select(Perfil).where(Perfil.cuenta_madre_id == detail.cuenta_madre_id)
+            )
+            for p in res_perfiles.scalars().all():
+                p.asignado = False
+                
+    # 2. Eliminar transacciones de caja asociadas
+    await db.execute(
+        delete(Transaccion).where(
+            Transaccion.referencia_id == venta_id,
+            Transaccion.categoria == "PAGO_VENTA"
+        )
+    )
+    
+    # 3. Eliminar la cabecera de la venta (eliminará detalles y pagos en cascada)
+    await db.delete(db_venta)
+    
+    try:
+        await db.commit()
+        return True
     except Exception as e:
         await db.rollback()
         raise e

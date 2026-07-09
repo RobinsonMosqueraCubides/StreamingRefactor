@@ -45,3 +45,19 @@ class VentaResponse(BaseModel):
 
 class VentaRenovacion(BaseModel):
     nueva_fecha_corte: date
+
+
+class VentaDetalleUpdate(BaseModel):
+    id: int
+    cuenta_madre_id: Optional[int] = None
+    perfil_id: Optional[int] = None
+    precio_aplicado: Optional[Decimal] = None
+
+
+class VentaUpdate(BaseModel):
+    cliente_id: Optional[int] = None
+    fecha_corte: Optional[date] = None
+    monto_total: Optional[Decimal] = None
+    estado_pago: Optional[EstadoPago] = None
+    detalles: Optional[List[VentaDetalleUpdate]] = None
+

@@ -191,7 +191,7 @@ class DetalleVenta(Base):
     combo: Mapped[Optional["Combo"]] = relationship(back_populates="detalles_venta")
     cuenta_madre: Mapped[Optional["CuentaMadre"]] = relationship(back_populates="detalles_venta")
     perfil: Mapped[Optional["Perfil"]] = relationship(back_populates="detalles_venta")
-    garantias: Mapped[List["GarantiaCliente"]] = relationship(back_populates="detalle_venta")
+    garantias: Mapped[List["GarantiaCliente"]] = relationship(back_populates="detalle_venta", cascade="all, delete-orphan")
 
 
 class PagoVenta(Base):

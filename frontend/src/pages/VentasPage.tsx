@@ -5,6 +5,7 @@ import HistorialPanel from './ventas/HistorialPanel';
 import SuccessModal from './ventas/SuccessModal';
 import GarantiaModal from './ventas/GarantiaModal';
 import RenovacionModal from './ventas/RenovacionModal';
+import EditarVentaModal from './ventas/EditarVentaModal';
 import { ShoppingCart, History } from 'lucide-react';
 import type { VentaItem, CuentaMadre, Venta, VentaDetalle } from '../types';
 import { useMetadata } from '../context/MetadataContext';
@@ -84,6 +85,10 @@ export default function VentasPage() {
   // --- RENOVACION MODAL STUFF ---
   const [isRenovacionOpen, setIsRenovacionOpen] = useState(false);
   const [selectedSaleToRenew, setSelectedSaleToRenew] = useState<Venta | null>(null);
+
+  // --- EDITAR MODAL STUFF ---
+  const [isEditarOpen, setIsEditarOpen] = useState(false);
+  const [selectedSaleToEdit, setSelectedSaleToEdit] = useState<Venta | null>(null);
 
   const fetchSalesHistory = async () => {
     try {
@@ -471,6 +476,55 @@ export default function VentasPage() {
     }
   };
 
+  const handleUpdateVenta = async (ventaId: number, updateData: any, accessUpdates: any) => {
+    try {
+      setLoading(true);
+      // 1. Update general sale data
+      await api.put(`/ventas/${ventaId}`, updateData);
+
+      // 2. Update credentials/profiles if modified
+      const { credencialesUpdates, perfilesUpdates } = accessUpdates;
+
+      for (const cred of credencialesUpdates) {
+        await api.put(`/credenciales/${cred.id}`, {
+          email: cred.email,
+          password: cred.password
+        });
+      }
+
+      for (const perf of perfilesUpdates) {
+        await api.put(`/perfiles/${perf.id}`, {
+          nombre_perfil: perf.nombre_perfil,
+          pin: perf.pin
+        });
+      }
+
+      // Refresh data
+      await fetchCuentas();
+      await fetchSalesHistory();
+      await refreshMetadata();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'Error al actualizar la transacción.');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteVenta = async (ventaId: number) => {
+    try {
+      setLoading(true);
+      await api.delete(`/ventas/${ventaId}`);
+      await fetchCuentas();
+      await fetchSalesHistory();
+      await refreshMetadata();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'Error al eliminar la transacción.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Selector de Pestañas */}
@@ -572,6 +626,11 @@ export default function VentasPage() {
             await fetchCuentas();
             await fetchSalesHistory();
           }}
+          onOpenEditarModal={(sale) => {
+            setSelectedSaleToEdit(sale);
+            setIsEditarOpen(true);
+          }}
+          onDeleteVenta={handleDeleteVenta}
         />
       )}
 
@@ -617,6 +676,18 @@ export default function VentasPage() {
           setClienteId(String(newClient.id));
           setClienteSearch(newClient.nombre);
         }}
+      />
+
+      {/* Editar Venta Modal */}
+      <EditarVentaModal
+        isOpen={isEditarOpen}
+        onClose={() => setIsEditarOpen(false)}
+        selectedSale={selectedSaleToEdit}
+        clientes={clientes}
+        plataformas={plataformas}
+        cuentas={cuentas}
+        credenciales={credenciales}
+        onSubmit={handleUpdateVenta}
       />
     </div>
   );
