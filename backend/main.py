@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 import time
 import logging
+from contextlib import asynccontextmanager
 
 from core.config import settings
 from core.logging_config import setup_logging
@@ -26,10 +27,37 @@ setup_logging()
 logger = logging.getLogger("api")
 access_logger = logging.getLogger("api.access")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    import os
+    import subprocess
+    import sys
+    logger.info("Ejecutando migraciones de base de datos...")
+    try:
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=backend_dir,
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            logger.info("Migraciones de Alembic aplicadas correctamente.")
+            if result.stdout.strip():
+                logger.info(f"Detalle de migración:\n{result.stdout}")
+        else:
+            logger.error(f"Error al ejecutar migraciones de Alembic:\n{result.stderr}")
+    except Exception as e:
+        logger.error(f"Excepción inesperada al ejecutar migraciones: {e}")
+    yield
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan
 )
+
+
 
 @app.exception_handler(NotFoundError)
 async def not_found_exception_handler(request: Request, exc: NotFoundError):
