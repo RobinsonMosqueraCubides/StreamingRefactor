@@ -369,25 +369,64 @@ export default function HistorialPanel({
                   <div className="divide-y divide-slate-850 bg-slate-950/10 animate-in fade-in duration-200">
                     {clientSales.map((sale, sIdx) => {
                       let platformTitle = '';
-                      const isCombo = sale.detalles.length > 1;
-
                       const getDetailPlatName = (d: any) => {
                         const cm = cuentas.find(c => c.id === d.cuenta_madre_id);
                         return getPlataformaName(d.plataforma_id || (cm ? cm.plataforma_id : 0));
                       };
 
-                      if (sale.detalles.length === 1) {
-                        const d = sale.detalles[0];
+                      // Group details by account to identify true "Cuenta Completa" vs "Pantalla"
+                      const detailsByCuenta: { [key: number]: any[] } = {};
+                      const noCuentaDetails: any[] = [];
+                      
+                      sale.detalles.forEach((d: any) => {
+                        if (d.cuenta_madre_id) {
+                          if (!detailsByCuenta[d.cuenta_madre_id]) {
+                            detailsByCuenta[d.cuenta_madre_id] = [];
+                          }
+                          detailsByCuenta[d.cuenta_madre_id].push(d);
+                        } else {
+                          noCuentaDetails.push(d);
+                        }
+                      });
+
+                      const saleItems: Array<{ type: 'PANTALLA' | 'CUENTA'; label: string }> = [];
+
+                      Object.entries(detailsByCuenta).forEach(([cmIdStr, listDetalles]) => {
+                        const cmId = parseInt(cmIdStr);
+                        const cm = cuentas.find(c => c.id === cmId);
+                        const platName = getDetailPlatName(listDetalles[0]);
+                        const isCuentaCompleta = cm && (listDetalles.length === cm.max_perfiles);
+
+                        if (isCuentaCompleta) {
+                          saleItems.push({
+                            type: 'CUENTA',
+                            label: `${platName} - Cuenta`
+                          });
+                        } else {
+                          listDetalles.forEach(() => {
+                            saleItems.push({
+                              type: 'PANTALLA',
+                              label: `${platName} - Pantalla`
+                            });
+                          });
+                        }
+                      });
+
+                      noCuentaDetails.forEach(d => {
                         const platName = getDetailPlatName(d);
-                        const typeStr = d.perfil_id ? 'Pantalla' : 'Cuenta';
-                        platformTitle = `${platName} - ${typeStr}`;
-                      } else {
-                        const itemsList = sale.detalles.map((d: any) => {
-                          const platName = getDetailPlatName(d);
-                          const typeStr = d.perfil_id ? 'Pantalla' : 'Cuenta';
-                          return `${platName} - ${typeStr}`;
+                        saleItems.push({
+                          type: d.perfil_id ? 'PANTALLA' : 'CUENTA',
+                          label: `${platName} - ${d.perfil_id ? 'Pantalla' : 'Cuenta'}`
                         });
-                        platformTitle = `Combo: ${itemsList.join(' + ')}`;
+                      });
+
+                      const isCombo = saleItems.length > 1;
+                      if (saleItems.length === 1) {
+                        platformTitle = saleItems[0].label;
+                      } else if (saleItems.length > 1) {
+                        platformTitle = `Combo: ${saleItems.map(it => it.label).join(' + ')}`;
+                      } else {
+                        platformTitle = 'Venta Vacía';
                       }
 
                       const detailKey = `sale-${sale.id}`;
@@ -405,23 +444,45 @@ export default function HistorialPanel({
                             
                             {/* Título de la compra (Netflix - Pantalla, Netflix - Cuenta, etc.) */}
                             <div className="flex items-center gap-3 min-w-0 md:w-2/5">
-                              {sale.detalles.length === 1 ? (
-                                renderPlatformLogo(getDetailPlatName(sale.detalles[0]))
-                              ) : (
-                                <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm bg-amber-500/10 text-amber-400 border border-amber-500/30 flex-shrink-0 select-none">
-                                  C
-                                </div>
-                              )}
+                              {(() => {
+                                const tipo = sale.tipo_venta || (isCombo ? 'COMBO' : (saleItems[0]?.type === 'CUENTA' ? 'CUENTA' : 'PANTALLA'));
+                                if (tipo !== 'COMBO' && sale.detalles.length > 0) {
+                                  return renderPlatformLogo(getDetailPlatName(sale.detalles[0]));
+                                } else {
+                                  return (
+                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm bg-amber-500/10 text-amber-400 border border-amber-500/30 flex-shrink-0 select-none">
+                                      C
+                                    </div>
+                                  );
+                                }
+                              })()}
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <p className="text-sm font-bold text-slate-200 truncate">
                                     {platformTitle}
                                   </p>
-                                  {isCombo && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 select-none">
-                                      Combo
-                                    </span>
-                                  )}
+                                  {(() => {
+                                    const tipo = sale.tipo_venta || (isCombo ? 'COMBO' : (saleItems[0]?.type === 'CUENTA' ? 'CUENTA' : 'PANTALLA'));
+                                    if (tipo === 'COMBO') {
+                                      return (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 select-none">
+                                          Combo
+                                        </span>
+                                      );
+                                    } else if (tipo === 'CUENTA') {
+                                      return (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 select-none">
+                                          Cuenta Completa
+                                        </span>
+                                      );
+                                    } else {
+                                      return (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 select-none">
+                                          Pantalla
+                                        </span>
+                                      );
+                                    }
+                                  })()}
                                 </div>
                                 <p className="text-[10px] text-slate-500 font-mono">
                                   Folio Venta: #{sale.id}
@@ -498,184 +559,235 @@ export default function HistorialPanel({
                           {/* Panel de detalles y accesos (Expandible por Venta) */}
                           {isDetailCredsOpen && (
                             <div className="bg-slate-955/40 p-4 rounded-xl border border-slate-850 space-y-4 animate-in slide-in-from-top-1 duration-150">
-                              {sale.detalles.map((detail: any, dIdx: number) => {
-                                const cm = cuentas.find(c => c.id === detail.cuenta_madre_id);
-                                const cred = credenciales.find(c => c.id === cm?.credencial_id);
-                                const detailPlatformName = getDetailPlatName(detail);
+                              {(() => {
+                                // Group details for rendering to collapse full accounts
+                                const detailsByCuentaRender: { [key: number]: any[] } = {};
+                                const noCuentaDetailsRender: any[] = [];
                                 
-                                const detailKeyStr = `detail-${detail.id}`;
-                                const isEditing = editingDetailId === detail.id;
-
-                                let profileUser = cliente.nombre;
-                                let pinVal = 'N/A';
-                                if (cm && cm.perfiles) {
-                                  const matchPerfil = cm.perfiles.find((p: any) => p.id === detail.perfil_id);
-                                  if (matchPerfil) {
-                                    profileUser = matchPerfil.nombre_perfil;
-                                    if (matchPerfil.pin) pinVal = matchPerfil.pin;
+                                sale.detalles.forEach((d: any) => {
+                                  if (d.cuenta_madre_id) {
+                                    if (!detailsByCuentaRender[d.cuenta_madre_id]) {
+                                      detailsByCuentaRender[d.cuenta_madre_id] = [];
+                                    }
+                                    detailsByCuentaRender[d.cuenta_madre_id].push(d);
+                                  } else {
+                                    noCuentaDetailsRender.push(d);
                                   }
-                                }
+                                });
 
-                                const typeTemplate = sale.diffDays <= 0 ? 'corte' : 'cobro';
-                                const waKey = `${detail.id}-${typeTemplate}`;
+                                const renderList: any[] = [];
 
-                                return (
-                                  <div 
-                                    key={detail.id} 
-                                    className={`space-y-3 ${dIdx > 0 ? 'border-t border-slate-800/60 pt-3' : ''}`}
-                                  >
-                                    {/* Nombre de la plataforma del detalle */}
-                                    <div className="flex justify-between items-center">
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-[11px] font-extrabold text-slate-300 tracking-wide uppercase">
-                                          Servicio: {detailPlatformName}
-                                        </p>
-                                        {getTipoUnidadBadge(detail)}
-                                      </div>
-                                      
-                                      {/* Botones de Edición */}
-                                      {!isEditing ? (
-                                        <button
-                                          onClick={() => startEdit(detail, cred, profileUser, pinVal)}
-                                          className="text-[10px] font-black text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer"
-                                        >
-                                          Editar Accesos
-                                        </button>
-                                      ) : (
-                                        <div className="flex gap-2">
+                                Object.entries(detailsByCuentaRender).forEach(([cmIdStr, listDetalles]) => {
+                                  const cmId = parseInt(cmIdStr);
+                                  const cm = cuentas.find(c => c.id === cmId);
+                                  const isCuentaCompleta = cm && (listDetalles.length === cm.max_perfiles);
+
+                                  if (isCuentaCompleta) {
+                                    renderList.push({
+                                      isCuentaCompleta: true,
+                                      // Force perfil_id to null so getTipoUnidadBadge shows "Cuenta Completa" and PIN/profile form fields are skipped
+                                      detail: { ...listDetalles[0], perfil_id: null },
+                                      allDetails: listDetalles
+                                    });
+                                  } else {
+                                    listDetalles.forEach(d => {
+                                      renderList.push({
+                                        isCuentaCompleta: false,
+                                        detail: d,
+                                        allDetails: [d]
+                                      });
+                                    });
+                                  }
+                                });
+
+                                noCuentaDetailsRender.forEach(d => {
+                                  renderList.push({
+                                    isCuentaCompleta: false,
+                                    detail: d,
+                                    allDetails: [d]
+                                  });
+                                });
+
+                                return renderList.map((item: any, dIdx: number) => {
+                                  const detail = item.detail;
+                                  const cm = cuentas.find(c => c.id === detail.cuenta_madre_id);
+                                  const cred = credenciales.find(c => c.id === cm?.credencial_id);
+                                  const detailPlatformName = getDetailPlatName(detail);
+                                  
+                                  const detailKeyStr = `detail-${detail.id}`;
+                                  const isEditing = editingDetailId === detail.id;
+
+                                  let profileUser = cliente.nombre;
+                                  let pinVal = 'N/A';
+                                  if (!item.isCuentaCompleta && cm && cm.perfiles) {
+                                    const matchPerfil = cm.perfiles.find((p: any) => p.id === detail.perfil_id);
+                                    if (matchPerfil) {
+                                      profileUser = matchPerfil.nombre_perfil;
+                                      if (matchPerfil.pin) pinVal = matchPerfil.pin;
+                                    }
+                                  }
+
+                                  const typeTemplate = sale.diffDays <= 0 ? 'corte' : 'cobro';
+                                  const waKey = `${detail.id}-${typeTemplate}`;
+
+                                  return (
+                                    <div 
+                                      key={detail.id} 
+                                      className={`space-y-3 ${dIdx > 0 ? 'border-t border-slate-800/60 pt-3' : ''}`}
+                                    >
+                                      {/* Nombre de la plataforma del detalle */}
+                                      <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-[11px] font-extrabold text-slate-300 tracking-wide uppercase">
+                                            Servicio: {detailPlatformName}
+                                          </p>
+                                          {getTipoUnidadBadge(detail)}
+                                        </div>
+                                        
+                                        {/* Botones de Edición */}
+                                        {!isEditing ? (
                                           <button
-                                            onClick={() => handleSaveAccesses(detail, cred)}
-                                            disabled={saveLoading}
-                                            className="text-[10px] font-black text-emerald-400 hover:text-emerald-350 bg-transparent border-none cursor-pointer disabled:opacity-50"
+                                            onClick={() => startEdit(detail, cred, profileUser, pinVal)}
+                                            className="text-[10px] font-black text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer"
                                           >
-                                            {saveLoading ? 'Guardando...' : 'Guardar'}
+                                            Editar Accesos
                                           </button>
-                                          <button
-                                            onClick={() => setEditingDetailId(null)}
-                                            className="text-[10px] font-bold text-slate-400 hover:text-slate-350 bg-transparent border-none cursor-pointer"
-                                          >
-                                            Cancelar
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Formulario o Visualización de Accesos */}
-                                    {isEditing ? (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-950/20 p-3 rounded-lg border border-slate-850">
-                                        <div>
-                                          <label className="text-[9px] text-slate-500 uppercase block mb-1">Email / Usuario</label>
-                                          <input
-                                            type="text"
-                                            value={editEmail}
-                                            onChange={(e) => setEditEmail(e.target.value)}
-                                            className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none"
-                                          />
-                                        </div>
-                                        <div>
-                                          <label className="text-[9px] text-slate-500 uppercase block mb-1">Contraseña</label>
-                                          <input
-                                            type="text"
-                                            value={editPassword}
-                                            onChange={(e) => setEditPassword(e.target.value)}
-                                            className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none"
-                                          />
-                                        </div>
-                                        {detail.perfil_id ? (
-                                          <>
-                                            <div>
-                                              <label className="text-[9px] text-slate-500 uppercase block mb-1">Nombre Perfil</label>
-                                              <input
-                                                type="text"
-                                                value={editProfileName}
-                                                onChange={(e) => setEditProfileName(e.target.value)}
-                                                className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-sans focus:border-cyan-550 focus:outline-none"
-                                              />
-                                            </div>
-                                            <div>
-                                              <label className="text-[9px] text-slate-500 uppercase block mb-1">PIN</label>
-                                              <input
-                                                type="text"
-                                                value={editPin}
-                                                onChange={(e) => setEditPin(e.target.value)}
-                                                placeholder="Vacío o PIN"
-                                                className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none"
-                                              />
-                                            </div>
-                                          </>
                                         ) : (
-                                          <div className="col-span-2 flex items-center">
-                                            <p className="text-[11px] text-slate-500 italic mt-3">Cuenta Completa (sin perfil individual)</p>
+                                          <div className="flex gap-2">
+                                            <button
+                                              onClick={() => handleSaveAccesses(detail, cred)}
+                                              disabled={saveLoading}
+                                              className="text-[10px] font-black text-emerald-400 hover:text-emerald-350 bg-transparent border-none cursor-pointer disabled:opacity-50"
+                                            >
+                                              {saveLoading ? 'Guardando...' : 'Guardar'}
+                                            </button>
+                                            <button
+                                              onClick={() => setEditingDetailId(null)}
+                                              className="text-[10px] font-bold text-slate-400 hover:text-slate-350 bg-transparent border-none cursor-pointer"
+                                            >
+                                              Cancelar
+                                            </button>
                                           </div>
                                         )}
                                       </div>
-                                    ) : (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-[11px] font-mono text-slate-400 bg-slate-950/30 p-3 rounded-lg border border-slate-850">
-                                        <p className="truncate">Usuario: <strong className="text-slate-200 font-sans select-all">{cred?.email || 'N/A'}</strong></p>
-                                        <p className="flex items-center gap-1.5 truncate">
-                                          Clave: 
-                                          <strong className="text-slate-200 font-sans select-all">
-                                            {showPasswords[`pw-${detailKeyStr}`] ? (cred?.password || 'N/A') : '••••••••'}
-                                          </strong>
-                                          {cred && (
-                                            <button 
-                                              onClick={() => setShowPasswords(prev => ({ ...prev, [`pw-${detailKeyStr}`]: !prev[`pw-${detailKeyStr}`] }))}
-                                              className="text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-none"
-                                              type="button"
-                                            >
-                                              {showPasswords[`pw-${detailKeyStr}`] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                            </button>
-                                          )}
-                                        </p>
-                                        {detail.perfil_id ? (
-                                          <>
-                                            <p className="truncate">Perfil: <strong className="text-slate-200 font-sans select-all">{profileUser}</strong></p>
-                                            <p className="truncate">PIN: <strong className="text-cyan-400 font-sans select-all">{pinVal}</strong></p>
-                                          </>
-                                        ) : (
-                                          <p className="col-span-2 text-sky-400 font-sans font-bold select-none">
-                                            Acceso Total (Cuenta Completa sin límites de perfil)
-                                          </p>
-                                        )}
-                                      </div>
-                                    )}
 
-                                    {/* Botones de acción técnica */}
-                                    <div className="flex flex-col sm:flex-row gap-2 justify-end pt-1">
-                                      {(sale.diffDays === 2 || sale.diffDays <= 0) ? (
-                                        <button
-                                          onClick={() => handleOpenWhatsAppLink(sale.id, detail.id, typeTemplate)}
-                                          disabled={waLoading[waKey]}
-                                          className={`inline-flex items-center justify-center gap-1.5 text-xs font-bold transition-all px-3 py-1.5 rounded-lg border cursor-pointer w-full sm:w-auto ${
-                                            sale.diffDays <= 0 
-                                              ? 'text-rose-400 bg-rose-500/10 border-rose-500/20 hover:bg-rose-500/20' 
-                                              : 'text-amber-400 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20'
-                                          }`}
-                                        >
-                                          <Smartphone className="w-3.5 h-3.5" /> 
-                                          {waLoading[waKey] ? 'Generando...' : (sale.diffDays <= 0 ? 'Notificar Corte' : 'Notificar Cobro')}
-                                        </button>
+                                      {/* Formulario o Visualización de Accesos */}
+                                      {isEditing ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-950/20 p-3 rounded-lg border border-slate-850">
+                                          <div>
+                                            <label className="text-[9px] text-slate-500 uppercase block mb-1">Email / Usuario</label>
+                                            <input
+                                              type="text"
+                                              value={editEmail}
+                                              onChange={(e) => setEditEmail(e.target.value)}
+                                              className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none"
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="text-[9px] text-slate-500 uppercase block mb-1">Contraseña</label>
+                                            <input
+                                              type="text"
+                                              value={editPassword}
+                                              onChange={(e) => setEditPassword(e.target.value)}
+                                              className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none"
+                                            />
+                                          </div>
+                                          {detail.perfil_id ? (
+                                            <>
+                                              <div>
+                                                <label className="text-[9px] text-slate-500 uppercase block mb-1">Nombre Perfil</label>
+                                                <input
+                                                  type="text"
+                                                  value={editProfileName}
+                                                  onChange={(e) => setEditProfileName(e.target.value)}
+                                                  className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-sans focus:border-cyan-550 focus:outline-none"
+                                                />
+                                              </div>
+                                              <div>
+                                                <label className="text-[9px] text-slate-500 uppercase block mb-1">PIN</label>
+                                                <input
+                                                  type="text"
+                                                  value={editPin}
+                                                  onChange={(e) => setEditPin(e.target.value)}
+                                                  placeholder="Vacío o PIN"
+                                                  className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none"
+                                                />
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <div className="col-span-2 flex items-center">
+                                              <p className="text-[11px] text-slate-500 italic mt-3">Cuenta Completa (sin perfil individual)</p>
+                                            </div>
+                                          )}
+                                        </div>
                                       ) : (
-                                        <button
-                                          onClick={() => handleOpenWhatsAppLink(sale.id, detail.id, 'cambio_credenciales')}
-                                          disabled={waLoading[`${detail.id}-cambio_credenciales`]}
-                                          className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg cursor-pointer w-full sm:w-auto"
-                                        >
-                                          <Smartphone className="w-3.5 h-3.5" /> 
-                                          {waLoading[`${detail.id}-cambio_credenciales`] ? 'Generando...' : 'Reenviar Accesos'}
-                                        </button>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-[11px] font-mono text-slate-400 bg-slate-950/30 p-3 rounded-lg border border-slate-850">
+                                          <p className="truncate">Usuario: <strong className="text-slate-200 font-sans select-all">{cred?.email || 'N/A'}</strong></p>
+                                          <p className="flex items-center gap-1.5 truncate">
+                                            Clave: 
+                                            <strong className="text-slate-200 font-sans select-all">
+                                              {showPasswords[`pw-${detailKeyStr}`] ? (cred?.password || 'N/A') : '••••••••'}
+                                            </strong>
+                                            {cred && (
+                                              <button 
+                                                onClick={() => setShowPasswords(prev => ({ ...prev, [`pw-${detailKeyStr}`]: !prev[`pw-${detailKeyStr}`] }))}
+                                                className="text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-none"
+                                                type="button"
+                                              >
+                                                {showPasswords[`pw-${detailKeyStr}`] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                              </button>
+                                            )}
+                                          </p>
+                                          {detail.perfil_id ? (
+                                            <>
+                                              <p className="truncate">Perfil: <strong className="text-slate-200 font-sans select-all">{profileUser}</strong></p>
+                                              <p className="truncate">PIN: <strong className="text-cyan-400 font-sans select-all">{pinVal}</strong></p>
+                                            </>
+                                          ) : (
+                                            <p className="col-span-2 text-sky-400 font-sans font-bold select-none">
+                                              Acceso Total (Cuenta Completa sin límites de perfil)
+                                            </p>
+                                          )}
+                                        </div>
                                       )}
 
-                                      <button
-                                        onClick={() => onOpenGarantiaModal(detail)}
-                                        className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 px-3 py-1.5 rounded-lg cursor-pointer bg-transparent w-full sm:w-auto"
-                                      >
-                                        <ShieldAlert className="w-3.5 h-3.5" /> Reportar Falla
-                                      </button>
+                                      {/* Botones de acción técnica */}
+                                      <div className="flex flex-col sm:flex-row gap-2 justify-end pt-1">
+                                        {(sale.diffDays === 2 || sale.diffDays <= 0) ? (
+                                          <button
+                                            onClick={() => handleOpenWhatsAppLink(sale.id, detail.id, typeTemplate)}
+                                            disabled={waLoading[waKey]}
+                                            className={`inline-flex items-center justify-center gap-1.5 text-xs font-bold transition-all px-3 py-1.5 rounded-lg border cursor-pointer w-full sm:w-auto ${
+                                              sale.diffDays <= 0 
+                                                ? 'text-rose-400 bg-rose-500/10 border-rose-500/20 hover:bg-rose-500/20' 
+                                                : 'text-amber-400 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20'
+                                            }`}
+                                          >
+                                            <Smartphone className="w-3.5 h-3.5" /> 
+                                            {waLoading[waKey] ? 'Generando...' : (sale.diffDays <= 0 ? 'Notificar Corte' : 'Notificar Cobro')}
+                                          </button>
+                                        ) : (
+                                          <button
+                                            onClick={() => handleOpenWhatsAppLink(sale.id, detail.id, 'cambio_credenciales')}
+                                            disabled={waLoading[`${detail.id}-cambio_credenciales`]}
+                                            className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg cursor-pointer w-full sm:w-auto"
+                                          >
+                                            <Smartphone className="w-3.5 h-3.5" /> 
+                                            {waLoading[`${detail.id}-cambio_credenciales`] ? 'Generando...' : 'Reenviar Accesos'}
+                                          </button>
+                                        )}
+
+                                        <button
+                                          onClick={() => onOpenGarantiaModal(detail)}
+                                          className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 px-3 py-1.5 rounded-lg cursor-pointer bg-transparent w-full sm:w-auto"
+                                        >
+                                          <ShieldAlert className="w-3.5 h-3.5" /> Reportar Falla
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
-                                );
-                              })}
+                                  );
+                                });
+                              })()}
                             </div>
                           )}
                         </div>

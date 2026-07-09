@@ -8,30 +8,53 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   rightIcon?: React.ReactNode;
 }
 
-// Convert YYYY-MM-DD to DD/MM/YYYY
+// Convert YYYY-MM-DD to D/M/YYYY
 const toDisplayFormat = (val: string): string => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
     const [year, month, day] = val.split('-');
-    return `${day}/${month}/${year}`;
+    return `${parseInt(day, 10)}/${parseInt(month, 10)}/${year}`;
   }
   return val;
 };
 
-// Convert DD/MM/YYYY to YYYY-MM-DD
+// Convert D/M/YYYY or DD/MM/YYYY to YYYY-MM-DD
 const toIsoFormat = (val: string): string => {
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
-    const [day, month, year] = val.split('/');
-    return `${year}-${month}-${day}`;
+  const match = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (match) {
+    const [, day, month, year] = match;
+    const pad = (s: string) => s.padStart(2, '0');
+    return `${year}-${pad(month)}-${pad(day)}`;
   }
   return val;
 };
 
 const formatAsDateMask = (val: string) => {
-  const clean = val.replace(/\D/g, '');
-  if (clean.length === 0) return '';
-  if (clean.length <= 2) return clean;
-  if (clean.length <= 4) return `${clean.slice(0, 2)}/${clean.slice(2)}`;
-  return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4, 8)}`;
+  if (val.includes('/')) {
+    // Keep only digits and slashes
+    let clean = val.replace(/[^\d/]/g, '');
+    
+    // Prevent consecutive slashes
+    clean = clean.replace(/\/+/g, '/');
+    
+    // Split into parts
+    const parts = clean.split('/');
+    const limitedParts = parts.slice(0, 3);
+    
+    // Limit length of each part: Day max 2, Month max 2, Year max 4
+    const formattedParts = limitedParts.map((part, idx) => {
+      if (idx === 0) return part.slice(0, 2);
+      if (idx === 1) return part.slice(0, 2);
+      return part.slice(0, 4);
+    });
+    
+    return formattedParts.join('/');
+  } else {
+    const clean = val.replace(/\D/g, '');
+    if (clean.length === 0) return '';
+    if (clean.length <= 2) return clean;
+    if (clean.length <= 4) return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+    return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4, 8)}`;
+  }
 };
 
 const Input = forwardRef<HTMLInputElement, InputProps>(({
@@ -129,7 +152,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
   ) : null;
 
   const actualType = isDateType ? 'text' : type;
-  const actualPlaceholder = isDateType ? (placeholder || 'DD/MM/AAAA') : placeholder;
+  const actualPlaceholder = isDateType ? (placeholder || 'D/M/AAAA') : placeholder;
   const hasRightIcon = !!rightIcon || isDateType;
 
   return (

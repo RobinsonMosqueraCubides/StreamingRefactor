@@ -280,7 +280,8 @@ async def seed_data():
                 cliente=cliente_map["Carlos Gómez"],
                 fecha_corte=hoy + timedelta(days=15),
                 monto_total=Decimal("12000.00"),
-                estado_pago=EstadoPago.PAGADO
+                estado_pago=EstadoPago.PAGADO,
+                tipo_venta="PANTALLA"
             )
             session.add(v1)
             dv1 = DetalleVenta(
@@ -303,7 +304,8 @@ async def seed_data():
                 cliente=cliente_map["Laura Rodríguez"],
                 fecha_corte=hoy + timedelta(days=20),
                 monto_total=Decimal("18000.00"),
-                estado_pago=EstadoPago.PAGO_PARCIAL
+                estado_pago=EstadoPago.PAGO_PARCIAL,
+                tipo_venta="COMBO"
             )
             session.add(v2)
             dv2_1 = DetalleVenta(
@@ -335,7 +337,8 @@ async def seed_data():
                 cliente=cliente_map["Andrés Felipe (Revendedor)"],
                 fecha_corte=hoy + timedelta(days=28),
                 monto_total=Decimal("15000.00"),
-                estado_pago=EstadoPago.PENDIENTE
+                estado_pago=EstadoPago.PENDIENTE,
+                tipo_venta="COMBO"
             )
             session.add(v3)
             dv3_1 = DetalleVenta(

@@ -38,6 +38,7 @@ class VentaResponse(BaseModel):
     fecha_corte: date
     monto_total: Decimal
     estado_pago: EstadoPago
+    tipo_venta: Optional[str] = None
     detalles: List[DetalleVentaResponse] = []
 
     model_config = ConfigDict(from_attributes=True)

@@ -169,6 +169,7 @@ class Venta(Base):
     fecha_corte: Mapped[date] = mapped_column(Date, nullable=False)
     monto_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     estado_pago: Mapped[EstadoPago] = mapped_column(Enum(EstadoPago, name="estado_pago"), default=EstadoPago.PENDIENTE)
+    tipo_venta: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     
     # Relationships
     cliente: Mapped["Cliente"] = relationship(back_populates="ventas")

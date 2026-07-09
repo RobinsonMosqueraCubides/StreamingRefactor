@@ -33,14 +33,49 @@ async def get_venta(db: AsyncSession, venta_id: int):
         ]
     )
 
+async def _calcular_tipo_venta(db: AsyncSession, detalles: list[DetalleVenta]) -> str:
+    if not detalles:
+        return "PANTALLA"
+    if any(d.combo_id is not None for d in detalles):
+        return "COMBO"
+    cuentas_ids = {d.cuenta_madre_id for d in detalles if d.cuenta_madre_id is not None}
+    if len(cuentas_ids) > 1:
+        return "COMBO"
+    if len(detalles) > 1 and not cuentas_ids:
+        return "COMBO"
+    if len(cuentas_ids) == 1:
+        cuenta_id = list(cuentas_ids)[0]
+        cuenta = await db.get(CuentaMadre, cuenta_id)
+        if cuenta and len(detalles) == cuenta.max_perfiles:
+            return "CUENTA"
+        elif len(detalles) > 1:
+            return "COMBO"
+        else:
+            return "PANTALLA"
+    return "PANTALLA"
+
+
 async def create_venta(db: AsyncSession, venta: VentaCreate):
     try:
+        # Determine tipo_venta
+        if len(venta.items) > 1:
+            tipo_venta = "COMBO"
+        else:
+            item = venta.items[0]
+            if item.combo_id is not None:
+                tipo_venta = "COMBO"
+            elif getattr(item, "tipo_unidad", "PANTALLA") == "CUENTA":
+                tipo_venta = "CUENTA"
+            else:
+                tipo_venta = "PANTALLA"
+
         # 1. Crear cabecera de la venta
         db_venta = Venta(
             cliente_id=venta.cliente_id,
             fecha_corte=venta.fecha_corte,
             monto_total=venta.monto_total,
-            estado_pago=EstadoPago.PENDIENTE
+            estado_pago=EstadoPago.PENDIENTE,
+            tipo_venta=tipo_venta
         )
         db.add(db_venta)
         await db.flush()
@@ -389,6 +424,9 @@ async def update_venta(db: AsyncSession, venta_id: int, venta_data: VentaUpdate)
                 if det_update.precio_aplicado is not None:
                     db_detail.precio_aplicado = det_update.precio_aplicado
         
+    if venta_data.detalles is not None:
+        db_venta.tipo_venta = await _calcular_tipo_venta(db, db_venta.detalles)
+
     try:
         await db.commit()
         return await get_venta(db, venta_id)
