@@ -41,7 +41,6 @@ export default function SuccessModal({
 }: SuccessModalProps) {
   const [showPasswords, setShowPasswords] = useState<{[key: number]: boolean}>({});
   const [waLoading, setWaLoading] = useState<{[key: string]: boolean}>({});
-  const [consolidatedSent, setConsolidatedSent] = useState(false);
 
   const handleOpenWhatsAppConsolidated = async (ventaId: number) => {
     const key = 'consolidated';
@@ -49,7 +48,6 @@ export default function SuccessModal({
     try {
       const res = await api.get(`/ventas/${ventaId}/whatsapp-consolidated`);
       window.open(res.data.url, '_blank');
-      setConsolidatedSent(true);
     } catch (err: any) {
       alert('Error al generar el enlace de WhatsApp consolidado: ' + (err.response?.data?.detail || err.message));
     } finally {
@@ -246,12 +244,8 @@ export default function SuccessModal({
 
           <Button 
             onClick={onFinalize} 
-            disabled={loading || !consolidatedSent} 
-            className={`px-5 py-2.5 rounded-xl font-bold transition-all ${
-              !consolidatedSent 
-                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border-slate-700' 
-                : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 cursor-pointer'
-            }`}
+            disabled={loading} 
+            className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 px-5 py-2.5 rounded-xl font-bold transition-all cursor-pointer"
           >
             {loading ? 'Guardando...' : 'Guardar Accesos'}
           </Button>
