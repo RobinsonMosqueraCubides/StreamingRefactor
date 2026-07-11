@@ -33,9 +33,14 @@ export default function CuentaMadreModal({
   const [formMaxPerfiles, setFormMaxPerfiles] = useState<number | "">(5);
   const [formPrecioCompra, setFormPrecioCompra] = useState<number | "">(30000);
   const [formFechaCompra, setFormFechaCompra] = useState(new Date().toISOString().split('T')[0]);
-  const [formFechaVencimiento, setFormFechaVencimiento] = useState(
-    new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]
-  );
+  const [formFechaVencimiento, setFormFechaVencimiento] = useState(() => {
+    const d = new Date(new Date().toISOString().split('T')[0] + 'T00:00:00');
+    d.setDate(d.getDate() + 30);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
   const [formEntidadPago, setFormEntidadPago] = useState('NEQUI');
   const [formEstado, setFormEstado] = useState('ACTIVA');
   const [editCredEmail, setEditCredEmail] = useState('');
@@ -87,8 +92,15 @@ export default function CuentaMadreModal({
 
         setFormMaxPerfiles(5);
         setFormPrecioCompra(30000);
-        setFormFechaCompra(new Date().toISOString().split('T')[0]);
-        setFormFechaVencimiento(new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]);
+        const hoy = new Date().toISOString().split('T')[0];
+        const venc = new Date(hoy + 'T00:00:00');
+        venc.setDate(venc.getDate() + 30);
+        const year = venc.getFullYear();
+        const month = String(venc.getMonth() + 1).padStart(2, '0');
+        const day = String(venc.getDate()).padStart(2, '0');
+        
+        setFormFechaCompra(hoy);
+        setFormFechaVencimiento(`${year}-${month}-${day}`);
         setFormEntidadPago('NEQUI');
         setFormEstado('ACTIVA');
         setEditCredEmail('');
@@ -442,7 +454,23 @@ export default function CuentaMadreModal({
             label="Fecha Compra"
             type="date"
             value={formFechaCompra}
-            onChange={(e) => setFormFechaCompra(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFormFechaCompra(val);
+              if (val && formFechaVencimiento) {
+                const oldStart = new Date(formFechaCompra + 'T00:00:00');
+                const oldEnd = new Date(formFechaVencimiento + 'T00:00:00');
+                const diffTime = oldEnd.getTime() - oldStart.getTime();
+                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+                const newStart = new Date(val + 'T00:00:00');
+                newStart.setDate(newStart.getDate() + (diffDays > 0 ? diffDays : 30));
+                const year = newStart.getFullYear();
+                const month = String(newStart.getMonth() + 1).padStart(2, '0');
+                const day = String(newStart.getDate()).padStart(2, '0');
+                setFormFechaVencimiento(`${year}-${month}-${day}`);
+              }
+            }}
             required
           />
           <Input

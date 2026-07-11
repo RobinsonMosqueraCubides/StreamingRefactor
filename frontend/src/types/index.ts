@@ -60,6 +60,7 @@ export interface VentaDetalle {
 export interface Venta {
   id: number;
   cliente_id: number;
+  fecha_inicio: string;
   fecha_corte: string;
   monto_total: number;
   estado_pago: 'PENDIENTE' | 'PAGO_PARCIAL' | 'PAGADO';

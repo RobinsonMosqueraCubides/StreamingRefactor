@@ -92,7 +92,7 @@ class Credencial(Base):
     __tablename__ = "credenciales"
     
     id: Mapped[int] = mapped_column(primary_key=True)
-    email: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(150), nullable=False)
     _password: Mapped[str] = mapped_column("password", String(255), nullable=False)
     
     # Relationships
@@ -166,6 +166,7 @@ class Venta(Base):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id"))
+    fecha_inicio: Mapped[date] = mapped_column(Date, nullable=False, server_default=func.current_date())
     fecha_corte: Mapped[date] = mapped_column(Date, nullable=False)
     monto_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     estado_pago: Mapped[EstadoPago] = mapped_column(Enum(EstadoPago, name="estado_pago"), default=EstadoPago.PENDIENTE)

@@ -3,6 +3,7 @@ import Card from '../../components/ui/Card';
 import Select from '../../components/ui/Select';
 import Input from '../../components/ui/Input';
 import api from '../../api/axios';
+import VentaDetalleModal from './VentaDetalleModal';
 import { 
   Search, ShieldAlert, AlertTriangle, ChevronDown, ChevronUp, Eye, EyeOff, Smartphone
 } from 'lucide-react';
@@ -49,6 +50,7 @@ export default function HistorialPanel({
   const [showPasswords, setShowPasswords] = useState<{[key: string]: boolean}>({});
   const [waLoading, setWaLoading] = useState<{[key: string]: boolean}>({});
   const [expandedClients, setExpandedClients] = useState<{[key: number]: boolean}>({});
+  const [selectedSaleForModal, setSelectedSaleForModal] = useState<any | null>(null);
   
   // Inline edit states
   const [editingDetailId, setEditingDetailId] = useState<number | null>(null);
@@ -443,7 +445,11 @@ export default function HistorialPanel({
                           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                             
                             {/* Título de la compra (Netflix - Pantalla, Netflix - Cuenta, etc.) */}
-                            <div className="flex items-center gap-3 min-w-0 md:w-2/5">
+                            <div 
+                              className="flex items-center gap-3 min-w-0 md:w-2/5 cursor-pointer group"
+                              onClick={() => setSelectedSaleForModal(sale)}
+                              title="Hacer clic para ver detalle completo"
+                            >
                               {(() => {
                                 const tipo = sale.tipo_venta || (isCombo ? 'COMBO' : (saleItems[0]?.type === 'CUENTA' ? 'CUENTA' : 'PANTALLA'));
                                 if (tipo !== 'COMBO' && sale.detalles.length > 0) {
@@ -458,7 +464,7 @@ export default function HistorialPanel({
                               })()}
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <p className="text-sm font-bold text-slate-200 truncate">
+                                  <p className="text-sm font-bold text-slate-200 truncate group-hover:text-cyan-400 transition-colors">
                                     {platformTitle}
                                   </p>
                                   {(() => {
@@ -799,6 +805,20 @@ export default function HistorialPanel({
             );
           })}
         </div>
+      )}
+      {selectedSaleForModal && (
+        <VentaDetalleModal
+          isOpen={!!selectedSaleForModal}
+          onClose={() => setSelectedSaleForModal(null)}
+          sale={selectedSaleForModal}
+          clientes={clientes}
+          plataformas={plataformas}
+          cuentas={cuentas}
+          credenciales={credenciales}
+          onOpenGarantiaModal={onOpenGarantiaModal}
+          onOpenWhatsAppLink={handleOpenWhatsAppLink}
+          waLoading={waLoading}
+        />
       )}
     </Card>
   );

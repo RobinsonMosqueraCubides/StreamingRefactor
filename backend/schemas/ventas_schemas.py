@@ -28,6 +28,7 @@ class DetalleVentaResponse(BaseModel):
 
 class VentaCreate(BaseModel):
     cliente_id: int = Field(..., description="ID del cliente que realiza la compra")
+    fecha_inicio: date = Field(..., description="Fecha de inicio calculada/seleccionada para la suscripción")
     fecha_corte: date = Field(..., description="Fecha de corte unificada calculada para la suscripción")
     monto_total: Decimal = Field(..., ge=Decimal("0.0"), description="Costo total de la venta en pesos COP")
     items: List[VentaItemCreate] = Field(..., min_items=1, description="Lista de perfiles a adquirir y asignar")
@@ -35,6 +36,7 @@ class VentaCreate(BaseModel):
 class VentaResponse(BaseModel):
     id: int
     cliente_id: int
+    fecha_inicio: date
     fecha_corte: date
     monto_total: Decimal
     estado_pago: EstadoPago
@@ -57,6 +59,7 @@ class VentaDetalleUpdate(BaseModel):
 
 class VentaUpdate(BaseModel):
     cliente_id: Optional[int] = None
+    fecha_inicio: Optional[date] = None
     fecha_corte: Optional[date] = None
     monto_total: Optional[Decimal] = None
     estado_pago: Optional[EstadoPago] = None

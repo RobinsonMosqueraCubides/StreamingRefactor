@@ -72,6 +72,7 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
         # 1. Crear cabecera de la venta
         db_venta = Venta(
             cliente_id=venta.cliente_id,
+            fecha_inicio=venta.fecha_inicio,
             fecha_corte=venta.fecha_corte,
             monto_total=venta.monto_total,
             estado_pago=EstadoPago.PENDIENTE,
@@ -368,6 +369,8 @@ async def update_venta(db: AsyncSession, venta_id: int, venta_data: VentaUpdate)
     db_venta = await get_venta(db, venta_id)
     if venta_data.cliente_id is not None:
         db_venta.cliente_id = venta_data.cliente_id
+    if venta_data.fecha_inicio is not None:
+        db_venta.fecha_inicio = venta_data.fecha_inicio
     if venta_data.fecha_corte is not None:
         db_venta.fecha_corte = venta_data.fecha_corte
     if venta_data.monto_total is not None:

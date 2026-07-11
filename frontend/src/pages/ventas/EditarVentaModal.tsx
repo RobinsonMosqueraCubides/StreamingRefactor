@@ -51,11 +51,7 @@ export default function EditarVentaModal({
       const client = clientes.find(c => c.id === selectedSale.cliente_id);
       setClienteSearch(client ? `${client.nombre} (${client.telefono})` : `Cliente #${selectedSale.cliente_id}`);
       
-      // Calculate suggested fechaInicio (cut-off minus 30 days)
-      const corteDate = new Date(selectedSale.fecha_corte + 'T00:00:00');
-      corteDate.setDate(corteDate.getDate() - 30);
-      const calculatedInicioStr = corteDate.toISOString().split('T')[0];
-      setFechaInicio(calculatedInicioStr);
+      setFechaInicio(selectedSale.fecha_inicio);
       setFechaCorte(selectedSale.fecha_corte);
       
       setMontoTotal(selectedSale.monto_total);
@@ -131,10 +127,19 @@ export default function EditarVentaModal({
 
   const handleFechaInicioChange = (val: string) => {
     setFechaInicio(val);
-    if (val) {
-      const d = new Date(val + 'T00:00:00');
-      d.setDate(d.getDate() + 30);
-      setFechaCorte(d.toISOString().split('T')[0]);
+    if (val && fechaCorte) {
+      const oldStart = new Date(fechaInicio + 'T00:00:00');
+      const oldEnd = new Date(fechaCorte + 'T00:00:00');
+      const diffTime = oldEnd.getTime() - oldStart.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      const newStart = new Date(val + 'T00:00:00');
+      newStart.setDate(newStart.getDate() + (diffDays > 0 ? diffDays : 30));
+      
+      const year = newStart.getFullYear();
+      const month = String(newStart.getMonth() + 1).padStart(2, '0');
+      const day = String(newStart.getDate()).padStart(2, '0');
+      setFechaCorte(`${year}-${month}-${day}`);
     }
   };
 
@@ -268,6 +273,7 @@ export default function EditarVentaModal({
       // 1. Prepare general sale updates
       const saleUpdateData: any = {
         cliente_id: parseInt(clienteId),
+        fecha_inicio: fechaInicio,
         fecha_corte: fechaCorte,
         monto_total: parseFloat(String(montoTotal)),
         estado_pago: estadoPago

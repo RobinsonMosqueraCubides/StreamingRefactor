@@ -28,18 +28,33 @@ export default function VentasPage() {
   const [fechaInicio, setFechaInicio] = useState(
     new Date().toISOString().split('T')[0]
   );
-  const [fechaCorte, setFechaCorte] = useState(
-    new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]
-  );
+  const [fechaCorte, setFechaCorte] = useState(() => {
+    const d = new Date(new Date().toISOString().split('T')[0] + 'T00:00:00');
+    d.setDate(d.getDate() + 30);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
 
-  // Recalcular la fecha de corte automáticamente al cambiar la fecha de inicio
-  useEffect(() => {
-    if (fechaInicio) {
-      const d = new Date(fechaInicio + 'T00:00:00');
-      d.setMonth(d.getMonth() + 1);
-      setFechaCorte(d.toISOString().split('T')[0]);
+  // Recalcular la fecha de corte automáticamente al cambiar la fecha de inicio, manteniendo el rango previo
+  const handleFechaInicioChange = (newInicio: string) => {
+    setFechaInicio(newInicio);
+    if (newInicio && fechaCorte) {
+      const oldStart = new Date(fechaInicio + 'T00:00:00');
+      const oldEnd = new Date(fechaCorte + 'T00:00:00');
+      const diffTime = oldEnd.getTime() - oldStart.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      const newStart = new Date(newInicio + 'T00:00:00');
+      newStart.setDate(newStart.getDate() + (diffDays > 0 ? diffDays : 30));
+      
+      const year = newStart.getFullYear();
+      const month = String(newStart.getMonth() + 1).padStart(2, '0');
+      const day = String(newStart.getDate()).padStart(2, '0');
+      setFechaCorte(`${year}-${month}-${day}`);
     }
-  }, [fechaInicio]);
+  };
 
   // Cargar metadatos frescos al montar la vista de ventas
   useEffect(() => {
@@ -388,6 +403,7 @@ export default function VentasPage() {
       setLoading(true);
       const payload = {
         cliente_id: parseInt(clienteId),
+        fecha_inicio: fechaInicio,
         fecha_corte: fechaCorte,
         monto_total: calculateTotal(),
         items: items.map(item => ({
@@ -575,7 +591,7 @@ export default function VentasPage() {
           fechaCorte={fechaCorte}
           setFechaCorte={setFechaCorte}
           fechaInicio={fechaInicio}
-          setFechaInicio={setFechaInicio}
+          setFechaInicio={handleFechaInicioChange}
           items={items}
           loading={loading}
           selectedPlatId={selectedPlatId}

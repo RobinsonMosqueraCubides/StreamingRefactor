@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 from db.models import Credencial, CuentaMadre, Perfil, Transaccion, EstadoCuenta, TipoTransaccion
 from db.database import get_or_404
 from schemas.inventario_schemas import (
@@ -20,10 +21,13 @@ async def get_credencial(db: AsyncSession, credencial_id: int):
     return await get_or_404(db, Credencial, credencial_id)
 
 async def create_credencial(db: AsyncSession, credencial: CredencialCreate):
-    # Validar email único
-    existing = await db.execute(select(Credencial).where(Credencial.email == credencial.email))
-    if existing.scalar_one_or_none():
-        raise BusinessRuleError("Ya existe una credencial registrada con este correo electrónico")
+    # Validar si ya existe exactamente la misma credencial (mismo correo y misma contraseña)
+    existing_res = await db.execute(select(Credencial).where(Credencial.email == credencial.email))
+    existing_list = existing_res.scalars().all()
+    for ext_cred in existing_list:
+        if ext_cred.password == credencial.password:
+            return ext_cred
+            
     try:
         db_cred = Credencial(email=credencial.email, password=credencial.password)
         db.add(db_cred)
@@ -213,6 +217,11 @@ async def update_perfil(db: AsyncSession, perfil_id: int, perfil: PerfilUpdate):
         await db.commit()
         await db.refresh(db_perfil)
         return db_perfil
+    except IntegrityError as e:
+        await db.rollback()
+        if "UNIQUE constraint failed" in str(e):
+            raise BusinessRuleError("Ya existe un perfil con este nombre en esta cuenta madre.")
+        raise e
     except Exception as e:
         await db.rollback()
         raise e
