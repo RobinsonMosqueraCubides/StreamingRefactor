@@ -23,11 +23,14 @@ def upgrade() -> None:
     # 1. Add the column as nullable first to allow SQLite to accept it
     op.add_column('ventas', sa.Column('fecha_inicio', sa.Date(), nullable=True))
     
-    # 2. Populate existing rows with fecha_corte - 30 days
-    op.execute("UPDATE ventas SET fecha_inicio = DATE(fecha_corte, '-30 days')")
-    
-    # 3. Handle any fallback
-    op.execute("UPDATE ventas SET fecha_inicio = DATE('now') WHERE fecha_inicio IS NULL")
+    # 2. Populate existing rows according to database engine dialect
+    bind = op.get_bind()
+    if bind.dialect.name == 'postgresql':
+        op.execute("UPDATE ventas SET fecha_inicio = (fecha_corte - INTERVAL '30 days')::date")
+        op.execute("UPDATE ventas SET fecha_inicio = CURRENT_DATE WHERE fecha_inicio IS NULL")
+    else:
+        op.execute("UPDATE ventas SET fecha_inicio = DATE(fecha_corte, '-30 days')")
+        op.execute("UPDATE ventas SET fecha_inicio = DATE('now') WHERE fecha_inicio IS NULL")
     
     # 4. Alter column to be NOT NULL with server_default using batch_alter_table
     with op.batch_alter_table('ventas') as batch_op:
