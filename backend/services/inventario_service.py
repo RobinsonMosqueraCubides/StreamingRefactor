@@ -225,3 +225,93 @@ async def update_perfil(db: AsyncSession, perfil_id: int, perfil: PerfilUpdate):
     except Exception as e:
         await db.rollback()
         raise e
+
+
+async def get_correos_propios(db: AsyncSession, skip: int = 0, limit: int = 100):
+    from db.models import CorreoPropio
+    result = await db.execute(select(CorreoPropio).offset(skip).limit(limit))
+    return result.scalars().all()
+
+
+async def get_correo_propio(db: AsyncSession, id: int):
+    from db.models import CorreoPropio
+    return await get_or_404(db, CorreoPropio, id)
+
+
+async def create_correo_propio(db: AsyncSession, obj):
+    from db.models import CorreoPropio
+    existing = await db.execute(select(CorreoPropio).where(CorreoPropio.correo_gmail == obj.correo_gmail))
+    if existing.scalar_one_or_none():
+        raise BusinessRuleError("Ya existe este correo en la lista de correos propios")
+        
+    try:
+        db_obj = CorreoPropio(
+            correo_gmail=obj.correo_gmail,
+            password_gmail=obj.password_gmail,
+            correo_verificacion=obj.correo_verificacion,
+            numero_asociado=obj.numero_asociado,
+            ultimo_ingreso=obj.ultimo_ingreso,
+            pide_validacion=obj.pide_validacion,
+            nota=obj.nota,
+            notas_pago_netflix=obj.notas_pago_netflix,
+            nombre_correo=obj.nombre_correo,
+            fecha_nacimiento=obj.fecha_nacimiento,
+            sexo=obj.sexo
+        )
+        db.add(db_obj)
+        await db.commit()
+        await db.refresh(db_obj)
+        return db_obj
+    except Exception as e:
+        await db.rollback()
+        raise e
+
+
+async def update_correo_propio(db: AsyncSession, id: int, obj):
+    from db.models import CorreoPropio, Credencial
+    db_obj = await get_correo_propio(db, id)
+    old_email = db_obj.correo_gmail
+    
+    if db_obj.correo_gmail != obj.correo_gmail:
+        existing = await db.execute(select(CorreoPropio).where(CorreoPropio.correo_gmail == obj.correo_gmail))
+        if existing.scalar_one_or_none():
+            raise BusinessRuleError("Ya existe otro registro con este correo de Gmail")
+            
+    try:
+        db_obj.correo_gmail = obj.correo_gmail
+        db_obj.password_gmail = obj.password_gmail
+        db_obj.correo_verificacion = obj.correo_verificacion
+        db_obj.numero_asociado = obj.numero_asociado
+        db_obj.ultimo_ingreso = obj.ultimo_ingreso
+        db_obj.pide_validacion = obj.pide_validacion
+        db_obj.nota = obj.nota
+        db_obj.notas_pago_netflix = obj.notas_pago_netflix
+        db_obj.nombre_correo = obj.nombre_correo
+        db_obj.fecha_nacimiento = obj.fecha_nacimiento
+        db_obj.sexo = obj.sexo
+        
+        stmt_cred = select(Credencial).where(Credencial.email == old_email)
+        res_cred = await db.execute(stmt_cred)
+        db_cred = res_cred.scalar_one_or_none()
+        if db_cred:
+            db_cred.email = obj.correo_gmail
+            db_cred.password = obj.password_gmail
+            
+        await db.commit()
+        await db.refresh(db_obj)
+        return db_obj
+    except Exception as e:
+        await db.rollback()
+        raise e
+
+
+async def delete_correo_propio(db: AsyncSession, id: int):
+    db_obj = await get_correo_propio(db, id)
+    try:
+        await db.delete(db_obj)
+        await db.commit()
+        return db_obj
+    except Exception as e:
+        await db.rollback()
+        raise e
+

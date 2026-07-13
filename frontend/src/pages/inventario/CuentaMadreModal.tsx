@@ -63,8 +63,35 @@ export default function CuentaMadreModal({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Correos propios integration
+  const [correosPropios, setCorreosPropios] = useState<any[]>([]);
+  const [selectedCorreoPropioId, setSelectedCorreoPropioId] = useState('');
+
   useEffect(() => {
     if (isOpen) {
+      // Cargar correos propios
+      const loadCorreosPropios = async () => {
+        try {
+          const res = await api.get('/correos_propios/');
+          setCorreosPropios(res.data);
+          
+          if (cuentaAEditar) {
+            const currentCred = credenciales.find(c => c.id === cuentaAEditar.credencial_id);
+            if (currentCred) {
+              const matched = res.data.find((cp: any) => cp.correo_gmail.toLowerCase() === currentCred.email.toLowerCase());
+              if (matched) {
+                setSelectedCorreoPropioId(String(matched.id));
+              }
+            }
+          } else if (res.data.length > 0) {
+            setSelectedCorreoPropioId(String(res.data[0].id));
+          }
+        } catch (e) {
+          console.error("Error al cargar correos propios:", e);
+        }
+      };
+      loadCorreosPropios();
+
       if (cuentaAEditar) {
         setFormProveedorId(String(cuentaAEditar.proveedor_id));
         setFormPlataformaId(String(cuentaAEditar.plataforma_id));
@@ -159,18 +186,51 @@ export default function CuentaMadreModal({
         finalPlataformaId = platRes.data.id;
       }
 
-      // 3. Crear credencial en caliente (con toggle para ocultar contraseña en DOM si es necesario, pero aquí es ingreso)
-      if (createNewCred) {
-        if (!newCredEmail || !newCredPassword) {
-          setError('Completa el correo y la contraseña de la nueva credencial.');
+      // Detect "Correos A" provider integration
+      const selectedProvObj = proveedores.find(p => String(p.id) === String(finalProveedorId));
+      const isCorreosA = selectedProvObj?.nombre === "Correos A";
+
+      if (isCorreosA) {
+        const matchCp = correosPropios.find(cp => String(cp.id) === selectedCorreoPropioId);
+        if (!matchCp) {
+          setError('Selecciona un correo propio de la lista.');
           setLoading(false);
           return;
         }
-        const credRes = await api.post('/credenciales/', {
-          email: newCredEmail,
-          password: newCredPassword,
-        });
-        finalCredencialId = credRes.data.id;
+
+        // Buscar si ya existe la credencial en el sistema
+        const existingCred = credenciales.find(c => c.email.toLowerCase() === matchCp.correo_gmail.toLowerCase());
+        if (existingCred) {
+          if (existingCred.password !== matchCp.password_gmail) {
+            // Actualizar contraseña de la credencial existente
+            await api.put(`/credenciales/${existingCred.id}`, {
+              email: matchCp.correo_gmail,
+              password: matchCp.password_gmail
+            });
+          }
+          finalCredencialId = existingCred.id;
+        } else {
+          // Crear la credencial en caliente
+          const newCredRes = await api.post('/credenciales/', {
+            email: matchCp.correo_gmail,
+            password: matchCp.password_gmail
+          });
+          finalCredencialId = newCredRes.data.id;
+        }
+      } else {
+        // 3. Crear credencial en caliente
+        if (createNewCred) {
+          if (!newCredEmail || !newCredPassword) {
+            setError('Completa el correo y la contraseña de la nueva credencial.');
+            setLoading(false);
+            return;
+          }
+          const credRes = await api.post('/credenciales/', {
+            email: newCredEmail,
+            password: newCredPassword,
+          });
+          finalCredencialId = credRes.data.id;
+        }
       }
 
       if (!finalProveedorId) {
@@ -312,92 +372,132 @@ export default function CuentaMadreModal({
         </div>
 
         {/* CREDENCIALES (CUENTA) */}
-        {cuentaAEditar ? (
-          <div className="bg-slate-955/40 p-3 rounded-xl border border-slate-850 space-y-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Credenciales de Acceso</span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input
-                label="Usuario (Email)"
-                placeholder="ejemplo@gmail.com"
-                type="email"
-                value={editCredEmail}
-                onChange={(e) => setEditCredEmail(e.target.value)}
-                required
-              />
-              <div className="relative">
-                <Input
-                  label="Contraseña"
-                  placeholder="••••••••"
-                  type={showEditCredPassword ? 'text' : 'password'}
-                  value={editCredPassword}
-                  onChange={(e) => setEditCredPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowEditCredPassword(!showEditCredPassword)}
-                  className="absolute right-2.5 top-8.5 text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-none"
-                >
-                  {showEditCredPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-slate-955/40 p-3 rounded-xl border border-slate-850 space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Credenciales de Acceso</span>
-              <button
-                type="button"
-                onClick={() => setCreateNewCred(!createNewCred)}
-                className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 focus:outline-none flex items-center gap-1 cursor-pointer bg-transparent border-none"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                {createNewCred ? 'Seleccionar Existente' : 'Crear Nueva'}
-              </button>
-            </div>
+        {(() => {
+          const selectedProvObj = proveedores.find(p => String(p.id) === formProveedorId);
+          const isCorreosA = selectedProvObj?.nombre === "Correos A";
 
-            {createNewCred ? (
+          if (isCorreosA) {
+            const currentSelectedCp = correosPropios.find(cp => String(cp.id) === selectedCorreoPropioId);
+            return (
+              <div className="bg-slate-955/40 p-3 rounded-xl border border-slate-850 space-y-3">
+                <span className="text-xs font-bold text-rose-400 uppercase tracking-wider block">
+                  Credenciales de Acceso (Correos Propios)
+                </span>
+                
+                <Select
+                  label="Seleccionar Correo Propio"
+                  value={selectedCorreoPropioId}
+                  onChange={(e) => setSelectedCorreoPropioId(e.target.value)}
+                >
+                  {correosPropios.length === 0 ? (
+                    <option value="">No hay correos propios registrados</option>
+                  ) : (
+                    correosPropios.map((cp) => (
+                      <option key={cp.id} value={cp.id}>
+                        {cp.correo_gmail} {cp.nombre_correo ? `(${cp.nombre_correo})` : ''}
+                      </option>
+                    ))
+                  )}
+                </Select>
+
+                {currentSelectedCp && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-950/30 p-2.5 rounded-lg border border-slate-900 text-[11px] text-slate-400">
+                    <p>Clave Gmail: <strong className="text-slate-350 font-mono select-all">{currentSelectedCp.password_gmail}</strong></p>
+                    {currentSelectedCp.numero_asociado && <p>Teléfono: <strong className="text-slate-350 select-all">{currentSelectedCp.numero_asociado}</strong></p>}
+                    {currentSelectedCp.correo_verificacion && <p className="truncate">Verif: <strong className="text-slate-350 select-all">{currentSelectedCp.correo_verificacion}</strong></p>}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return cuentaAEditar ? (
+            <div className="bg-slate-955/40 p-3 rounded-xl border border-slate-850 space-y-3">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Credenciales de Acceso</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
                   label="Usuario (Email)"
                   placeholder="ejemplo@gmail.com"
                   type="email"
-                  value={newCredEmail}
-                  onChange={(e) => setNewCredEmail(e.target.value)}
+                  value={editCredEmail}
+                  onChange={(e) => setEditCredEmail(e.target.value)}
                   required
                 />
                 <div className="relative">
                   <Input
                     label="Contraseña"
                     placeholder="••••••••"
-                    type={showCredPassword ? 'text' : 'password'}
-                    value={newCredPassword}
-                    onChange={(e) => setNewCredPassword(e.target.value)}
+                    type={showEditCredPassword ? 'text' : 'password'}
+                    value={editCredPassword}
+                    onChange={(e) => setEditCredPassword(e.target.value)}
                     required
                   />
                   <button
                     type="button"
-                    onClick={() => setShowCredPassword(!showCredPassword)}
+                    onClick={() => setShowEditCredPassword(!showEditCredPassword)}
                     className="absolute right-2.5 top-8.5 text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-none"
                   >
-                    {showCredPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showEditCredPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-            ) : (
-              <Select
-                label="Seleccionar Credencial"
-                value={formCredencialId}
-                onChange={(e) => setFormCredencialId(e.target.value)}
-              >
-                {credenciales.map((c) => (
-                  <option key={c.id} value={c.id}>{c.email}</option>
-                ))}
-              </Select>
-            )}
-          </div>
-        )}
+            </div>
+          ) : (
+            <div className="bg-slate-955/40 p-3 rounded-xl border border-slate-850 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Credenciales de Acceso</span>
+                <button
+                  type="button"
+                  onClick={() => setCreateNewCred(!createNewCred)}
+                  className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 focus:outline-none flex items-center gap-1 cursor-pointer bg-transparent border-none"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  {createNewCred ? 'Seleccionar Existente' : 'Crear Nueva'}
+                </button>
+              </div>
+
+              {createNewCred ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Usuario (Email)"
+                    placeholder="ejemplo@gmail.com"
+                    type="email"
+                    value={newCredEmail}
+                    onChange={(e) => setNewCredEmail(e.target.value)}
+                    required
+                  />
+                  <div className="relative">
+                    <Input
+                      label="Contraseña"
+                      placeholder="••••••••"
+                      type={showCredPassword ? 'text' : 'password'}
+                      value={newCredPassword}
+                      onChange={(e) => setNewCredPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCredPassword(!showCredPassword)}
+                      className="absolute right-2.5 top-8.5 text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-none"
+                    >
+                      {showCredPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Select
+                  label="Seleccionar Credencial"
+                  value={formCredencialId}
+                  onChange={(e) => setFormCredencialId(e.target.value)}
+                >
+                  {credenciales.map((c) => (
+                    <option key={c.id} value={c.id}>{c.email}</option>
+                  ))}
+                </Select>
+              )}
+            </div>
+          );
+        })()}
 
         {/* METADATOS CUENTA MADRE */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

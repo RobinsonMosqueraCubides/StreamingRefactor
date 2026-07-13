@@ -283,3 +283,21 @@ class VentaVencida(Base):
     fecha_corte_registro: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
 
 
+class CorreoPropio(Base):
+    __tablename__ = "correos_propios"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    correo_gmail: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
+    password_gmail: Mapped[str] = mapped_column(String(255), nullable=False)
+    correo_verificacion: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    numero_asociado: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    ultimo_ingreso: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    pide_validacion: Mapped[bool] = mapped_column(default=False)
+    nota: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    notas_pago_netflix: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    nombre_correo: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    fecha_nacimiento: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    sexo: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+
+

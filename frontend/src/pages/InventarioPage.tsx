@@ -6,10 +6,11 @@ import api from '../api/axios';
 import CuentasTab from './inventario/CuentasTab';
 import ProveedoresTab from './inventario/ProveedoresTab';
 import PlataformasTab from './inventario/PlataformasTab';
+import CorreosPropiosTab from './inventario/CorreosPropiosTab';
 import CuentaMadreModal from './inventario/CuentaMadreModal';
 import GarantiaProveedorModal from './inventario/GarantiaProveedorModal';
 import RenovacionCuentaModal from './inventario/RenovacionCuentaModal';
-import { Database, Plus, Users } from 'lucide-react';
+import { Database, Plus, Users, Mail } from 'lucide-react';
 import type { CuentaMadre, Proveedor, Plataforma } from '../types';
 import { useMetadata } from '../context/MetadataContext';
 
@@ -19,9 +20,10 @@ export default function InventarioPage() {
   const [, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // activeTab: 'cuentas' | 'proveedores' | 'plataformas'
-  const [activeTab, setActiveTab] = useState<'cuentas' | 'proveedores' | 'plataformas'>('cuentas');
+  // activeTab: 'cuentas' | 'proveedores' | 'plataformas' | 'correos_propios'
+  const [activeTab, setActiveTab] = useState<'cuentas' | 'proveedores' | 'plataformas' | 'correos_propios'>('cuentas');
   const [expandedCuentaId, setExpandedCuentaId] = useState<number | null>(null);
+  const [correosPropios, setCorreosPropios] = useState<any[]>([]);
 
   // --- MODALS STUFF ---
   const [isCmModalOpen, setIsCmModalOpen] = useState(false);
@@ -55,15 +57,29 @@ export default function InventarioPage() {
     }
   };
 
+  const fetchCorreosPropios = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/correos_propios/');
+      setCorreosPropios(res.data);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'Error al cargar correos propios.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const reloadAll = async () => {
     await Promise.all([
       refreshMetadata(),
-      fetchCuentas()
+      fetchCuentas(),
+      fetchCorreosPropios()
     ]);
   };
 
   useEffect(() => {
     fetchCuentas();
+    fetchCorreosPropios();
   }, []);
 
   // Clear errors when active tab changes (UX fix)
@@ -220,6 +236,14 @@ export default function InventarioPage() {
           >
             <Database className="w-4 h-4" /> Plataformas
           </button>
+          <button
+            onClick={() => setActiveTab('correos_propios')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer border-none bg-transparent ${
+              activeTab === 'correos_propios' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-400/20' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Mail className="w-4 h-4" /> Correos Propios
+          </button>
         </div>
       </div>
 
@@ -280,6 +304,13 @@ export default function InventarioPage() {
           onOpenAdd={handleOpenAddPlat}
           onOpenEdit={handleOpenEditPlat}
           onDelete={handleDeletePlat}
+        />
+      )}
+
+      {activeTab === 'correos_propios' && (
+        <CorreosPropiosTab
+          correosPropios={correosPropios}
+          onRefresh={reloadAll}
         />
       )}
 
