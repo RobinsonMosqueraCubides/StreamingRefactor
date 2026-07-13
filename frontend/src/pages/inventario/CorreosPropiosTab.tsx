@@ -4,12 +4,12 @@ import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import api from '../../api/axios';
-import { Mail, Trash2, Edit2, AlertTriangle, Plus, Eye, EyeOff, Calendar, User, Phone, CheckSquare } from 'lucide-react';
+import { Mail, Trash2, Edit2, AlertTriangle, Plus, Eye, EyeOff } from 'lucide-react';
 
 interface CorreoPropio {
   id: number;
-  correo_gmail: str;
-  password_gmail: str;
+  correo_gmail: string;
+  password_gmail: string;
   correo_verificacion?: string;
   numero_asociado?: string;
   ultimo_ingreso?: string;
