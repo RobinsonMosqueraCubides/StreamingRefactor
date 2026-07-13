@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import { 
-  Eye, EyeOff, Copy, Check, Smartphone, ShieldAlert, Calendar, User 
+  Eye, EyeOff, Copy, Check, Smartphone, ShieldAlert, Calendar, User, Scissors
 } from 'lucide-react';
 import type { Cliente, Plataforma, CuentaMadre, Credencial } from '../../types';
 
@@ -18,6 +18,8 @@ interface VentaDetalleModalProps {
   onOpenGarantiaModal: (detail: any) => void;
   onOpenWhatsAppLink: (ventaId: number, detailId: number, templateType: string) => Promise<void>;
   waLoading: {[key: string]: boolean};
+  onConfirmarCorte: (ventaId: number, detailId: number) => Promise<void>;
+  corteLoading: {[key: string]: boolean};
 }
 
 export default function VentaDetalleModal({
@@ -30,7 +32,9 @@ export default function VentaDetalleModal({
   credenciales,
   onOpenGarantiaModal,
   onOpenWhatsAppLink,
-  waLoading
+  waLoading,
+  onConfirmarCorte,
+  corteLoading
 }: VentaDetalleModalProps) {
   const [showPasswords, setShowPasswords] = useState<{[key: string]: boolean}>({});
   const [copiedStates, setCopiedStates] = useState<{[key: string]: boolean}>({});
@@ -360,7 +364,7 @@ export default function VentaDetalleModal({
                 </div>
 
                 {/* Notificación de WhatsApp */}
-                <div className="flex justify-end pt-1">
+                <div className="flex justify-end gap-2 pt-1">
                   {(sale.diffDays === 2 || sale.diffDays <= 0) ? (
                     <button
                       onClick={() => onOpenWhatsAppLink(sale.id, detail.id, typeTemplate)}
@@ -382,6 +386,16 @@ export default function VentaDetalleModal({
                     >
                       <Smartphone className="w-3.5 h-3.5" /> 
                       {waLoading[`${detail.id}-cambio_credenciales`] ? 'Generando...' : 'Reenviar Accesos (WhatsApp)'}
+                    </button>
+                  )}
+                  {sale.diffDays <= 0 && (
+                    <button
+                      onClick={() => onConfirmarCorte(sale.id, detail.id)}
+                      disabled={corteLoading[`${sale.id}-${detail.id}`]}
+                      className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-900/20 border border-rose-500/30 hover:bg-rose-900/40 px-3 py-2 rounded-lg cursor-pointer w-full sm:w-auto transition-all"
+                    >
+                      <Scissors className="w-3.5 h-3.5" />
+                      {corteLoading[`${sale.id}-${detail.id}`] ? 'Cortando...' : 'Confirmar Corte'}
                     </button>
                   )}
                 </div>

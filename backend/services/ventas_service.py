@@ -472,3 +472,130 @@ async def delete_venta(db: AsyncSession, venta_id: int) -> bool:
     except Exception as e:
         await db.rollback()
         raise e
+
+
+async def confirmar_corte(db: AsyncSession, venta_id: int, detail_id: int) -> bool:
+    from db.models import Venta, DetalleVenta, Perfil, VentaVencida
+    from sqlalchemy import select
+    
+    from sqlalchemy.orm import selectinload
+    
+    stmt_v = select(Venta).where(Venta.id == venta_id).options(
+        selectinload(Venta.cliente),
+        selectinload(Venta.detalles)
+    )
+    res_v = await db.execute(stmt_v)
+    db_venta = res_v.scalar_one_or_none()
+    if not db_venta:
+        raise BusinessRuleError("Venta no encontrada")
+        
+    stmt_d = select(DetalleVenta).where(DetalleVenta.id == detail_id).options(
+        selectinload(DetalleVenta.cuenta_madre).selectinload(CuentaMadre.plataforma),
+        selectinload(DetalleVenta.cuenta_madre).selectinload(CuentaMadre.credencial),
+        selectinload(DetalleVenta.combo)
+    )
+    res_d = await db.execute(stmt_d)
+    db_detail = res_d.scalar_one_or_none()
+    if not db_detail:
+        raise BusinessRuleError("Detalle de venta no encontrado")
+        
+    is_cuenta_completa = db_detail.perfil_id is None
+    
+    cliente_nombre = db_venta.cliente.nombre if db_venta.cliente else f"Cliente ID {db_venta.cliente_id}"
+    
+    plataforma_nombre = "N/A"
+    if db_detail.cuenta_madre and db_detail.cuenta_madre.plataforma:
+        plataforma_nombre = db_detail.cuenta_madre.plataforma.nombre
+    elif db_detail.combo:
+        plataforma_nombre = f"Combo: {db_detail.combo.nombre}"
+        
+    cuenta_madre_email = "N/A"
+    if db_detail.cuenta_madre and db_detail.cuenta_madre.credencial:
+        cuenta_madre_email = db_detail.cuenta_madre.credencial.email
+        
+    if not is_cuenta_completa:
+        # Corte de pantalla única
+        monto_pagado = db_detail.precio_aplicado
+        
+        # Liberar perfil
+        perf = await db.get(Perfil, db_detail.perfil_id)
+        if perf:
+            perf.asignado = False
+            
+        # Registrar en VentaVencida
+        venta_vencida = VentaVencida(
+            cliente=cliente_nombre,
+            monto_pagado=monto_pagado,
+            fecha_inicio=db_venta.fecha_inicio,
+            fecha_fin=db_venta.fecha_corte,
+            plataforma=plataforma_nombre,
+            cuenta_madre=cuenta_madre_email
+        )
+        db.add(venta_vencida)
+        
+        # Eliminar el detalle
+        await db.delete(db_detail)
+        
+        # ¿Quedan más detalles en la venta?
+        other_details = [d for d in db_venta.detalles if d.id != detail_id]
+        if not other_details:
+            await db.delete(db_venta)
+        else:
+            db_venta.monto_total -= db_detail.precio_aplicado
+            
+    else:
+        # Corte de cuenta completa
+        # Buscar todos los detalles de esta cuenta madre en la venta
+        stmt = select(DetalleVenta).where(
+            DetalleVenta.venta_id == venta_id,
+            DetalleVenta.cuenta_madre_id == db_detail.cuenta_madre_id
+        )
+        res = await db.execute(stmt)
+        details_to_cut = res.scalars().all()
+        
+        total_pagado = sum(d.precio_aplicado for d in details_to_cut)
+        
+        # Liberar perfiles
+        res_perfiles = await db.execute(
+            select(Perfil).where(Perfil.cuenta_madre_id == db_detail.cuenta_madre_id)
+        )
+        for p in res_perfiles.scalars().all():
+            p.asignado = False
+            
+        # Registrar en VentaVencida
+        venta_vencida = VentaVencida(
+            cliente=cliente_nombre,
+            monto_pagado=total_pagado,
+            fecha_inicio=db_venta.fecha_inicio,
+            fecha_fin=db_venta.fecha_corte,
+            plataforma=plataforma_nombre + " (Cuenta Completa)",
+            cuenta_madre=cuenta_madre_email
+        )
+        db.add(venta_vencida)
+        
+        # Eliminar detalles
+        for d in details_to_cut:
+            await db.delete(d)
+            
+        # ¿Quedan más detalles en la venta?
+        other_details = [d for d in db_venta.detalles if d.cuenta_madre_id != db_detail.cuenta_madre_id]
+        if not other_details:
+            await db.delete(db_venta)
+        else:
+            db_venta.monto_total -= total_pagado
+            
+    try:
+        await db.commit()
+        return True
+    except Exception as e:
+        await db.rollback()
+        raise e
+
+
+async def get_ventas_vencidas(db: AsyncSession, skip: int = 0, limit: int = 100):
+    from db.models import VentaVencida
+    from sqlalchemy import select
+    stmt = select(VentaVencida).order_by(VentaVencida.fecha_corte_registro.desc()).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    return result.scalars().all()
+

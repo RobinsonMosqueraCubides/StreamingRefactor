@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from decimal import Decimal
-from datetime import date
+from datetime import date, datetime
 from db.models import EstadoPago
 
 # --- DetalleVenta Schemas ---
@@ -64,4 +64,18 @@ class VentaUpdate(BaseModel):
     monto_total: Optional[Decimal] = None
     estado_pago: Optional[EstadoPago] = None
     detalles: Optional[List[VentaDetalleUpdate]] = None
+
+
+class VentaVencidaResponse(BaseModel):
+    id: int
+    cliente: str
+    monto_pagado: Decimal
+    fecha_inicio: date
+    fecha_fin: date
+    plataforma: str
+    cuenta_madre: str
+    fecha_corte_registro: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
 

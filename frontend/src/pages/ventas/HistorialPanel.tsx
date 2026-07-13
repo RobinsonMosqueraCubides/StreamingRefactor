@@ -5,7 +5,7 @@ import Input from '../../components/ui/Input';
 import api from '../../api/axios';
 import VentaDetalleModal from './VentaDetalleModal';
 import { 
-  Search, ShieldAlert, AlertTriangle, ChevronDown, ChevronUp, Eye, EyeOff, Smartphone
+  Search, ShieldAlert, AlertTriangle, ChevronDown, ChevronUp, Eye, EyeOff, Smartphone, Scissors
 } from 'lucide-react';
 
 import type { Cliente, Plataforma, CuentaMadre, Credencial } from '../../types';
@@ -51,6 +51,29 @@ export default function HistorialPanel({
   const [waLoading, setWaLoading] = useState<{[key: string]: boolean}>({});
   const [expandedClients, setExpandedClients] = useState<{[key: number]: boolean}>({});
   const [selectedSaleForModal, setSelectedSaleForModal] = useState<any | null>(null);
+  const [corteLoading, setCorteLoading] = useState<{[key: string]: boolean}>({});
+
+  const handleConfirmarCorte = async (ventaId: number, detailId: number) => {
+    if (!window.confirm("¿Estás seguro de que deseas confirmar el corte de este servicio? Esto liberará la pantalla en el inventario y archivará los datos en Ventas Vencidas.")) {
+      return;
+    }
+    const key = `${ventaId}-${detailId}`;
+    setCorteLoading(prev => ({ ...prev, [key]: true }));
+    try {
+      await api.post(`/ventas/${ventaId}/detalles/${detailId}/confirmar-corte`);
+      if (onRefreshData) {
+        await onRefreshData();
+      }
+      // If the detail modal is open, close or update it
+      if (selectedSaleForModal && selectedSaleForModal.id === ventaId) {
+        setSelectedSaleForModal(null);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Error al confirmar el corte del servicio.");
+    } finally {
+      setCorteLoading(prev => ({ ...prev, [key]: false }));
+    }
+  };
   
   // Inline edit states
   const [editingDetailId, setEditingDetailId] = useState<number | null>(null);
@@ -783,6 +806,17 @@ export default function HistorialPanel({
                                           </button>
                                         )}
 
+                                        {sale.diffDays <= 0 && (
+                                          <button
+                                            onClick={() => handleConfirmarCorte(sale.id, detail.id)}
+                                            disabled={corteLoading[`${sale.id}-${detail.id}`]}
+                                            className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-900/20 border border-rose-500/30 hover:bg-rose-900/40 px-3 py-1.5 rounded-lg cursor-pointer w-full sm:w-auto transition-all"
+                                          >
+                                            <Scissors className="w-3.5 h-3.5" />
+                                            {corteLoading[`${sale.id}-${detail.id}`] ? 'Cortando...' : 'Confirmar Corte'}
+                                          </button>
+                                        )}
+
                                         <button
                                           onClick={() => onOpenGarantiaModal(detail)}
                                           className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 px-3 py-1.5 rounded-lg cursor-pointer bg-transparent w-full sm:w-auto"
@@ -818,6 +852,8 @@ export default function HistorialPanel({
           onOpenGarantiaModal={onOpenGarantiaModal}
           onOpenWhatsAppLink={handleOpenWhatsAppLink}
           waLoading={waLoading}
+          onConfirmarCorte={handleConfirmarCorte}
+          corteLoading={corteLoading}
         />
       )}
     </Card>

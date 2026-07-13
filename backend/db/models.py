@@ -269,3 +269,17 @@ class Usuario(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), default="admin")
 
+
+class VentaVencida(Base):
+    __tablename__ = "ventas_vencidas"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cliente: Mapped[str] = mapped_column(String(150), nullable=False)
+    monto_pagado: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    fecha_inicio: Mapped[date] = mapped_column(Date, nullable=False)
+    fecha_fin: Mapped[date] = mapped_column(Date, nullable=False)
+    plataforma: Mapped[str] = mapped_column(String(100), nullable=False)
+    cuenta_madre: Mapped[str] = mapped_column(String(150), nullable=False)
+    fecha_corte_registro: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
+
+

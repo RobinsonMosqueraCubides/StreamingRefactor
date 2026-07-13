@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import POSPanel from './ventas/POSPanel';
 import HistorialPanel from './ventas/HistorialPanel';
+import CortesPanel from './ventas/CortesPanel';
 import SuccessModal from './ventas/SuccessModal';
 import GarantiaModal from './ventas/GarantiaModal';
 import RenovacionModal from './ventas/RenovacionModal';
 import EditarVentaModal from './ventas/EditarVentaModal';
-import { ShoppingCart, History } from 'lucide-react';
+import { ShoppingCart, History, Scissors } from 'lucide-react';
 import type { VentaItem, CuentaMadre, Venta, VentaDetalle } from '../types';
 import { useMetadata } from '../context/MetadataContext';
 import ClienteRapidoModal from './ventas/ClienteRapidoModal';
@@ -17,7 +18,9 @@ export default function VentasPage() {
   } = useMetadata();
   
   const [cuentas, setCuentas] = useState<CuentaMadre[]>([]);
-  const [activeTab, setActiveTab] = useState<'pos' | 'historial'>('pos');
+  const [activeTab, setActiveTab] = useState<'pos' | 'historial' | 'cortes'>('pos');
+  const [ventasVencidas, setVentasVencidas] = useState<any[]>([]);
+  const [vencidasLoading, setVencidasLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -113,6 +116,24 @@ export default function VentasPage() {
       setError(err.response?.data?.detail || err.message || 'Error al cargar el historial de ventas.');
     }
   };
+
+  const fetchVentasVencidas = async () => {
+    try {
+      setVencidasLoading(true);
+      const res = await api.get('/ventas/vencidas');
+      setVentasVencidas(res.data);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'Error al cargar el historial de cortes.');
+    } finally {
+      setVencidasLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'cortes') {
+      fetchVentasVencidas();
+    }
+  }, [activeTab]);
 
   const fetchCuentas = async () => {
     try {
@@ -567,6 +588,14 @@ export default function VentasPage() {
           >
             <History className="w-4 h-4" /> Historial / Garantías
           </button>
+          <button
+            onClick={() => setActiveTab('cortes')}
+            className={`flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer border-none bg-transparent ${
+              activeTab === 'cortes' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-400/20' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Scissors className="w-4 h-4" /> Historial de Cortes
+          </button>
         </div>
       </div>
 
@@ -616,7 +645,7 @@ export default function VentasPage() {
           calculateTotal={calculateTotal}
           onOpenAddClient={() => setIsAddClientOpen(true)}
         />
-      ) : (
+      ) : activeTab === 'historial' ? (
         <HistorialPanel
           sales={sales}
           clientes={clientes}
@@ -647,6 +676,11 @@ export default function VentasPage() {
             setIsEditarOpen(true);
           }}
           onDeleteVenta={handleDeleteVenta}
+        />
+      ) : (
+        <CortesPanel
+          ventasVencidas={ventasVencidas}
+          loading={vencidasLoading}
         />
       )}
 

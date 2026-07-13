@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from db.database import get_db
-from schemas.ventas_schemas import VentaCreate, VentaResponse, VentaRenovacion, VentaUpdate
+from schemas.ventas_schemas import VentaCreate, VentaResponse, VentaRenovacion, VentaUpdate, VentaVencidaResponse
 import services.ventas_service as service
 from api.deps import get_current_user
 
@@ -18,6 +18,16 @@ ventas_router = APIRouter(prefix="/ventas", tags=["Ventas"])
 async def list_ventas(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
     """Obtener lista paginada de ventas."""
     return await service.get_ventas(db, skip, limit)
+
+@ventas_router.get(
+    "/vencidas",
+    response_model=List[VentaVencidaResponse],
+    summary="Listar ventas vencidas",
+    description="Retorna una lista de todas las ventas cut/vencidas históricas."
+)
+async def list_ventas_vencidas(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    """Obtener lista paginada de ventas vencidas/cortadas."""
+    return await service.get_ventas_vencidas(db, skip, limit)
 
 @ventas_router.get(
     "/{id}",
@@ -120,4 +130,15 @@ async def delete_venta(id: int, db: AsyncSession = Depends(get_db)):
     """Eliminar físicamente una venta, liberando perfiles y eliminando sus transacciones de caja asociadas."""
     await service.delete_venta(db, id)
     return {"message": "Venta eliminada exitosamente"}
+
+
+@ventas_router.post(
+    "/{id}/detalles/{detail_id}/confirmar-corte",
+    summary="Confirmar corte de un servicio",
+    description="Libera los perfiles/cuenta en inventario, archiva en ventas_vencidas y actualiza la venta."
+)
+async def confirmar_corte_venta(id: int, detail_id: int, db: AsyncSession = Depends(get_db)):
+    await service.confirmar_corte(db, id, detail_id)
+    return {"message": "Corte confirmado y pantalla liberada"}
+
 
