@@ -76,7 +76,8 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
             fecha_corte=venta.fecha_corte,
             monto_total=venta.monto_total,
             estado_pago=EstadoPago.PENDIENTE,
-            tipo_venta=tipo_venta
+            tipo_venta=tipo_venta,
+            nota=venta.nota
         )
         db.add(db_venta)
         await db.flush()
@@ -377,6 +378,8 @@ async def update_venta(db: AsyncSession, venta_id: int, venta_data: VentaUpdate)
         db_venta.monto_total = venta_data.monto_total
     if venta_data.estado_pago is not None:
         db_venta.estado_pago = venta_data.estado_pago
+    if venta_data.nota is not None:
+        db_venta.nota = venta_data.nota
         
     if venta_data.detalles is not None:
         for det_update in venta_data.detalles:
@@ -598,4 +601,17 @@ async def get_ventas_vencidas(db: AsyncSession, skip: int = 0, limit: int = 100)
     stmt = select(VentaVencida).order_by(VentaVencida.fecha_corte_registro.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+async def update_venta_nota(db: AsyncSession, id: int, nota: str):
+    db_venta = await get_or_404(db, Venta, id)
+    try:
+        db_venta.nota = nota
+        await db.commit()
+        await db.refresh(db_venta)
+        return db_venta
+    except Exception as e:
+        await db.rollback()
+        raise e
+
 

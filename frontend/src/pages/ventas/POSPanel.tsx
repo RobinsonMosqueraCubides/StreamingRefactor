@@ -7,6 +7,7 @@ import {
   ShoppingCart, Plus, Trash2, Search, Sparkles, ToggleLeft, ToggleRight,
   AlertTriangle
 } from 'lucide-react';
+import ObservacionesPOS from './ObservacionesPOS';
 
 import type { Cliente, Plataforma, CuentaMadre, Credencial, Proveedor, VentaItem } from '../../types';
 
@@ -48,6 +49,8 @@ interface POSPanelProps {
   handleEditItemPrice: (index: number, newVal: number | "") => void;
   calculateTotal: () => number;
   onOpenAddClient: () => void;
+  nota: string;
+  setNota: (val: string) => void;
 }
 
 export default function POSPanel({
@@ -87,7 +90,9 @@ export default function POSPanel({
   handleComboTotalPriceChange,
   handleEditItemPrice,
   calculateTotal,
-  onOpenAddClient
+  onOpenAddClient,
+  nota,
+  setNota
 }: POSPanelProps) {
 
   const getProveedorName = (provId: number) => {
@@ -414,6 +419,12 @@ export default function POSPanel({
             </div>
           )}
         </Card>
+        
+        <ObservacionesPOS 
+          proveedores={proveedores} 
+          nota={nota}
+          setNota={setNota}
+        />
       </div>
     </div>
   );

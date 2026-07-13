@@ -18,6 +18,7 @@ from api.rutas.catalogos import plataformas_router, combos_router, plantillas_ro
 from api.rutas.actores import clientes_router, proveedores_router
 from api.rutas.inventario import credenciales_router, cuentas_madre_router, perfiles_router
 from api.rutas.correos_propios import correos_propios_router
+from api.rutas.notas import notas_router
 from api.rutas.ventas import ventas_router
 from api.rutas.finanzas import finanzas_router, pagos_router
 from api.rutas.garantias import garantias_router
@@ -116,6 +117,7 @@ app.include_router(credenciales_router, prefix=settings.API_V1_STR, dependencies
 app.include_router(cuentas_madre_router, prefix=settings.API_V1_STR, dependencies=auth_dep)
 app.include_router(perfiles_router, prefix=settings.API_V1_STR, dependencies=auth_dep)
 app.include_router(correos_propios_router, prefix=settings.API_V1_STR, dependencies=auth_dep)
+app.include_router(notas_router, prefix=settings.API_V1_STR, dependencies=auth_dep)
 
 # Registrar routers de ventas
 app.include_router(ventas_router, prefix=settings.API_V1_STR, dependencies=auth_dep)

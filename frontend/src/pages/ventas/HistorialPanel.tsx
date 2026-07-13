@@ -828,6 +828,15 @@ export default function HistorialPanel({
                                   );
                                 });
                               })()}
+                              
+                              {sale.nota && (
+                                <div className="mt-3 bg-slate-950/50 p-3.5 rounded-xl border border-slate-850/70 text-xs">
+                                  <p className="font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                    Nota / Observaciones de la Venta:
+                                  </p>
+                                  <p className="text-slate-350 font-medium select-text whitespace-pre-wrap">{sale.nota}</p>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -854,6 +863,10 @@ export default function HistorialPanel({
           waLoading={waLoading}
           onConfirmarCorte={handleConfirmarCorte}
           corteLoading={corteLoading}
+          onUpdateSaleNote={(newNote) => {
+            setSelectedSaleForModal((prev: any) => prev ? { ...prev, nota: newNote } : null);
+            if (onRefreshData) onRefreshData();
+          }}
         />
       )}
     </Card>

@@ -79,13 +79,16 @@ class Proveedor(Base):
     nombre: Mapped[str] = mapped_column(String(150), nullable=False)
     telefono: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     saldo_a_favor: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
+    observaciones: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     # Relationships
     cuentas_madre: Mapped[List["CuentaMadre"]] = relationship(back_populates="proveedor")
+    enlaces: Mapped[List["EnlaceProveedor"]] = relationship(back_populates="proveedor", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("saldo_a_favor >= 0", name="check_saldo_positivo"),
     )
+
 
 
 class Credencial(Base):
@@ -171,11 +174,13 @@ class Venta(Base):
     monto_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     estado_pago: Mapped[EstadoPago] = mapped_column(Enum(EstadoPago, name="estado_pago"), default=EstadoPago.PENDIENTE)
     tipo_venta: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    nota: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     # Relationships
     cliente: Mapped["Cliente"] = relationship(back_populates="ventas")
     detalles: Mapped[List["DetalleVenta"]] = relationship(back_populates="venta", cascade="all, delete-orphan")
     pagos: Mapped[List["PagoVenta"]] = relationship(back_populates="venta", cascade="all, delete-orphan")
+
 
 
 class DetalleVenta(Base):
@@ -298,6 +303,27 @@ class CorreoPropio(Base):
     nombre_correo: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     fecha_nacimiento: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     sexo: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+
+class EnlaceProveedor(Base):
+    __tablename__ = "enlaces_proveedores"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    proveedor_id: Mapped[int] = mapped_column(ForeignKey("proveedores.id", ondelete="CASCADE"), nullable=False)
+    nombre: Mapped[str] = mapped_column(String(100), nullable=False)
+    url: Mapped[str] = mapped_column(String(255), nullable=False)
+    
+    # Relationship
+    proveedor: Mapped["Proveedor"] = relationship(back_populates="enlaces")
+
+
+class NotaVenta(Base):
+    __tablename__ = "notas_ventas"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    contenido: Mapped[str] = mapped_column(Text, nullable=False)
+    fecha_creacion: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
+
 
 
 

@@ -32,6 +32,7 @@ class VentaCreate(BaseModel):
     fecha_corte: date = Field(..., description="Fecha de corte unificada calculada para la suscripción")
     monto_total: Decimal = Field(..., ge=Decimal("0.0"), description="Costo total de la venta en pesos COP")
     items: List[VentaItemCreate] = Field(..., min_items=1, description="Lista de perfiles a adquirir y asignar")
+    nota: Optional[str] = Field(None, description="Observaciones o notas adicionales de la venta")
 
 class VentaResponse(BaseModel):
     id: int
@@ -41,6 +42,7 @@ class VentaResponse(BaseModel):
     monto_total: Decimal
     estado_pago: EstadoPago
     tipo_venta: Optional[str] = None
+    nota: Optional[str] = None
     detalles: List[DetalleVentaResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -63,6 +65,7 @@ class VentaUpdate(BaseModel):
     fecha_corte: Optional[date] = None
     monto_total: Optional[Decimal] = None
     estado_pago: Optional[EstadoPago] = None
+    nota: Optional[str] = None
     detalles: Optional[List[VentaDetalleUpdate]] = None
 
 

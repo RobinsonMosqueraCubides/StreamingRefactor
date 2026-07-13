@@ -28,6 +28,7 @@ export default function VentasPage() {
   const [clienteId, setClienteId] = useState('');
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [nota, setNota] = useState('');
   const [fechaInicio, setFechaInicio] = useState(
     new Date().toISOString().split('T')[0]
   );
@@ -433,7 +434,8 @@ export default function VentasPage() {
           precio_aplicado: item.precio_aplicado,
           tipo_unidad: item.tipo_unidad,
           cuenta_madre_id: item.cuenta_madre_id
-        }))
+        })),
+        nota: nota || null
       };
 
       const res = await api.post('/ventas/', payload);
@@ -441,6 +443,7 @@ export default function VentasPage() {
       setAbonoMonto(calculateTotal()); 
       setIsSuccessOpen(true);
       setItems([]); 
+      setNota('');
       setIsComboActive(false);
       fetchSalesHistory();
     } catch (err: any) {
@@ -643,6 +646,8 @@ export default function VentasPage() {
           handleComboTotalPriceChange={handleComboTotalPriceChange}
           handleEditItemPrice={handleEditItemPrice}
           calculateTotal={calculateTotal}
+          nota={nota}
+          setNota={setNota}
           onOpenAddClient={() => setIsAddClientOpen(true)}
         />
       ) : activeTab === 'historial' ? (

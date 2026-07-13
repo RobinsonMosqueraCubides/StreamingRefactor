@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import api from '../../api/axios';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import { 
-  Eye, EyeOff, Copy, Check, Smartphone, ShieldAlert, Calendar, User, Scissors
+  Eye, EyeOff, Copy, Check, Smartphone, ShieldAlert, Calendar, User, Scissors, Save
 } from 'lucide-react';
 import type { Cliente, Plataforma, CuentaMadre, Credencial } from '../../types';
 
@@ -20,6 +21,7 @@ interface VentaDetalleModalProps {
   waLoading: {[key: string]: boolean};
   onConfirmarCorte: (ventaId: number, detailId: number) => Promise<void>;
   corteLoading: {[key: string]: boolean};
+  onUpdateSaleNote?: (newNote: string) => void;
 }
 
 export default function VentaDetalleModal({
@@ -34,10 +36,37 @@ export default function VentaDetalleModal({
   onOpenWhatsAppLink,
   waLoading,
   onConfirmarCorte,
-  corteLoading
+  corteLoading,
+  onUpdateSaleNote
 }: VentaDetalleModalProps) {
   const [showPasswords, setShowPasswords] = useState<{[key: string]: boolean}>({});
   const [copiedStates, setCopiedStates] = useState<{[key: string]: boolean}>({});
+  
+  const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+
+  useEffect(() => {
+    if (sale) {
+      setNoteText(sale.nota || '');
+    }
+  }, [sale]);
+
+  const handleSaveNote = async () => {
+    if (!sale) return;
+    try {
+      setSavingNote(true);
+      await api.put(`/ventas/${sale.id}/nota`, { nota: noteText });
+      if (onUpdateSaleNote) {
+        onUpdateSaleNote(noteText);
+      }
+      alert('Nota de venta guardada con éxito.');
+    } catch (e) {
+      console.error(e);
+      alert('Error al guardar la nota de venta.');
+    } finally {
+      setSavingNote(false);
+    }
+  };
 
   if (!sale) return null;
 
@@ -196,6 +225,29 @@ export default function VentaDetalleModal({
                 ${sale.monto_total.toLocaleString('es-CO')} COP
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Nota / Observaciones de la Venta */}
+        <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-850 space-y-2">
+          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            Nota / Observaciones de la Venta
+          </label>
+          <textarea
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="Escribe alguna observación o nota para esta venta..."
+            className="w-full bg-slate-950/60 border border-slate-855 rounded-xl p-2.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none h-16 resize-none"
+          />
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSaveNote}
+              disabled={savingNote}
+              className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-3 py-1 rounded-lg text-[10px] flex items-center gap-1 border-none cursor-pointer"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {savingNote ? 'Guardando...' : 'Guardar Nota'}
+            </Button>
           </div>
         </div>
 

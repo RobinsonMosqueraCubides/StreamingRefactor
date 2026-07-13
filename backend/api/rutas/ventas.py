@@ -142,3 +142,19 @@ async def confirmar_corte_venta(id: int, detail_id: int, db: AsyncSession = Depe
     return {"message": "Corte confirmado y pantalla liberada"}
 
 
+from pydantic import BaseModel
+
+class VentaNotaUpdate(BaseModel):
+    nota: str
+
+@ventas_router.put(
+    "/{id}/nota",
+    response_model=VentaResponse,
+    summary="Actualizar la nota de una venta",
+    description="Modifica la nota u observación asociada a una venta."
+)
+async def update_nota(id: int, obj: VentaNotaUpdate, db: AsyncSession = Depends(get_db)):
+    return await service.update_venta_nota(db, id, obj.nota)
+
+
+

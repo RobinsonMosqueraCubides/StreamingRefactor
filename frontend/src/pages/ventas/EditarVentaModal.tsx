@@ -34,6 +34,7 @@ export default function EditarVentaModal({
   const [fechaCorte, setFechaCorte] = useState('');
   const [montoTotal, setMontoTotal] = useState<number | ''>('');
   const [estadoPago, setEstadoPago] = useState('');
+  const [nota, setNota] = useState('');
 
   // Accesses state
   const [detailsList, setDetailsList] = useState<any[]>([]);
@@ -56,6 +57,7 @@ export default function EditarVentaModal({
       
       setMontoTotal(selectedSale.monto_total);
       setEstadoPago(selectedSale.estado_pago);
+      setNota(selectedSale.nota || '');
 
       // Initialize details list
       const details = selectedSale.detalles.map((d: any) => {
@@ -276,7 +278,8 @@ export default function EditarVentaModal({
         fecha_inicio: fechaInicio,
         fecha_corte: fechaCorte,
         monto_total: parseFloat(String(montoTotal)),
-        estado_pago: estadoPago
+        estado_pago: estadoPago,
+        nota: nota || null
       };
 
       // 2. Prepare detail updates (swapping platform/account/profile)
@@ -442,6 +445,17 @@ export default function EditarVentaModal({
                 <option value="PAGADO">PAGADO</option>
                 <option value="DIAS_ESPERA">DIAS_ESPERA</option>
               </Select>
+            </div>
+
+            {/* Nota / Observaciones */}
+            <div className="md:col-span-2 space-y-1">
+              <label className="text-xs font-medium text-slate-400 block">Nota / Observaciones de la Venta</label>
+              <textarea
+                value={nota}
+                onChange={(e) => setNota(e.target.value)}
+                placeholder="Escribe alguna observación o nota para esta venta..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none h-16 resize-none"
+              />
             </div>
 
           </div>
