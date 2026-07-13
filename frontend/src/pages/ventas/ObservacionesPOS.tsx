@@ -3,7 +3,7 @@ import api from '../../api/axios';
 import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
 import { 
-  FileText, Link2, Plus, Trash2, Save, ExternalLink, Loader2, AlertCircle 
+  FileText, Link2, Plus, Trash2, Save, ExternalLink, AlertCircle 
 } from 'lucide-react';
 
 interface Proveedor {
