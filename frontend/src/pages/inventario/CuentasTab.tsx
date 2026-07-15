@@ -328,7 +328,9 @@ export default function CuentasTab({
                 <div className="text-xs text-slate-300 flex items-center gap-1.5 truncate">
                   <span>Clave:</span>
                   <strong className="font-mono select-all">
-                    {showPasswords[cuenta.credencial_id] ? credPassword : '••••••••'}
+                    {showPasswords[cuenta.credencial_id] ? (
+                      getProveedorName(cuenta.proveedor_id) === "Correos A" ? (cuenta.clave_plataforma || 'N/A') : credPassword
+                    ) : '••••••••'}
                   </strong>
                   <button
                     onClick={(e) => {

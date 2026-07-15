@@ -67,6 +67,24 @@ async def delete_credencial(db: AsyncSession, credencial_id: int):
 
 # --- Cuentas Madre Services ---
 
+async def _populate_clave_plataforma(db: AsyncSession, cuenta: CuentaMadre):
+    if cuenta.proveedor and cuenta.proveedor.nombre == "Correos A" and cuenta.credencial:
+        from db.models import CorreoPropio, ClavePlataformaCorreoPropio
+        stmt_cp = select(CorreoPropio).where(CorreoPropio.correo_gmail == cuenta.credencial.email)
+        res_cp = await db.execute(stmt_cp)
+        correo_propio = res_cp.scalar_one_or_none()
+        if correo_propio:
+            stmt_cpcp = select(ClavePlataformaCorreoPropio).where(
+                ClavePlataformaCorreoPropio.correo_propio_id == correo_propio.id,
+                ClavePlataformaCorreoPropio.plataforma_id == cuenta.plataforma_id
+            )
+            res_cpcp = await db.execute(stmt_cpcp)
+            cpcp = res_cpcp.scalar_one_or_none()
+            if cpcp:
+                cuenta.clave_plataforma = cpcp.clave
+                return
+    cuenta.clave_plataforma = None
+
 async def get_cuentas_madre(db: AsyncSession, skip: int = 0, limit: int = 100):
     result = await db.execute(
         select(CuentaMadre)
@@ -78,10 +96,13 @@ async def get_cuentas_madre(db: AsyncSession, skip: int = 0, limit: int = 100):
         .offset(skip)
         .limit(limit)
     )
-    return result.scalars().all()
+    cuentas = result.scalars().all()
+    for c in cuentas:
+        await _populate_clave_plataforma(db, c)
+    return cuentas
 
 async def get_cuenta_madre(db: AsyncSession, cuenta_id: int):
-    return await get_or_404(
+    cuenta = await get_or_404(
         db,
         CuentaMadre,
         cuenta_id,
@@ -91,9 +112,18 @@ async def get_cuenta_madre(db: AsyncSession, cuenta_id: int):
             selectinload(CuentaMadre.credencial)
         ]
     )
+    await _populate_clave_plataforma(db, cuenta)
+    return cuenta
+
 
 async def create_cuenta_madre(db: AsyncSession, cuenta: CuentaMadreCreate):
     try:
+        from db.models import Proveedor, Credencial, CorreoPropio, ClavePlataformaCorreoPropio
+        db_prov = await db.get(Proveedor, cuenta.proveedor_id)
+        if db_prov and db_prov.nombre == "Correos A":
+            if not cuenta.clave_plataforma:
+                raise BusinessRuleError("La clave de plataforma es obligatoria para el proveedor Correos A")
+
         # 1. Crear Cuenta Madre
         db_cuenta = CuentaMadre(
             proveedor_id=cuenta.proveedor_id,
@@ -109,6 +139,30 @@ async def create_cuenta_madre(db: AsyncSession, cuenta: CuentaMadreCreate):
         
         # Hacemos flush para obtener el ID asignado por la base de datos
         await db.flush()
+
+        # Guardar clave plataforma si proveedor es Correos A
+        if db_prov and db_prov.nombre == "Correos A":
+            db_cred = await db.get(Credencial, cuenta.credencial_id)
+            if db_cred:
+                stmt_cp = select(CorreoPropio).where(CorreoPropio.correo_gmail == db_cred.email)
+                res_cp = await db.execute(stmt_cp)
+                correo_propio = res_cp.scalar_one_or_none()
+                if correo_propio:
+                    stmt_cpcp = select(ClavePlataformaCorreoPropio).where(
+                        ClavePlataformaCorreoPropio.correo_propio_id == correo_propio.id,
+                        ClavePlataformaCorreoPropio.plataforma_id == cuenta.plataforma_id
+                    )
+                    res_cpcp = await db.execute(stmt_cpcp)
+                    cpcp = res_cpcp.scalar_one_or_none()
+                    if cpcp:
+                        cpcp.clave = cuenta.clave_plataforma
+                    else:
+                        cpcp = ClavePlataformaCorreoPropio(
+                            correo_propio_id=correo_propio.id,
+                            plataforma_id=cuenta.plataforma_id,
+                            clave=cuenta.clave_plataforma
+                        )
+                        db.add(cpcp)
 
         # 2. Generar Perfiles Fragmentados en Bloque (Bulk Insert)
         perfiles = []
@@ -143,6 +197,34 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
     db_cuenta = await get_cuenta_madre(db, cuenta_id)
     
     try:
+        from db.models import Proveedor, Credencial, CorreoPropio, ClavePlataformaCorreoPropio
+        db_prov = await db.get(Proveedor, cuenta.proveedor_id)
+        if db_prov and db_prov.nombre == "Correos A":
+            if not cuenta.clave_plataforma:
+                raise BusinessRuleError("La clave de plataforma es obligatoria para el proveedor Correos A")
+
+            db_cred = await db.get(Credencial, cuenta.credencial_id)
+            if db_cred:
+                stmt_cp = select(CorreoPropio).where(CorreoPropio.correo_gmail == db_cred.email)
+                res_cp = await db.execute(stmt_cp)
+                correo_propio = res_cp.scalar_one_or_none()
+                if correo_propio:
+                    stmt_cpcp = select(ClavePlataformaCorreoPropio).where(
+                        ClavePlataformaCorreoPropio.correo_propio_id == correo_propio.id,
+                        ClavePlataformaCorreoPropio.plataforma_id == cuenta.plataforma_id
+                    )
+                    res_cpcp = await db.execute(stmt_cpcp)
+                    cpcp = res_cpcp.scalar_one_or_none()
+                    if cpcp:
+                        cpcp.clave = cuenta.clave_plataforma
+                    else:
+                        cpcp = ClavePlataformaCorreoPropio(
+                            correo_propio_id=correo_propio.id,
+                            plataforma_id=cuenta.plataforma_id,
+                            clave=cuenta.clave_plataforma
+                        )
+                        db.add(cpcp)
+
         db_cuenta.proveedor_id = cuenta.proveedor_id
         db_cuenta.credencial_id = cuenta.credencial_id
         db_cuenta.plataforma_id = cuenta.plataforma_id
@@ -153,8 +235,8 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
         db_cuenta.estado = cuenta.estado
         
         await db.commit()
-        await db.refresh(db_cuenta)
-        return db_cuenta
+        return await get_cuenta_madre(db, db_cuenta.id)
+
     except Exception as e:
         await db.rollback()
         raise e

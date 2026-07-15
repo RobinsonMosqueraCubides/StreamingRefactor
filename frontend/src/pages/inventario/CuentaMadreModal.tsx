@@ -66,6 +66,8 @@ export default function CuentaMadreModal({
   // Correos propios integration
   const [correosPropios, setCorreosPropios] = useState<any[]>([]);
   const [selectedCorreoPropioId, setSelectedCorreoPropioId] = useState('');
+  const [formClavePlataforma, setFormClavePlataforma] = useState('');
+  const [showClavePlataforma, setShowClavePlataforma] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -102,6 +104,7 @@ export default function CuentaMadreModal({
         setFormFechaVencimiento(cuentaAEditar.fecha_vencimiento);
         setFormEstado(cuentaAEditar.estado);
         setFormEntidadPago('NEQUI');
+        setFormClavePlataforma(cuentaAEditar.clave_plataforma || '');
 
         const currentCred = credenciales.find(c => c.id === cuentaAEditar.credencial_id);
         if (currentCred) {
@@ -133,6 +136,7 @@ export default function CuentaMadreModal({
         setEditCredEmail('');
         setEditCredPassword('');
         setShowEditCredPassword(false);
+        setFormClavePlataforma('');
       }
 
       setCreateNewCred(false);
@@ -145,8 +149,41 @@ export default function CuentaMadreModal({
       setNewPlatNombre('');
       setError('');
       setShowCredPassword(false);
+      setShowClavePlataforma(false);
+      setShowCredPassword(false);
+      setShowCredPassword(false);
     }
   }, [isOpen, proveedores, plataformas, credenciales, cuentaAEditar]);
+
+  useEffect(() => {
+    const checkExistingKey = async () => {
+      if (formProveedorId && selectedCorreoPropioId && formPlataformaId && !cuentaAEditar) {
+        const selectedProvObj = proveedores.find(p => String(p.id) === formProveedorId);
+        if (selectedProvObj?.nombre === "Correos A") {
+          const matchCp = correosPropios.find(cp => String(cp.id) === selectedCorreoPropioId);
+          if (matchCp) {
+            try {
+              const res = await api.get('/cuentas_madre/');
+              const list = res.data;
+              const found = list.find((c: any) => 
+                c.clave_plataforma && 
+                String(c.plataforma_id) === String(formPlataformaId) &&
+                credenciales.find(cr => cr.id === c.credencial_id)?.email.toLowerCase() === matchCp.correo_gmail.toLowerCase()
+              );
+              if (found) {
+                setFormClavePlataforma(found.clave_plataforma);
+              } else {
+                setFormClavePlataforma('');
+              }
+            } catch (err) {
+              console.error(err);
+            }
+          }
+        }
+      }
+    };
+    checkExistingKey();
+  }, [selectedCorreoPropioId, formPlataformaId, formProveedorId, correosPropios, credenciales, proveedores, cuentaAEditar]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -249,6 +286,12 @@ export default function CuentaMadreModal({
         return;
       }
 
+      if (isCorreosA && !formClavePlataforma.trim()) {
+        setError('La clave de la plataforma es obligatoria para el proveedor Correos A.');
+        setLoading(false);
+        return;
+      }
+
       const payload: any = {
         proveedor_id: finalProveedorId,
         credencial_id: finalCredencialId,
@@ -258,6 +301,7 @@ export default function CuentaMadreModal({
         fecha_compra: formFechaCompra,
         fecha_vencimiento: formFechaVencimiento,
         estado: cuentaAEditar ? formEstado : 'ACTIVA',
+        clave_plataforma: isCorreosA ? formClavePlataforma : null,
       };
 
       if (cuentaAEditar) {
@@ -284,7 +328,7 @@ export default function CuentaMadreModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={cuentaAEditar ? "Editar Cuenta Madre" : "Registrar Nueva Cuenta Madre"}>
-      <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+      <form onSubmit={handleSubmit} className="space-y-4 pr-1">
         {error && (
           <div className="flex items-center gap-2 p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -400,11 +444,29 @@ export default function CuentaMadreModal({
                   )}
                 </Select>
 
+                <div className="relative">
+                  <Input
+                    label="Clave de Plataforma"
+                    placeholder="Contraseña para la plataforma..."
+                    type={showClavePlataforma ? 'text' : 'password'}
+                    value={formClavePlataforma}
+                    onChange={(e) => setFormClavePlataforma(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowClavePlataforma(!showClavePlataforma)}
+                    className="absolute right-2.5 top-8.5 text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-none"
+                  >
+                    {showClavePlataforma ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
                 {currentSelectedCp && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-950/30 p-2.5 rounded-lg border border-slate-900 text-[11px] text-slate-400">
-                    <p>Clave Gmail: <strong className="text-slate-350 font-mono select-all">{currentSelectedCp.password_gmail}</strong></p>
-                    {currentSelectedCp.numero_asociado && <p>Teléfono: <strong className="text-slate-350 select-all">{currentSelectedCp.numero_asociado}</strong></p>}
-                    {currentSelectedCp.correo_verificacion && <p className="truncate">Verif: <strong className="text-slate-350 select-all">{currentSelectedCp.correo_verificacion}</strong></p>}
+                    <p className="truncate">Clave Gmail: <strong className="text-slate-350 font-mono select-all truncate">{currentSelectedCp.password_gmail}</strong></p>
+                    {currentSelectedCp.numero_asociado && <p className="truncate">Teléfono: <strong className="text-slate-350 select-all truncate">{currentSelectedCp.numero_asociado}</strong></p>}
+                    {currentSelectedCp.correo_verificacion && <p className="truncate">Verif: <strong className="text-slate-350 select-all truncate">{currentSelectedCp.correo_verificacion}</strong></p>}
                   </div>
                 )}
               </div>

@@ -334,7 +334,10 @@ export default function VentaDetalleModal({
                     <span className="text-slate-500 uppercase text-[9px] font-bold tracking-wider">Contraseña:</span>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-slate-300 select-all">
-                        {showPasswords[pwKey] ? (cred?.password || 'N/A') : '••••••••'}
+                        {(() => {
+                          const displayPassword = (cm?.proveedor?.nombre === "Correos A" ? cm.clave_plataforma : cred?.password) || 'N/A';
+                          return showPasswords[pwKey] ? displayPassword : '••••••••';
+                        })()}
                       </span>
                       <div className="flex items-center gap-1.5">
                         {cred && (
@@ -346,19 +349,22 @@ export default function VentaDetalleModal({
                             {showPasswords[pwKey] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                           </button>
                         )}
-                        {cred?.password && (
-                          <button
-                            onClick={() => copyToClipboard(cred.password, `pass-${detail.id}`)}
-                            className="text-slate-500 hover:text-slate-350 bg-transparent border-none cursor-pointer p-0.5"
-                            title="Copiar contraseña"
-                          >
-                            {copiedStates[`pass-${detail.id}`] ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-400 animate-in zoom-in-50" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5 text-slate-500 hover:text-slate-300" />
-                            )}
-                          </button>
-                        )}
+                        {(() => {
+                          const displayPassword = (cm?.proveedor?.nombre === "Correos A" ? cm.clave_plataforma : cred?.password) || 'N/A';
+                          return displayPassword !== 'N/A' && (
+                            <button
+                              onClick={() => copyToClipboard(displayPassword, `pass-${detail.id}`)}
+                              className="text-slate-500 hover:text-slate-350 bg-transparent border-none cursor-pointer p-0.5"
+                              title="Copiar contraseña"
+                            >
+                              {copiedStates[`pass-${detail.id}`] ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-400 animate-in zoom-in-50" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5 text-slate-500 hover:text-slate-300" />
+                              )}
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>

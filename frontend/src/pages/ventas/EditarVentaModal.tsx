@@ -82,17 +82,18 @@ export default function EditarVentaModal({
           plataforma_id: platId,
           cred_id: cm?.credencial_id || null,
           email: cred?.email || '',
-          password: cred?.password || '',
+          password: (cm?.proveedor?.nombre === "Correos A" ? cm.clave_plataforma : cred?.password) || '',
           nombre_perfil: profileUser,
           pin: pinVal,
           perfil_id_present: !!d.perfil_id,
+          isCorreosA: cm?.proveedor?.nombre === "Correos A",
           
           // Original values to compare
           originalPlataformaId: platId,
           originalCuentaMadreId: d.cuenta_madre_id,
           originalPerfilId: d.perfil_id,
           originalEmail: cred?.email || '',
-          originalPassword: cred?.password || '',
+          originalPassword: (cm?.proveedor?.nombre === "Correos A" ? cm.clave_plataforma : cred?.password) || '',
           originalNombrePerfil: profileUser,
           originalPin: pinVal,
         };
@@ -560,7 +561,9 @@ export default function EditarVentaModal({
                         type="text"
                         value={d.email}
                         onChange={(e) => handleDetailTextChange(index, 'email', e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-350 font-mono focus:border-cyan-500 focus:outline-none"
+                        disabled={d.isCorreosA}
+                        title={d.isCorreosA ? "Los correos propios no se pueden modificar desde aquí" : ""}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-350 font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -570,7 +573,9 @@ export default function EditarVentaModal({
                           type={showPasswords[String(d.id)] ? "text" : "password"}
                           value={d.password}
                           onChange={(e) => handleDetailTextChange(index, 'password', e.target.value)}
-                          className="w-full bg-slate-955 border border-slate-800 rounded pl-2.5 pr-8 py-1.5 text-xs text-slate-350 font-mono focus:border-cyan-500 focus:outline-none"
+                          disabled={d.isCorreosA}
+                          title={d.isCorreosA ? "Las claves de plataforma no se pueden modificar desde aquí" : ""}
+                          className="w-full bg-slate-955 border border-slate-800 rounded pl-2.5 pr-8 py-1.5 text-xs text-slate-350 font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                         />
                         <button
                           type="button"

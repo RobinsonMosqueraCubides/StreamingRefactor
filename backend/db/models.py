@@ -325,5 +325,23 @@ class NotaVenta(Base):
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
 
 
+class ClavePlataformaCorreoPropio(Base):
+    __tablename__ = "clave_plataforma_correos_propios"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    correo_propio_id: Mapped[int] = mapped_column(ForeignKey("correos_propios.id", ondelete="CASCADE"), nullable=False)
+    plataforma_id: Mapped[int] = mapped_column(ForeignKey("plataformas.id", ondelete="CASCADE"), nullable=False)
+    clave: Mapped[str] = mapped_column(String(255), nullable=False)
+    
+    # Relationships
+    correo_propio: Mapped["CorreoPropio"] = relationship()
+    plataforma: Mapped["Plataforma"] = relationship()
+    
+    __table_args__ = (
+        UniqueConstraint("correo_propio_id", "plataforma_id", name="uq_correo_plataforma"),
+    )
+
+
+
 
 

@@ -709,7 +709,9 @@ export default function HistorialPanel({
                                               type="text"
                                               value={editEmail}
                                               onChange={(e) => setEditEmail(e.target.value)}
-                                              className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none"
+                                              disabled={cm?.proveedor?.nombre === "Correos A"}
+                                              title={cm?.proveedor?.nombre === "Correos A" ? "Los correos propios no se pueden modificar desde aquí" : ""}
+                                              className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                                             />
                                           </div>
                                           <div>
@@ -718,7 +720,9 @@ export default function HistorialPanel({
                                               type="text"
                                               value={editPassword}
                                               onChange={(e) => setEditPassword(e.target.value)}
-                                              className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none"
+                                              disabled={cm?.proveedor?.nombre === "Correos A"}
+                                              title={cm?.proveedor?.nombre === "Correos A" ? "Las claves de plataforma no se pueden modificar desde aquí" : ""}
+                                              className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                                             />
                                           </div>
                                           {detail.perfil_id ? (
@@ -755,7 +759,9 @@ export default function HistorialPanel({
                                           <p className="flex items-center gap-1.5 truncate">
                                             Clave: 
                                             <strong className="text-slate-200 font-sans select-all">
-                                              {showPasswords[`pw-${detailKeyStr}`] ? (cred?.password || 'N/A') : '••••••••'}
+                                              {showPasswords[`pw-${detailKeyStr}`] ? (
+                                                cm?.proveedor?.nombre === "Correos A" ? (cm.clave_plataforma || 'N/A') : (cred?.password || 'N/A')
+                                              ) : '••••••••'}
                                             </strong>
                                             {cred && (
                                               <button 

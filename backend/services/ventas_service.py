@@ -212,7 +212,8 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
         
     stmt_cm = select(CuentaMadre).where(CuentaMadre.id == db_detalle.cuenta_madre_id).options(
         selectinload(CuentaMadre.plataforma),
-        selectinload(CuentaMadre.credencial)
+        selectinload(CuentaMadre.credencial),
+        selectinload(CuentaMadre.proveedor)
     )
     res_cm = await db.execute(stmt_cm)
     cm = res_cm.scalar_one_or_none()
@@ -237,6 +238,25 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
     plataforma = cm.plataforma.nombre if (cm and cm.plataforma) else "N/A"
     usuario = cm.credencial.email if (cm and cm.credencial) else "N/A"
     password = cm.credencial.password if (cm and cm.credencial) else "N/A"
+    
+    if cm and cm.proveedor and cm.proveedor.nombre == "Correos A" and cm.credencial:
+        from db.models import CorreoPropio, ClavePlataformaCorreoPropio
+        stmt_cp = select(CorreoPropio).where(CorreoPropio.correo_gmail == cm.credencial.email)
+        res_cp = await db.execute(stmt_cp)
+        correo_propio = res_cp.scalar_one_or_none()
+        if correo_propio:
+            stmt_cpcp = select(ClavePlataformaCorreoPropio).where(
+                ClavePlataformaCorreoPreparaId := ClavePlataformaCorreoPropio.correo_propio_id == correo_propio.id,
+                ClavePlataformaCorreoPropio.plataforma_id == cm.plataforma_id
+            )
+            res_cpcp = await db.execute(select(ClavePlataformaCorreoPropio).where(
+                ClavePlataformaCorreoPropio.correo_propio_id == correo_propio.id,
+                ClavePlataformaCorreoPropio.plataforma_id == cm.plataforma_id
+            ))
+            cpcp = res_cpcp.scalar_one_or_none()
+            if cpcp:
+                password = cpcp.clave
+
     profile_name = perfil.nombre_perfil if perfil else venta.cliente.nombre
     pin_val = perfil.pin if (perfil and perfil.pin) else "N/A"
 
@@ -277,7 +297,8 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
     for cm_id, list_detalles in detalles_por_cuenta.items():
         stmt_cm = select(CuentaMadre).where(CuentaMadre.id == cm_id).options(
             selectinload(CuentaMadre.plataforma),
-            selectinload(CuentaMadre.credencial)
+            selectinload(CuentaMadre.credencial),
+            selectinload(CuentaMadre.proveedor)
         )
         res_cm = await db.execute(stmt_cm)
         cm = res_cm.scalar_one_or_none()
@@ -286,6 +307,20 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
         email = cm.credencial.email if (cm and cm.credencial) else "N/A"
         password = cm.credencial.password if (cm and cm.credencial) else "N/A"
         
+        if cm and cm.proveedor and cm.proveedor.nombre == "Correos A" and cm.credencial:
+            from db.models import CorreoPropio, ClavePlataformaCorreoPropio
+            stmt_cp = select(CorreoPropio).where(CorreoPropio.correo_gmail == cm.credencial.email)
+            res_cp = await db.execute(stmt_cp)
+            correo_propio = res_cp.scalar_one_or_none()
+            if correo_propio:
+                res_cpcp = await db.execute(select(ClavePlataformaCorreoPropio).where(
+                    ClavePlataformaCorreoPropio.correo_propio_id == correo_propio.id,
+                    ClavePlataformaCorreoPropio.plataforma_id == cm.plataforma_id
+                ))
+                cpcp = res_cpcp.scalar_one_or_none()
+                if cpcp:
+                    password = cpcp.clave
+
         # Verificar si es cuenta completa (los perfiles vendidos en esta orden coinciden con los max_perfiles de la cuenta madre)
         es_cuenta_completa = cm and (len(list_detalles) == cm.max_perfiles)
         
@@ -308,6 +343,7 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
                 msg += f"*{item_idx}. {plat_name}*\n"
                 msg += f"   • Correo: `{email}`\n"
                 msg += f"   • Clave: `{password}`\n"
+
                 msg += f"   • Perfil (Usuario): *{profile_name}*\n"
                 msg += f"   • PIN: *{pin_val}*\n\n"
                 item_idx += 1

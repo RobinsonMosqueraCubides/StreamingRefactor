@@ -98,7 +98,7 @@ export default function SuccessModal({
               const cm = cuentas.find(c => c.id === cmId);
               const cred = credenciales.find(c => c.id === cm?.credencial_id);
               const email = cred?.email || 'N/A';
-              const password = cred?.password || 'N/A';
+              const password = (cm?.proveedor?.nombre === "Correos A" ? cm.clave_plataforma : cred?.password) || 'N/A';
               const platName = getPlataformaName(cm?.plataforma_id || 0);
 
               // Es cuenta completa si el número de perfiles vendidos es igual al max perfiles de la cuenta madre

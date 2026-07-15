@@ -69,15 +69,21 @@ class CuentaMadreBase(BaseModel):
 
 class CuentaMadreCreate(CuentaMadreBase):
     entidad_pago: EntidadFinanciera = Field(..., description="Entidad financiera utilizada para pagar la cuenta al proveedor")
+    clave_plataforma: Optional[str] = Field(None, description="Clave específica de la plataforma para correos propios")
 
 class CuentaMadreUpdate(CuentaMadreBase):
-    pass
+    clave_plataforma: Optional[str] = Field(None, description="Clave específica de la plataforma para correos propios")
+
+from schemas.actor_schemas import ProveedorResponse
 
 class CuentaMadreResponse(CuentaMadreBase):
     id: int
+    clave_plataforma: Optional[str] = None
     perfiles: List[PerfilResponse] = []
+    proveedor: Optional[ProveedorResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class CuentaMadreRenovar(BaseModel):
     nueva_fecha_vencimiento: date
