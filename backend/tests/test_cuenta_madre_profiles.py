@@ -29,11 +29,11 @@ async def test_update_cuenta_madre_profiles_sync():
             # 1. Create dependencies with unique names/phones to avoid constraints
             plataforma = Plataforma(nombre=f"Plat_{unique_suffix}")
             db.add(plataforma)
-            proveedor = Proveedor(nombre=f"Prov_{unique_suffix}", telefono=f"tel_{unique_suffix}")
+            proveedor = Proveedor(nombre=f"Prov_{unique_suffix}", telefono="302" + unique_suffix[:8])
             db.add(proveedor)
             credencial = Credencial(email=f"test_{unique_suffix}@correo.com", password="password")
             db.add(credencial)
-            cliente = Cliente(nombre=f"Client_{unique_suffix}", telefono=f"cli_{unique_suffix}", tipo="FINAL")
+            cliente = Cliente(nombre=f"Client_{unique_suffix}", telefono="303" + unique_suffix[:8], tipo="FINAL")
             db.add(cliente)
             await db.flush()
 
@@ -195,11 +195,11 @@ async def test_update_cuenta_madre_profiles_screen_sale():
             # 1. Create dependencies
             plataforma = Plataforma(nombre=f"Plat_{unique_suffix}")
             db.add(plataforma)
-            proveedor = Proveedor(nombre=f"Prov_{unique_suffix}", telefono=f"tel_{unique_suffix}")
+            proveedor = Proveedor(nombre=f"Prov_{unique_suffix}", telefono="304" + unique_suffix[:8])
             db.add(proveedor)
             credencial = Credencial(email=f"test_{unique_suffix}@correo.com", password="password")
             db.add(credencial)
-            cliente = Cliente(nombre=f"Client_{unique_suffix}", telefono=f"cli_{unique_suffix}", tipo="FINAL")
+            cliente = Cliente(nombre=f"Client_{unique_suffix}", telefono="305" + unique_suffix[:8], tipo="FINAL")
             db.add(cliente)
             await db.flush()
 

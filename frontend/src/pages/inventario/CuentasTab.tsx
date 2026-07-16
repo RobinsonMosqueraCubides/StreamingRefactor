@@ -3,7 +3,8 @@ import Card from '../../components/ui/Card';
 import Select from '../../components/ui/Select';
 import { 
   ChevronDown, ChevronUp, Database, DollarSign, RefreshCw, 
-  AlertTriangle, KeyRound, Eye, EyeOff, Users, Search, X, Edit
+  AlertTriangle, KeyRound, Eye, EyeOff, Users, Search, X, Edit,
+  XCircle
 } from 'lucide-react';
 
 import type { CuentaMadre, Proveedor, Plataforma, Credencial } from '../../types';
@@ -18,6 +19,7 @@ interface CuentasTabProps {
   onOpenProvGarantia: (cuenta: CuentaMadre) => void;
   onOpenRenew: (cuenta: CuentaMadre) => void;
   onOpenEdit: (cuenta: CuentaMadre) => void;
+  onOpenCancel: (cuenta: CuentaMadre) => void;
 }
 
 export default function CuentasTab({
@@ -29,7 +31,8 @@ export default function CuentasTab({
   onToggleExpand,
   onOpenProvGarantia,
   onOpenRenew,
-  onOpenEdit
+  onOpenEdit,
+  onOpenCancel
 }: CuentasTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPlatformId, setSelectedPlatformId] = useState<number | null>(null);
@@ -359,6 +362,14 @@ export default function CuentasTab({
                 >
                   <RefreshCw className="w-3.5 h-3.5" /> Renovar Cuenta
                 </button>
+                {cuenta.estado !== 'CANCELADA' && (
+                  <button
+                    onClick={() => onOpenCancel(cuenta)}
+                    className="flex items-center justify-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 px-3 py-2 rounded-xl transition-all cursor-pointer bg-transparent"
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Cancelar Cuenta
+                  </button>
+                )}
                 <button
                   onClick={() => onOpenProvGarantia(cuenta)}
                   className="flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 px-3 py-2 rounded-xl transition-all cursor-pointer bg-transparent"

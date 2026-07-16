@@ -88,3 +88,42 @@ class CuentaMadreResponse(CuentaMadreBase):
 class CuentaMadreRenovar(BaseModel):
     nueva_fecha_vencimiento: date
 
+
+from enum import Enum
+from datetime import datetime
+
+class TipoDevolucion(str, Enum):
+    CAJA = "CAJA"
+    SALDO_PROVEEDOR = "SALDO_PROVEEDOR"
+    NINGUNA = "NINGUNA"
+
+class CuentaMadreCancelar(BaseModel):
+    motivo_cancelacion: Optional[str] = Field(None, description="Motivo de la cancelación")
+    devolucion_tipo: TipoDevolucion = Field(..., description="Tipo de devolución a realizar")
+    monto_devolucion: Decimal = Field(default=Decimal("0.0"), ge=Decimal("0.0"), description="Monto a devolver")
+    entidad_pago: Optional[EntidadFinanciera] = Field(None, description="Entidad financiera si se devuelve a caja")
+
+    @model_validator(mode="after")
+    def validate_caja_entidad(self) -> 'CuentaMadreCancelar':
+        if self.devolucion_tipo == TipoDevolucion.CAJA and self.entidad_pago is None:
+            raise ValueError("Debe especificar la entidad financiera para la devolución a caja.")
+        return self
+
+class CuentaMadreCanceladaResponse(BaseModel):
+    id: int
+    cuenta_madre_id: int
+    plataforma_nombre: str
+    correo: str
+    clave: str
+    max_perfiles: int
+    proveedor_nombre: str
+    precio_compra: Decimal
+    fecha_compra: date
+    fecha_vencimiento: date
+    fecha_cancelacion: datetime
+    motivo_cancelacion: Optional[str] = None
+    devolucion_caja: Decimal
+    devolucion_proveedor: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+

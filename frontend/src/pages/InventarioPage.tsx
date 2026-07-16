@@ -7,10 +7,12 @@ import CuentasTab from './inventario/CuentasTab';
 import ProveedoresTab from './inventario/ProveedoresTab';
 import PlataformasTab from './inventario/PlataformasTab';
 import CorreosPropiosTab from './inventario/CorreosPropiosTab';
+import CanceladasTab from './inventario/CanceladasTab';
 import CuentaMadreModal from './inventario/CuentaMadreModal';
 import GarantiaProveedorModal from './inventario/GarantiaProveedorModal';
 import RenovacionCuentaModal from './inventario/RenovacionCuentaModal';
-import { Database, Plus, Users, Mail } from 'lucide-react';
+import CancelarCuentaModal from './inventario/CancelarCuentaModal';
+import { Database, Plus, Users, Mail, XCircle } from 'lucide-react';
 import type { CuentaMadre, Proveedor, Plataforma } from '../types';
 import { useMetadata } from '../context/MetadataContext';
 
@@ -20,8 +22,8 @@ export default function InventarioPage() {
   const [, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // activeTab: 'cuentas' | 'proveedores' | 'plataformas' | 'correos_propios'
-  const [activeTab, setActiveTab] = useState<'cuentas' | 'proveedores' | 'plataformas' | 'correos_propios'>('cuentas');
+  // activeTab: 'cuentas' | 'proveedores' | 'plataformas' | 'correos_propios' | 'canceladas'
+  const [activeTab, setActiveTab] = useState<'cuentas' | 'proveedores' | 'plataformas' | 'correos_propios' | 'canceladas'>('cuentas');
   const [expandedCuentaId, setExpandedCuentaId] = useState<number | null>(null);
   const [correosPropios, setCorreosPropios] = useState<any[]>([]);
 
@@ -29,6 +31,7 @@ export default function InventarioPage() {
   const [isCmModalOpen, setIsCmModalOpen] = useState(false);
   const [isProvGarantiaOpen, setIsProvGarantiaOpen] = useState(false);
   const [isRenewOpen, setIsRenewOpen] = useState(false);
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [selectedCuenta, setSelectedCuenta] = useState<CuentaMadre | null>(null);
 
   // Providers CRUD Modals
@@ -104,6 +107,13 @@ export default function InventarioPage() {
       nueva_fecha_vencimiento: nuevaFechaVencimiento
     });
     fetchCuentas();
+  };
+
+  // --- CANCEL CUENTA MADRE ---
+  const handleApplyCancel = async (payload: any) => {
+    if (!selectedCuenta) return;
+    await api.post(`/cuentas_madre/${selectedCuenta.id}/cancelar`, payload);
+    reloadAll();
   };
 
   // --- PROVEEDOR CRUD ACTION HANDLERS ---
@@ -244,6 +254,14 @@ export default function InventarioPage() {
           >
             <Mail className="w-4 h-4" /> Correos Propios
           </button>
+          <button
+            onClick={() => setActiveTab('canceladas')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer border-none bg-transparent ${
+              activeTab === 'canceladas' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-400/20' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <XCircle className="w-4 h-4" /> Canceladas
+          </button>
         </div>
       </div>
 
@@ -286,6 +304,10 @@ export default function InventarioPage() {
             setSelectedCuenta(c);
             setIsCmModalOpen(true);
           }}
+          onOpenCancel={(c) => {
+            setSelectedCuenta(c);
+            setIsCancelOpen(true);
+          }}
         />
       )}
 
@@ -312,6 +334,10 @@ export default function InventarioPage() {
           correosPropios={correosPropios}
           onRefresh={reloadAll}
         />
+      )}
+
+      {activeTab === 'canceladas' && (
+        <CanceladasTab />
       )}
 
       {/* REGISTRO CUENTA MADRE MODAL */}
@@ -342,6 +368,14 @@ export default function InventarioPage() {
         onClose={() => setIsRenewOpen(false)}
         selectedCuenta={selectedCuenta}
         onSubmit={handleApplyRenew}
+      />
+
+      {/* CANCELACION CUENTA MADRE MODAL */}
+      <CancelarCuentaModal
+        isOpen={isCancelOpen}
+        onClose={() => setIsCancelOpen(false)}
+        selectedCuenta={selectedCuenta}
+        onSubmit={handleApplyCancel}
       />
 
       {/* PROVEEDOR ADD/EDIT MODAL */}

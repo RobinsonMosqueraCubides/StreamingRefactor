@@ -23,6 +23,7 @@ class EstadoCuenta(enum.Enum):
     CAIDA = "CAIDA"
     VENCIDA = "VENCIDA"
     RENOVADA = "RENOVADA"
+    CANCELADA = "CANCELADA"
 
 class EstadoPago(enum.Enum):
     PAGADO = "PAGADO"
@@ -340,6 +341,25 @@ class ClavePlataformaCorreoPropio(Base):
     __table_args__ = (
         UniqueConstraint("correo_propio_id", "plataforma_id", name="uq_correo_plataforma"),
     )
+
+
+class CuentaMadreCancelada(Base):
+    __tablename__ = "cuentas_madres_canceladas"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cuenta_madre_id: Mapped[int] = mapped_column(nullable=False)
+    plataforma_nombre: Mapped[str] = mapped_column(String(100), nullable=False)
+    correo: Mapped[str] = mapped_column(String(150), nullable=False)
+    clave: Mapped[str] = mapped_column(String(150), nullable=False)
+    max_perfiles: Mapped[int] = mapped_column(nullable=False)
+    proveedor_nombre: Mapped[str] = mapped_column(String(100), nullable=False)
+    precio_compra: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    fecha_compra: Mapped[date] = mapped_column(Date, nullable=False)
+    fecha_vencimiento: Mapped[date] = mapped_column(Date, nullable=False)
+    fecha_cancelacion: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
+    motivo_cancelacion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    devolucion_caja: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0.0)
+    devolucion_proveedor: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0.0)
 
 
 

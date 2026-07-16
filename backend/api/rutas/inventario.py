@@ -6,7 +6,7 @@ from db.database import get_db
 from schemas.inventario_schemas import (
     CredencialCreate, CredencialUpdate, CredencialResponse,
     CuentaMadreCreate, CuentaMadreUpdate, CuentaMadreResponse, CuentaMadreRenovar,
-    PerfilUpdate, PerfilResponse
+    PerfilUpdate, PerfilResponse, CuentaMadreCancelar, CuentaMadreCanceladaResponse
 )
 import services.inventario_service as service
 
@@ -137,6 +137,28 @@ async def renovar_cuenta_madre(id: int, renovacion: CuentaMadreRenovar, db: Asyn
 async def delete_cuenta_madre(id: int, db: AsyncSession = Depends(get_db)):
     """Eliminar físicamente una cuenta madre y sus perfiles asociados."""
     return await service.delete_cuenta_madre(db, id)
+
+@cuentas_madre_router.post(
+    "/{id}/cancelar",
+    response_model=CuentaMadreResponse,
+    summary="Cancelar cuenta madre",
+    responses={
+        400: {"description": "Error en los datos o regla de negocio"},
+        404: {"description": "Cuenta madre no encontrada"}
+    }
+)
+async def cancelar_cuenta_madre(id: int, data: CuentaMadreCancelar, db: AsyncSession = Depends(get_db)):
+    """Cancelar cuenta madre registrando copia en histórico y procesando reembolsos."""
+    return await service.cancelar_cuenta_madre(db, id, data)
+
+@cuentas_madre_router.get(
+    "/canceladas/list",
+    response_model=List[CuentaMadreCanceladaResponse],
+    summary="Listar cuentas madres canceladas"
+)
+async def get_cuentas_canceladas(db: AsyncSession = Depends(get_db)):
+    """Obtener el listado histórico de cuentas madres canceladas."""
+    return await service.get_cuentas_canceladas(db)
 
 
 # --- Perfiles Router ---

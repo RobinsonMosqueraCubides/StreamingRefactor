@@ -420,6 +420,96 @@ async def renovar_cuenta_madre(db: AsyncSession, cuenta_id: int, nueva_fecha_ven
         raise e
 
 
+async def cancelar_cuenta_madre(db: AsyncSession, cuenta_id: int, data: "CuentaMadreCancelar"):
+    from db.models import DetalleVenta, Venta, CuentaMadreCancelada, Transaccion, TipoTransaccion, CorreoPropio, ClavePlataformaCorreoPropio
+    from core.exceptions import NotFoundError
+    from decimal import Decimal
+
+    stmt = select(CuentaMadre).where(CuentaMadre.id == cuenta_id).options(
+        selectinload(CuentaMadre.plataforma),
+        selectinload(CuentaMadre.credencial),
+        selectinload(CuentaMadre.proveedor),
+        selectinload(CuentaMadre.perfiles)
+    )
+    res = await db.execute(stmt)
+    db_cuenta = res.scalar_one_or_none()
+    if not db_cuenta:
+        raise NotFoundError(f"CuentaMadre con id {cuenta_id} no encontrada")
+
+    if db_cuenta.estado == EstadoCuenta.CANCELADA:
+        raise BusinessRuleError("La cuenta madre ya está cancelada.")
+
+    plataforma_nombre = db_cuenta.plataforma.nombre if db_cuenta.plataforma else "N/A"
+    correo = db_cuenta.credencial.email if db_cuenta.credencial else "N/A"
+    clave = db_cuenta.credencial.password if db_cuenta.credencial else "N/A"
+    proveedor_nombre = db_cuenta.proveedor.nombre if db_cuenta.proveedor else "N/A"
+
+    if db_cuenta.proveedor and db_cuenta.proveedor.nombre == "Correos A" and db_cuenta.credencial:
+        stmt_cp = select(CorreoPropio).where(CorreoPropio.correo_gmail == db_cuenta.credencial.email)
+        res_cp = await db.execute(stmt_cp)
+        correo_propio = res_cp.scalar_one_or_none()
+        if correo_propio:
+            res_cpcp = await db.execute(select(ClavePlataformaCorreoPropio).where(
+                ClavePlataformaCorreoPropio.correo_propio_id == correo_propio.id,
+                ClavePlataformaCorreoPropio.plataforma_id == db_cuenta.plataforma_id
+            ))
+            cpcp = res_cpcp.scalar_one_or_none()
+            if cpcp:
+                clave = cpcp.clave
+
+    devolucion_caja = Decimal("0.0")
+    devolucion_proveedor = Decimal("0.0")
+
+    try:
+        if data.devolucion_tipo == "CAJA":
+            devolucion_caja = data.monto_devolucion
+            db_trans = Transaccion(
+                tipo=TipoTransaccion.INGRESO,
+                categoria="REEMBOLSO_CUENTA",
+                monto=data.monto_devolucion,
+                entidad=data.entidad_pago,
+                referencia_id=db_cuenta.id
+            )
+            db.add(db_trans)
+
+        elif data.devolucion_tipo == "SALDO_PROVEEDOR":
+            devolucion_proveedor = data.monto_devolucion
+            if db_cuenta.proveedor:
+                db_cuenta.proveedor.saldo_a_favor = (db_cuenta.proveedor.saldo_a_favor or Decimal("0.0")) + data.monto_devolucion
+
+        archive = CuentaMadreCancelada(
+            cuenta_madre_id=db_cuenta.id,
+            plataforma_nombre=plataforma_nombre,
+            correo=correo,
+            clave=clave,
+            max_perfiles=db_cuenta.max_perfiles,
+            proveedor_nombre=proveedor_nombre,
+            precio_compra=db_cuenta.precio_compra,
+            fecha_compra=db_cuenta.fecha_compra,
+            fecha_vencimiento=db_cuenta.fecha_vencimiento,
+            motivo_cancelacion=data.motivo_cancelacion,
+            devolucion_caja=devolucion_caja,
+            devolucion_proveedor=devolucion_proveedor
+        )
+        db.add(archive)
+
+        db_cuenta.estado = EstadoCuenta.CANCELADA
+        for p in db_cuenta.perfiles:
+            p.asignado = False
+
+        await db.commit()
+        await db.refresh(db_cuenta)
+        return db_cuenta
+    except Exception as e:
+        await db.rollback()
+        raise e
+
+async def get_cuentas_canceladas(db: AsyncSession):
+    from db.models import CuentaMadreCancelada
+    result = await db.execute(select(CuentaMadreCancelada).order_by(CuentaMadreCancelada.fecha_cancelacion.desc()))
+    return result.scalars().all()
+
+
 # --- Perfil Services ---
 
 async def get_perfiles(db: AsyncSession, skip: int = 0, limit: int = 100):
