@@ -43,7 +43,7 @@ export interface CuentaMadre {
   precio_compra: number;
   fecha_compra: string;
   fecha_vencimiento: string;
-  estado: 'ACTIVA' | 'CAIDA' | 'VENCIDA' | 'RENOVADA';
+  estado: 'ACTIVA' | 'CAIDA' | 'VENCIDA' | 'RENOVADA' | 'CANCELADA';
   perfiles: Perfil[];
   clave_plataforma?: string | null;
   proveedor?: Proveedor;

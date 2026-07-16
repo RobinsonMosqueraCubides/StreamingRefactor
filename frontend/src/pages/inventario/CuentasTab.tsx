@@ -71,6 +71,7 @@ export default function CuentasTab({
     if (estado === 'ACTIVA') return 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';
     if (estado === 'RENOVADA') return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
     if (estado === 'VENCIDA') return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+    if (estado === 'CANCELADA') return 'text-slate-400 bg-slate-500/10 border-slate-500/20';
     return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
   };
 
@@ -107,6 +108,13 @@ export default function CuentasTab({
 
   const renderVencimientoStatus = (fechaVencimiento: string, estado: string) => {
     const diffDays = getDaysDiff(fechaVencimiento);
+    if (estado === 'CANCELADA') {
+      return (
+        <span className="text-[10px] font-semibold text-slate-400 bg-slate-500/10 border border-slate-500/20 px-2 py-0.5 rounded-md">
+          Cancelada
+        </span>
+      );
+    }
     if (estado === 'RENOVADA') {
       return (
         <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
