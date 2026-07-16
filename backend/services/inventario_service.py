@@ -197,7 +197,10 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
     db_cuenta = await get_cuenta_madre(db, cuenta_id)
     
     try:
-        from db.models import Proveedor, Credencial, CorreoPropio, ClavePlataformaCorreoPropio
+        from db.models import Proveedor, Credencial, CorreoPropio, ClavePlataformaCorreoPropio, DetalleVenta, Venta
+        from sqlalchemy import func, delete
+        from decimal import Decimal
+
         db_prov = await db.get(Proveedor, cuenta.proveedor_id)
         if db_prov and db_prov.nombre == "Correos A":
             if not cuenta.clave_plataforma:
@@ -225,6 +228,7 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
                         )
                         db.add(cpcp)
 
+        # 1. Update the db_cuenta properties early so any subsequent queries see these new values
         db_cuenta.proveedor_id = cuenta.proveedor_id
         db_cuenta.credencial_id = cuenta.credencial_id
         db_cuenta.plataforma_id = cuenta.plataforma_id
@@ -233,7 +237,147 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
         db_cuenta.fecha_compra = cuenta.fecha_compra
         db_cuenta.fecha_vencimiento = cuenta.fecha_vencimiento
         db_cuenta.estado = cuenta.estado
-        
+        await db.flush()
+
+        # 2. Get existing profiles of the account
+        res_existing_perfiles = await db.execute(
+            select(Perfil).where(Perfil.cuenta_madre_id == cuenta_id)
+        )
+        existing_perfiles = res_existing_perfiles.scalars().all()
+        old_count = len(existing_perfiles)
+        new_count = cuenta.max_perfiles
+        diff = new_count - old_count
+
+        whole_account_sale_id = None
+        if old_count > 0:
+            # Check if all existing profiles were sold in a single sale (whole-account sale)
+            existing_profile_ids = [p.id for p in existing_perfiles]
+            stmt_v = (
+                select(DetalleVenta.venta_id)
+                .join(Venta, DetalleVenta.venta_id == Venta.id)
+                .where(
+                    DetalleVenta.perfil_id.in_(existing_profile_ids),
+                    Venta.tipo_venta == "CUENTA"
+                )
+                .group_by(DetalleVenta.venta_id)
+                .having(func.count(DetalleVenta.id) == old_count)
+            )
+            res_v = await db.execute(stmt_v)
+            row_v = res_v.first()
+            if row_v:
+                whole_account_sale_id = row_v[0]
+
+        if diff > 0:
+            # Increase profiles
+            for i in range(old_count + 1, new_count + 1):
+                new_perfil = Perfil(
+                    cuenta_madre_id=cuenta_id,
+                    nombre_perfil=f"Perfil {i}",
+                    pin=None,
+                    asignado=True if whole_account_sale_id else False
+                )
+                db.add(new_perfil)
+                await db.flush()
+
+                if whole_account_sale_id:
+                    new_detail = DetalleVenta(
+                        venta_id=whole_account_sale_id,
+                        combo_id=None,
+                        cuenta_madre_id=cuenta_id,
+                        perfil_id=new_perfil.id,
+                        precio_aplicado=Decimal(0)
+                    )
+                    db.add(new_detail)
+
+            await db.flush()
+
+            if whole_account_sale_id:
+                # Redistribute price for the whole account sale
+                stmt_details = select(DetalleVenta).where(
+                    DetalleVenta.venta_id == whole_account_sale_id,
+                    DetalleVenta.cuenta_madre_id == cuenta_id
+                )
+                res_details = await db.execute(stmt_details)
+                all_details = res_details.scalars().all()
+                total_cuenta_precio = sum(d.precio_aplicado for d in all_details)
+
+                if all_details:
+                    new_unit_price = total_cuenta_precio / Decimal(len(all_details))
+                    for d in all_details:
+                        d.precio_aplicado = new_unit_price
+
+                # Recalculate sale type
+                stmt_sale = select(Venta).where(Venta.id == whole_account_sale_id)
+                res_sale = await db.execute(stmt_sale)
+                sale = res_sale.scalar_one_or_none()
+                if sale:
+                    stmt_all_sale_details = select(DetalleVenta).where(DetalleVenta.venta_id == whole_account_sale_id)
+                    res_all_sale_details = await db.execute(stmt_all_sale_details)
+                    from services.ventas_service import _calcular_tipo_venta
+                    sale.tipo_venta = await _calcular_tipo_venta(db, res_all_sale_details.scalars().all())
+
+        elif diff < 0:
+            # Decrease profiles
+            num_to_delete = abs(diff)
+            if whole_account_sale_id:
+                sorted_perfiles = sorted(existing_perfiles, key=lambda p: p.id)
+                perfiles_to_delete = sorted_perfiles[-num_to_delete:]
+                delete_profile_ids = [p.id for p in perfiles_to_delete]
+
+                # Get original total price of the account in this sale
+                stmt_details = select(DetalleVenta).where(
+                    DetalleVenta.venta_id == whole_account_sale_id,
+                    DetalleVenta.cuenta_madre_id == cuenta_id
+                )
+                res_details = await db.execute(stmt_details)
+                all_details = res_details.scalars().all()
+                total_cuenta_precio = sum(d.precio_aplicado for d in all_details)
+
+                # Delete DetalleVenta records
+                stmt_del_det = delete(DetalleVenta).where(
+                    DetalleVenta.venta_id == whole_account_sale_id,
+                    DetalleVenta.perfil_id.in_(delete_profile_ids)
+                )
+                await db.execute(stmt_del_det)
+
+                # Delete profiles
+                for p in perfiles_to_delete:
+                    await db.delete(p)
+
+                # Redistribute price among remaining details
+                stmt_remaining_details = select(DetalleVenta).where(
+                    DetalleVenta.venta_id == whole_account_sale_id,
+                    DetalleVenta.cuenta_madre_id == cuenta_id,
+                    ~DetalleVenta.perfil_id.in_(delete_profile_ids)
+                )
+                res_rem = await db.execute(stmt_remaining_details)
+                remaining_details = res_rem.scalars().all()
+
+                if remaining_details:
+                    new_unit_price = total_cuenta_precio / Decimal(len(remaining_details))
+                    for d in remaining_details:
+                        d.precio_aplicado = new_unit_price
+
+                # Recalculate sale type
+                stmt_sale = select(Venta).where(Venta.id == whole_account_sale_id)
+                res_sale = await db.execute(stmt_sale)
+                sale = res_sale.scalar_one_or_none()
+                if sale:
+                    stmt_all_sale_details = select(DetalleVenta).where(DetalleVenta.venta_id == whole_account_sale_id)
+                    res_all_sale_details = await db.execute(stmt_all_sale_details)
+                    from services.ventas_service import _calcular_tipo_venta
+                    sale.tipo_venta = await _calcular_tipo_venta(db, res_all_sale_details.scalars().all())
+            else:
+                # Not a whole-account sale, check if we have enough unassigned profiles to delete
+                unassigned_perfiles = [p for p in existing_perfiles if not p.asignado]
+                if len(unassigned_perfiles) < num_to_delete:
+                    raise BusinessRuleError("No se pueden reducir los perfiles porque algunos ya están asignados o vendidos de forma individual.")
+
+                unassigned_sorted = sorted(unassigned_perfiles, key=lambda p: p.id, reverse=True)
+                perfiles_to_delete = unassigned_sorted[:num_to_delete]
+                for p in perfiles_to_delete:
+                    await db.delete(p)
+
         await db.commit()
         return await get_cuenta_madre(db, db_cuenta.id)
 
