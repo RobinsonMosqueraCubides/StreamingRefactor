@@ -260,7 +260,7 @@ export default function HistorialPanel({
     
     let matchesExpiration = true;
     if (historyFilter === 'vence_2_dias') {
-      matchesExpiration = diffDays === 2;
+      matchesExpiration = diffDays === 1 || diffDays === 2;
     } else if (historyFilter === 'vence_hoy') {
       matchesExpiration = diffDays <= 0;
     }
@@ -339,7 +339,7 @@ export default function HistorialPanel({
           onChange={(e) => setHistoryFilter(e.target.value as any)}
         >
           <option value="todos">Todos los Vencimientos</option>
-          <option value="vence_2_dias">Vence en 2 Días</option>
+          <option value="vence_2_dias">Vence en 1 o 2 Días</option>
           <option value="vence_hoy">Vencidos / Vence Hoy</option>
         </Select>
       </div>
