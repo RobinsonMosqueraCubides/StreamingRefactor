@@ -274,6 +274,12 @@ export default function VentaDetalleModal({
               }
             }
 
+            let firstProfileName = '';
+            if (item.isCuentaCompleta && cm && cm.perfiles && cm.perfiles.length > 0) {
+              const sorted = [...cm.perfiles].sort((a, b) => a.id - b.id);
+              firstProfileName = sorted[0].nombre_perfil;
+            }
+
             const typeTemplate = sale.diffDays <= 0 ? 'corte' : 'cobro';
             const waKey = `${detail.id}-${typeTemplate}`;
 
@@ -413,10 +419,15 @@ export default function VentaDetalleModal({
                       </div>
                     </>
                   ) : (
-                    <div className="py-1 border-t border-slate-900/60 pt-2 text-center">
-                      <span className="text-sky-400 font-bold font-sans">
+                    <div className="py-1 border-t border-slate-900/60 pt-2 text-center space-y-1">
+                      <div className="text-sky-400 font-bold font-sans">
                         Acceso Total (Cuenta Completa sin límites de perfil)
-                      </span>
+                      </div>
+                      {firstProfileName && (
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          Pantalla de referencia: <span className="text-slate-300 font-bold">{firstProfileName}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
