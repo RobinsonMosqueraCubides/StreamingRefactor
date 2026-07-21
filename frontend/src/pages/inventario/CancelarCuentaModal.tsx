@@ -9,7 +9,7 @@ interface CancelarCuentaModalProps {
   onClose: () => void;
   selectedCuenta: any;
   onSubmit: (payload: {
-    motivo_cancelacion: string;
+    motivo_cancelacion: string | null;
     devolucion_tipo: 'CAJA' | 'SALDO_PROVEEDOR' | 'NINGUNA';
     monto_devolucion: number;
     entidad_pago: string | null;
@@ -20,7 +20,6 @@ export default function CancelarCuentaModal({ isOpen, onClose, selectedCuenta, o
   const [motivo, setMotivo] = useState('');
   const [devolucionTipo, setDevolucionTipo] = useState<'CAJA' | 'SALDO_PROVEEDOR' | 'NINGUNA'>('NINGUNA');
   const [montoDevolucion, setMontoDevolucion] = useState(0);
-  const [entidadPago, setEntidadPago] = useState<string>('');
   
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -38,11 +37,32 @@ export default function CancelarCuentaModal({ isOpen, onClose, selectedCuenta, o
       setMotivo('');
       setDevolucionTipo('NINGUNA');
       setMontoDevolucion(0);
-      setEntidadPago('');
       setError('');
       setSuccess('');
     }
   }, [selectedCuenta]);
+
+  // Proportional refund calculation based on remaining days of active period
+  useEffect(() => {
+    if (selectedCuenta && devolucionTipo !== 'NINGUNA') {
+      const start = new Date(selectedCuenta.fecha_compra + 'T00:00:00');
+      const end = new Date(selectedCuenta.fecha_vencimiento + 'T00:00:00');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const totalDuration = end.getTime() - start.getTime();
+      const remainingDuration = end.getTime() - today.getTime();
+
+      let calculatedAmount = 0;
+      if (totalDuration > 0 && remainingDuration > 0) {
+        const ratio = remainingDuration / totalDuration;
+        calculatedAmount = Math.max(0, Math.round(Number(selectedCuenta.precio_compra) * ratio));
+      }
+      setMontoDevolucion(calculatedAmount);
+    } else {
+      setMontoDevolucion(0);
+    }
+  }, [devolucionTipo, selectedCuenta]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,10 +72,10 @@ export default function CancelarCuentaModal({ isOpen, onClose, selectedCuenta, o
 
     try {
       const payload = {
-        motivo_cancelacion: motivo,
+        motivo_cancelacion: motivo || null,
         devolucion_tipo: devolucionTipo,
         monto_devolucion: Number(montoDevolucion) || 0,
-        entidad_pago: devolucionTipo === 'CAJA' ? entidadPago : null
+        entidad_pago: null
       };
 
       await onSubmit(payload);
@@ -89,13 +109,12 @@ export default function CancelarCuentaModal({ isOpen, onClose, selectedCuenta, o
         )}
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Motivo de Cancelación</label>
+          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Motivo de Cancelación (Opcional)</label>
           <textarea
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500 text-sm min-h-[80px]"
-            placeholder="Describe el motivo por el cual cancelas esta cuenta..."
-            required
+            placeholder="Escribe el motivo de cancelación si lo deseas..."
           />
         </div>
 
@@ -127,24 +146,7 @@ export default function CancelarCuentaModal({ isOpen, onClose, selectedCuenta, o
           />
         )}
 
-        {devolucionTipo === 'CAJA' && (
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Entidad Financiera</label>
-            <select
-              value={entidadPago}
-              onChange={(e) => setEntidadPago(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500 text-sm h-10"
-              required
-            >
-              <option value="">Selecciona una entidad...</option>
-              <option value="NEQUI">Nequi</option>
-              <option value="BANCOLOMBIA">Bancolombia</option>
-              <option value="DAVIPLATA">Daviplata</option>
-              <option value="NU_BANK">Nu Bank</option>
-              <option value="EFECTIVO">Efectivo</option>
-            </select>
-          </div>
-        )}
+
 
         <div className="flex justify-end gap-2 pt-2 border-t border-slate-850">
           <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>

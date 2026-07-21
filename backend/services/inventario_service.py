@@ -420,7 +420,7 @@ async def renovar_cuenta_madre(db: AsyncSession, cuenta_id: int, nueva_fecha_ven
 
 
 async def cancelar_cuenta_madre(db: AsyncSession, cuenta_id: int, data: "CuentaMadreCancelar"):
-    from db.models import DetalleVenta, Venta, CuentaMadreCancelada, Transaccion, TipoTransaccion, CorreoPropio, ClavePlataformaCorreoPropio
+    from db.models import DetalleVenta, Venta, CuentaMadreCancelada, Transaccion, TipoTransaccion, CorreoPropio, ClavePlataformaCorreoPropio, EntidadFinanciera
     from core.exceptions import NotFoundError
     from decimal import Decimal
 
@@ -466,7 +466,7 @@ async def cancelar_cuenta_madre(db: AsyncSession, cuenta_id: int, data: "CuentaM
                 tipo=TipoTransaccion.INGRESO,
                 categoria="REEMBOLSO_CUENTA",
                 monto=data.monto_devolucion,
-                entidad=data.entidad_pago,
+                entidad=data.entidad_pago or EntidadFinanciera.EFECTIVO,
                 referencia_id=db_cuenta.id
             )
             db.add(db_trans)

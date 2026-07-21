@@ -103,12 +103,6 @@ class CuentaMadreCancelar(BaseModel):
     monto_devolucion: Decimal = Field(default=Decimal("0.0"), ge=Decimal("0.0"), description="Monto a devolver")
     entidad_pago: Optional[EntidadFinanciera] = Field(None, description="Entidad financiera si se devuelve a caja")
 
-    @model_validator(mode="after")
-    def validate_caja_entidad(self) -> 'CuentaMadreCancelar':
-        if self.devolucion_tipo == TipoDevolucion.CAJA and self.entidad_pago is None:
-            raise ValueError("Debe especificar la entidad financiera para la devolución a caja.")
-        return self
-
 class CuentaMadreCanceladaResponse(BaseModel):
     id: int
     cuenta_madre_id: int
