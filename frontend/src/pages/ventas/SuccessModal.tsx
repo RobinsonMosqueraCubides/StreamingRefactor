@@ -46,10 +46,23 @@ export default function SuccessModal({
     const key = 'consolidated';
     setWaLoading(prev => ({ ...prev, [key]: true }));
     try {
+      // First, save the custom profile names and PINs to the database!
+      const savePromises = registeredVenta.detalles.map((detail: any) => {
+        const editData = editablePerfiles[detail.perfil_id];
+        if (editData) {
+          return api.put(`/perfiles/${detail.perfil_id}`, {
+            nombre_perfil: editData.nombre_perfil,
+            pin: editData.pin
+          });
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(savePromises);
+
       const res = await api.get(`/ventas/${ventaId}/whatsapp-consolidated`);
       window.open(res.data.url, '_blank');
     } catch (err: any) {
-      alert('Error al generar el enlace de WhatsApp consolidado: ' + (err.response?.data?.detail || err.message));
+      alert('Error al generar el enlace de WhatsApp consolidado o guardar accesos: ' + (err.response?.data?.detail || err.message));
     } finally {
       setWaLoading(prev => ({ ...prev, [key]: false }));
     }

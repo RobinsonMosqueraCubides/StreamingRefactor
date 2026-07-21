@@ -218,8 +218,20 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
     res_cm = await db.execute(stmt_cm)
     cm = res_cm.scalar_one_or_none()
     
-    perfil = await get_or_404(db, Perfil, db_detalle.perfil_id)
+    perfil = None
+    if db_detalle.perfil_id is not None:
+        perfil = await db.get(Perfil, db_detalle.perfil_id)
     
+    es_cuenta_completa = False
+    if cm:
+        stmt_all_details = select(DetalleVenta).where(
+            DetalleVenta.venta_id == venta_id,
+            DetalleVenta.cuenta_madre_id == db_detalle.cuenta_madre_id
+        )
+        res_all_details = await db.execute(stmt_all_details)
+        sale_cm_details = res_all_details.scalars().all()
+        es_cuenta_completa = len(sale_cm_details) == cm.max_perfiles
+
     stmt_temp = select(PlantillaMensaje).where(PlantillaMensaje.nombre == template_type)
     res_temp = await db.execute(stmt_temp)
     temp = res_temp.scalar_one_or_none()
@@ -245,10 +257,6 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
         res_cp = await db.execute(stmt_cp)
         correo_propio = res_cp.scalar_one_or_none()
         if correo_propio:
-            stmt_cpcp = select(ClavePlataformaCorreoPropio).where(
-                ClavePlataformaCorreoPreparaId := ClavePlataformaCorreoPropio.correo_propio_id == correo_propio.id,
-                ClavePlataformaCorreoPropio.plataforma_id == cm.plataforma_id
-            )
             res_cpcp = await db.execute(select(ClavePlataformaCorreoPropio).where(
                 ClavePlataformaCorreoPropio.correo_propio_id == correo_propio.id,
                 ClavePlataformaCorreoPropio.plataforma_id == cm.plataforma_id
@@ -259,6 +267,18 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
 
     profile_name = perfil.nombre_perfil if perfil else venta.cliente.nombre
     pin_val = perfil.pin if (perfil and perfil.pin) else "N/A"
+
+    if es_cuenta_completa:
+        lines = mensaje_base.split('\n')
+        filtered_lines = []
+        for line in lines:
+            lower_line = line.lower()
+            if ('perfil' in lower_line and '{perfil}' in lower_line) or ('pin' in lower_line and '{pin}' in lower_line):
+                continue
+            filtered_lines.append(line)
+        mensaje_base = '\n'.join(filtered_lines)
+        # Fallback if profile/pin were on same line:
+        mensaje_base = mensaje_base.replace('{perfil}', 'N/A').replace('{pin}', 'N/A')
 
     msg = mensaje_base.replace('[Nombre Cliente]', venta.cliente.nombre) \
                       .replace('{plataforma}', plataforma) \
