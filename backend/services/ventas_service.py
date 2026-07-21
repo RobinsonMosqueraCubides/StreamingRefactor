@@ -418,54 +418,198 @@ async def update_venta(db: AsyncSession, venta_id: int, venta_data: VentaUpdate)
         db_venta.nota = venta_data.nota
         
     if venta_data.detalles is not None:
-        for det_update in venta_data.detalles:
-            db_detail = None
-            for d in db_venta.detalles:
-                if d.id == det_update.id:
-                    db_detail = d
-                    break
-            
-            if db_detail is not None:
-                # Determinar si cambió el perfil o la cuenta
-                new_perfil_id = None if det_update.perfil_id == 0 else det_update.perfil_id
-                
-                profile_changed = (det_update.perfil_id is not None and db_detail.perfil_id != new_perfil_id)
-                account_changed = (det_update.cuenta_madre_id is not None and db_detail.cuenta_madre_id != det_update.cuenta_madre_id)
-                
-                if profile_changed or account_changed:
-                    # 1. Liberar perfil o cuenta anterior
-                    if db_detail.perfil_id is not None:
-                        old_perf = await db.get(Perfil, db_detail.perfil_id)
-                        if old_perf:
-                            old_perf.asignado = False
-                    elif db_detail.cuenta_madre_id is not None:
-                        res_old_perfiles = await db.execute(
-                            select(Perfil).where(Perfil.cuenta_madre_id == db_detail.cuenta_madre_id)
-                        )
-                        for p in res_old_perfiles.scalars().all():
-                            p.asignado = False
-                    
-                    # 2. Aplicar nuevos IDs
-                    if det_update.cuenta_madre_id is not None:
-                        db_detail.cuenta_madre_id = det_update.cuenta_madre_id
-                    if det_update.perfil_id is not None:
-                        db_detail.perfil_id = new_perfil_id
-                    
-                    # 3. Ocupar nuevo perfil o cuenta
-                    if db_detail.perfil_id is not None:
-                        new_perf = await db.get(Perfil, db_detail.perfil_id)
-                        if new_perf:
-                            new_perf.asignado = True
-                    elif db_detail.cuenta_madre_id is not None:
-                        res_new_perfiles = await db.execute(
-                            select(Perfil).where(Perfil.cuenta_madre_id == db_detail.cuenta_madre_id)
-                        )
-                        for p in res_new_perfiles.scalars().all():
-                            p.asignado = True
-                
-                if det_update.precio_aplicado is not None:
-                    db_detail.precio_aplicado = det_update.precio_aplicado
+        # 1. Identify which details to delete (not present in payload)
+        payload_detail_ids = {d.id for d in venta_data.detalles if d.id is not None}
+        details_to_delete = [d for d in list(db_venta.detalles) if d.id not in payload_detail_ids]
         
+        for d in details_to_delete:
+            # Release assigned profile/account
+            if d.perfil_id is not None:
+                old_perf = await db.get(Perfil, d.perfil_id)
+                if old_perf:
+                    old_perf.asignado = False
+            elif d.cuenta_madre_id is not None:
+                res_old_perfiles = await db.execute(
+                    select(Perfil).where(Perfil.cuenta_madre_id == d.cuenta_madre_id)
+                )
+                for p in res_old_perfiles.scalars().all():
+                    p.asignado = False
+            
+            # Delete detail from database and relationship
+            await db.delete(d)
+            db_venta.detalles.remove(d)
+
+        # 2. Iterate through payload details to update existing or add new ones
+        for det_update in venta_data.detalles:
+            if det_update.id is not None:
+                # Update existing detail
+                db_detail = None
+                for d in db_venta.detalles:
+                    if d.id == det_update.id:
+                        db_detail = d
+                        break
+                
+                if db_detail is not None:
+                    # Determine if profile or account changed
+                    new_perfil_id = None if det_update.perfil_id == 0 else det_update.perfil_id
+                    
+                    profile_changed = (det_update.perfil_id is not None and db_detail.perfil_id != new_perfil_id)
+                    account_changed = (det_update.cuenta_madre_id is not None and db_detail.cuenta_madre_id != det_update.cuenta_madre_id)
+                    
+                    if profile_changed or account_changed:
+                        # Release old
+                        if db_detail.perfil_id is not None:
+                            old_perf = await db.get(Perfil, db_detail.perfil_id)
+                            if old_perf:
+                                old_perf.asignado = False
+                        elif db_detail.cuenta_madre_id is not None:
+                            res_old_perfiles = await db.execute(
+                                select(Perfil).where(Perfil.cuenta_madre_id == db_detail.cuenta_madre_id)
+                            )
+                            for p in res_old_perfiles.scalars().all():
+                                p.asignado = False
+                        
+                        # Apply new IDs
+                        if det_update.cuenta_madre_id is not None:
+                            db_detail.cuenta_madre_id = det_update.cuenta_madre_id
+                        if det_update.perfil_id is not None:
+                            db_detail.perfil_id = new_perfil_id
+                        
+                        # Assign new
+                        if db_detail.perfil_id is not None:
+                            new_perf = await db.get(Perfil, db_detail.perfil_id)
+                            if new_perf:
+                                new_perf.asignado = True
+                        elif db_detail.cuenta_madre_id is not None:
+                            res_new_perfiles = await db.execute(
+                                select(Perfil).where(Perfil.cuenta_madre_id == db_detail.cuenta_madre_id)
+                            )
+                            for p in res_new_perfiles.scalars().all():
+                                p.asignado = True
+                    
+                    if det_update.precio_aplicado is not None:
+                        db_detail.precio_aplicado = det_update.precio_aplicado
+
+                    if db_detail.perfil_id is not None:
+                        if det_update.nombre_perfil is not None or det_update.pin is not None:
+                            perf = await db.get(Perfil, db_detail.perfil_id)
+                            if perf:
+                                if det_update.nombre_perfil is not None:
+                                    perf.nombre_perfil = det_update.nombre_perfil
+                                if det_update.pin is not None:
+                                    perf.pin = det_update.pin
+            else:
+                # Add new detail
+                if not det_update.plataforma_id:
+                    raise BusinessRuleError("Se requiere plataforma_id para agregar un servicio.")
+                
+                # Fetch platform name for error reporting
+                plat_res = await db.execute(select(Plataforma).where(Plataforma.id == det_update.plataforma_id))
+                plat = plat_res.scalar_one_or_none()
+                plat_name = plat.nombre if plat else f"ID {det_update.plataforma_id}"
+
+                final_cuenta_madre_id = det_update.cuenta_madre_id
+                final_perfil_id = det_update.perfil_id if det_update.perfil_id != 0 else None
+                tipo_unidad = getattr(det_update, "tipo_unidad", "PANTALLA")
+
+                if tipo_unidad == "CUENTA":
+                    if final_cuenta_madre_id is not None:
+                        stmt_cm = (
+                            select(CuentaMadre)
+                            .where(
+                                CuentaMadre.id == final_cuenta_madre_id,
+                                CuentaMadre.estado == EstadoCuenta.ACTIVA
+                            )
+                            .with_for_update(skip_locked=True)
+                        )
+                    else:
+                        subq_assigned = select(Perfil.cuenta_madre_id).where((Perfil.asignado == True) | (Perfil.reportado == True))
+                        stmt_cm = (
+                            select(CuentaMadre)
+                            .where(
+                                CuentaMadre.plataforma_id == det_update.plataforma_id,
+                                CuentaMadre.estado == EstadoCuenta.ACTIVA,
+                                ~CuentaMadre.id.in_(subq_assigned)
+                            )
+                            .with_for_update(skip_locked=True)
+                            .limit(1)
+                        )
+                    res_cm = await db.execute(stmt_cm)
+                    db_cm = res_cm.scalar_one_or_none()
+
+                    if not db_cm:
+                        raise BusinessRuleError(f"No hay cuentas completas disponibles para la plataforma {plat_name}")
+
+                    stmt_p = (
+                        select(Perfil)
+                        .where(Perfil.cuenta_madre_id == db_cm.id)
+                        .with_for_update(skip_locked=True)
+                    )
+                    res_p = await db.execute(stmt_p)
+                    perfiles = res_p.scalars().all()
+
+                    if not perfiles:
+                        raise BusinessRuleError(f"La Cuenta Madre #{db_cm.id} no posee perfiles configurados.")
+
+                    precio_unitario = Decimal(str(det_update.precio_aplicado or 0)) / Decimal(len(perfiles))
+
+                    for perfil in perfiles:
+                        perfil.asignado = True
+                        db_detalle = DetalleVenta(
+                            venta_id=db_venta.id,
+                            combo_id=None,
+                            cuenta_madre_id=db_cm.id,
+                            perfil_id=perfil.id,
+                            precio_aplicado=precio_unitario
+                        )
+                        db.add(db_detalle)
+                        db_venta.detalles.append(db_detalle)
+                else:
+                    if final_cuenta_madre_id is not None:
+                        if final_perfil_id is not None:
+                            stmt = select(Perfil).where(
+                                Perfil.id == final_perfil_id,
+                                Perfil.cuenta_madre_id == final_cuenta_madre_id,
+                                Perfil.asignado == False,
+                                Perfil.reportado == False
+                            )
+                        else:
+                            stmt = select(Perfil).where(
+                                Perfil.cuenta_madre_id == final_cuenta_madre_id,
+                                Perfil.asignado == False,
+                                Perfil.reportado == False
+                            )
+                    else:
+                        stmt = select(Perfil).join(CuentaMadre).where(
+                            CuentaMadre.plataforma_id == det_update.plataforma_id,
+                            CuentaMadre.estado == EstadoCuenta.ACTIVA,
+                            Perfil.asignado == False,
+                            Perfil.reportado == False
+                        )
+                    stmt = stmt.with_for_update(skip_locked=True).limit(1)
+                    result = await db.execute(stmt)
+                    perfil = result.scalar_one_or_none()
+
+                    if not perfil:
+                        raise BusinessRuleError(f"No hay perfiles disponibles para la plataforma {plat_name}")
+
+                    perfil.asignado = True
+                    
+                    if det_update.nombre_perfil is not None:
+                        perfil.nombre_perfil = det_update.nombre_perfil
+                    if det_update.pin is not None:
+                        perfil.pin = det_update.pin
+
+                    db_detalle = DetalleVenta(
+                        venta_id=db_venta.id,
+                        combo_id=None,
+                        cuenta_madre_id=perfil.cuenta_madre_id,
+                        perfil_id=perfil.id,
+                        precio_aplicado=det_update.precio_aplicado or Decimal(0)
+                    )
+                    db.add(db_detalle)
+                    db_venta.detalles.append(db_detalle)
+
     if venta_data.detalles is not None:
         db_venta.tipo_venta = await _calcular_tipo_venta(db, db_venta.detalles)
 

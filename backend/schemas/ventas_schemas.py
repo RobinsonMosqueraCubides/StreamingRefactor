@@ -53,10 +53,14 @@ class VentaRenovacion(BaseModel):
 
 
 class VentaDetalleUpdate(BaseModel):
-    id: int
+    id: Optional[int] = None
+    plataforma_id: Optional[int] = None
     cuenta_madre_id: Optional[int] = None
     perfil_id: Optional[int] = None
     precio_aplicado: Optional[Decimal] = None
+    tipo_unidad: Optional[str] = "PANTALLA"
+    nombre_perfil: Optional[str] = None
+    pin: Optional[str] = None
 
 
 class VentaUpdate(BaseModel):

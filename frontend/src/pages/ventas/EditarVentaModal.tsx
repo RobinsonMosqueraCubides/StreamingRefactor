@@ -87,6 +87,7 @@ export default function EditarVentaModal({
           pin: pinVal,
           perfil_id_present: !!d.perfil_id,
           isCorreosA: cm?.proveedor?.nombre === "Correos A",
+          precio_aplicado: d.precio_aplicado,
           
           // Original values to compare
           originalPlataformaId: platId,
@@ -96,6 +97,7 @@ export default function EditarVentaModal({
           originalPassword: (cm?.proveedor?.nombre === "Correos A" ? cm.clave_plataforma : cred?.password) || '',
           originalNombrePerfil: profileUser,
           originalPin: pinVal,
+          originalPrecioAplicado: d.precio_aplicado,
         };
       });
       setDetailsList(details);
@@ -253,6 +255,102 @@ export default function EditarVentaModal({
     }));
   };
 
+  const recalculateMontoTotal = (list: any[]) => {
+    const sum = list.reduce((acc, d) => acc + (parseFloat(String(d.precio_aplicado)) || 0), 0);
+    setMontoTotal(sum);
+  };
+
+  const handleAddDetail = () => {
+    const tempId = `new-${Date.now()}`;
+    const newDetail = {
+      id: tempId,
+      perfil_id: null,
+      cuenta_madre_id: null,
+      plataforma_id: plataformas.length > 0 ? plataformas[0].id : 0,
+      cred_id: null,
+      email: '',
+      password: '',
+      nombre_perfil: '',
+      pin: '',
+      perfil_id_present: true,
+      isCorreosA: false,
+      precio_aplicado: 15000,
+      
+      originalPlataformaId: null,
+      originalCuentaMadreId: null,
+      originalPerfilId: null,
+      originalEmail: '',
+      originalPassword: '',
+      originalNombrePerfil: '',
+      originalPin: '',
+      originalPrecioAplicado: 0,
+    };
+    
+    setDetailsList(prev => {
+      const updated = [...prev, newDetail];
+      recalculateMontoTotal(updated);
+      return updated;
+    });
+  };
+
+  const handleDeleteDetail = (index: number) => {
+    setDetailsList(prev => {
+      const updated = prev.filter((_, idx) => idx !== index);
+      recalculateMontoTotal(updated);
+      return updated;
+    });
+  };
+
+  const handlePriceChange = (index: number, value: number) => {
+    setDetailsList(prev => {
+      const updated = prev.map((item, idx) => {
+        if (idx === index) {
+          return { ...item, precio_aplicado: value };
+        }
+        return item;
+      });
+      recalculateMontoTotal(updated);
+      return updated;
+    });
+  };
+
+  const handleTypeChange = (index: number, newType: 'PANTALLA' | 'CUENTA') => {
+    setDetailsList(prev => {
+      const updated = prev.map((item, idx) => {
+        if (idx === index) {
+          const isPresent = newType === 'PANTALLA';
+          const defaultPrice = isPresent ? 15005 : 40000; // default prices for quick fill
+          const updatedItem = {
+            ...item,
+            perfil_id_present: isPresent,
+            precio_aplicado: defaultPrice,
+            perfil_id: null,
+            nombre_perfil: '',
+            pin: '',
+          };
+          
+          if (item.cuenta_madre_id) {
+            const accObj = cuentas.find(c => c.id === item.cuenta_madre_id);
+            if (accObj) {
+              if (isPresent) {
+                const firstPerf = accObj.perfiles && accObj.perfiles.length > 0 ? accObj.perfiles[0] : null;
+                updatedItem.perfil_id = firstPerf ? firstPerf.id : null;
+                updatedItem.nombre_perfil = firstPerf ? firstPerf.nombre_perfil : '';
+                updatedItem.pin = firstPerf?.pin || '';
+              } else {
+                updatedItem.perfil_id = null;
+              }
+            }
+          }
+          return updatedItem;
+        }
+        return item;
+      });
+      recalculateMontoTotal(updated);
+      return updated;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clienteId) {
@@ -283,38 +381,33 @@ export default function EditarVentaModal({
         nota: nota || null
       };
 
-      // 2. Prepare detail updates (swapping platform/account/profile)
-      const detallesUpdates = detailsList
-        .filter(d => d.cuenta_madre_id !== d.originalCuentaMadreId || d.perfil_id !== d.originalPerfilId)
-        .map(d => ({
-          id: d.id,
+      // 2. Prepare all details for sync
+      const detallesUpdates = detailsList.map(d => {
+        const isNew = typeof d.id === 'string' && d.id.startsWith('new-');
+        return {
+          id: isNew ? null : d.id,
+          plataforma_id: d.plataforma_id,
           cuenta_madre_id: d.cuenta_madre_id,
-          perfil_id: d.perfil_id_present ? (d.perfil_id || 0) : 0 // 0 represents None/full account
-        }));
+          perfil_id: d.perfil_id_present ? (d.perfil_id || 0) : 0, // 0 represents None/full account
+          precio_aplicado: parseFloat(String(d.precio_aplicado)),
+          tipo_unidad: d.perfil_id_present ? "PANTALLA" : "CUENTA",
+          nombre_perfil: d.nombre_perfil || null,
+          pin: d.pin || null
+        };
+      });
 
-      if (detallesUpdates.length > 0) {
-        saleUpdateData.detalles = detallesUpdates;
-      }
+      saleUpdateData.detalles = detallesUpdates;
 
-      // 3. Prepare credentials/profiles updates (fixing typos)
+      // 3. Prepare credentials updates (fixing typos)
       const credencialesUpdates: any[] = [];
-      const perfilesUpdates: any[] = [];
+      const perfilesUpdates: any[] = []; // Empty, as profile updates are handled directly by update_venta API
 
       detailsList.forEach(d => {
-        // Only update credentials if credentials changed
         if (d.cred_id && (d.email !== d.originalEmail || d.password !== d.originalPassword)) {
           credencialesUpdates.push({
             id: d.cred_id,
             email: d.email,
             password: d.password
-          });
-        }
-        // Only update profile if profile changed
-        if (d.perfil_id_present && d.perfil_id && (d.nombre_perfil !== d.originalNombrePerfil || d.pin !== d.originalPin)) {
-          perfilesUpdates.push({
-            id: d.perfil_id,
-            nombre_perfil: d.nombre_perfil,
-            pin: d.pin || null
           });
         }
       });
@@ -479,12 +572,27 @@ export default function EditarVentaModal({
                     <span className="text-[11px] font-black text-slate-300 uppercase tracking-wide">
                       Servicio #{index + 1}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      {d.perfil_id_present ? 'Pantalla Individual' : 'Cuenta Completa'}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={d.perfil_id_present ? "PANTALLA" : "CUENTA"}
+                        onChange={(e) => handleTypeChange(index, e.target.value as any)}
+                        className="bg-slate-900 border border-slate-800 rounded px-2 py-0.5 text-[10px] text-slate-350 focus:outline-none"
+                      >
+                        <option value="PANTALLA">Pantalla Individual</option>
+                        <option value="CUENTA">Cuenta Completa</option>
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDetail(index)}
+                        className="text-xs font-semibold text-rose-400 hover:text-rose-300 focus:outline-none flex items-center gap-1 cursor-pointer bg-transparent border-none"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     
                     {/* Platform Selector */}
                     <div>
@@ -551,6 +659,20 @@ export default function EditarVentaModal({
                       </div>
                     )}
 
+                    {/* Price Input */}
+                    <div>
+                      <label className="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Valor ($ COP)</label>
+                      <input
+                        type="number"
+                        value={d.precio_aplicado}
+                        onChange={(e) => handlePriceChange(index, e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 min-h-[38px] text-xs text-slate-200 focus:border-cyan-500 focus:outline-none"
+                        required
+                        min="0"
+                        step="any"
+                      />
+                    </div>
+
                   </div>
 
                   {/* CREDENTIAL EDIT FIELDS (Allows fixing typos) */}
@@ -563,7 +685,7 @@ export default function EditarVentaModal({
                         onChange={(e) => handleDetailTextChange(index, 'email', e.target.value)}
                         disabled={d.isCorreosA}
                         title={d.isCorreosA ? "Los correos propios no se pueden modificar desde aquí" : ""}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-350 font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full bg-slate-955 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-350 font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -575,7 +697,7 @@ export default function EditarVentaModal({
                           onChange={(e) => handleDetailTextChange(index, 'password', e.target.value)}
                           disabled={d.isCorreosA}
                           title={d.isCorreosA ? "Las claves de plataforma no se pueden modificar desde aquí" : ""}
-                          className="w-full bg-slate-955 border border-slate-800 rounded pl-2.5 pr-8 py-1.5 text-xs text-slate-350 font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="w-full bg-slate-955 border border-slate-800 rounded pl-2.5 pr-8 py-1.5 text-xs text-slate-355 font-mono focus:border-cyan-500 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                         />
                         <button
                           type="button"
@@ -614,6 +736,16 @@ export default function EditarVentaModal({
                 </div>
               );
             })}
+
+            <div className="flex justify-center pt-2">
+              <button
+                type="button"
+                onClick={handleAddDetail}
+                className="flex items-center gap-1.5 px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 font-semibold border border-cyan-400/20 rounded-xl transition-all cursor-pointer text-xs"
+              >
+                + Añadir Servicio
+              </button>
+            </div>
           </div>
         </div>
 
