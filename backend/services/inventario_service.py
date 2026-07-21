@@ -239,11 +239,8 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
         db_cuenta.estado = cuenta.estado
         await db.flush()
 
-        # 2. Get existing profiles of the account
-        res_existing_perfiles = await db.execute(
-            select(Perfil).where(Perfil.cuenta_madre_id == cuenta_id)
-        )
-        existing_perfiles = res_existing_perfiles.scalars().all()
+        # 2. Get existing profiles of the account from the relationship
+        existing_perfiles = db_cuenta.perfiles
         old_count = len(existing_perfiles)
         new_count = cuenta.max_perfiles
         diff = new_count - old_count
@@ -271,7 +268,7 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
             # Increase profiles
             for i in range(old_count + 1, new_count + 1):
                 new_perfil = Perfil(
-                    cuenta_madre_id=cuenta_id,
+                    cuenta_madre=db_cuenta,  # link in memory!
                     nombre_perfil=f"Perfil {i}",
                     pin=None,
                     asignado=True if whole_account_sale_id else False
@@ -340,8 +337,9 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
                 )
                 await db.execute(stmt_del_det)
 
-                # Delete profiles
+                # Delete profiles from relation and DB
                 for p in perfiles_to_delete:
+                    db_cuenta.perfiles.remove(p)
                     await db.delete(p)
 
                 # Redistribute price among remaining details
@@ -376,6 +374,7 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
                 unassigned_sorted = sorted(unassigned_perfiles, key=lambda p: p.id, reverse=True)
                 perfiles_to_delete = unassigned_sorted[:num_to_delete]
                 for p in perfiles_to_delete:
+                    db_cuenta.perfiles.remove(p)
                     await db.delete(p)
 
         await db.commit()
