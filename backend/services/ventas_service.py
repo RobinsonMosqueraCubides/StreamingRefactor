@@ -280,7 +280,9 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
         # Fallback if profile/pin were on same line:
         mensaje_base = mensaje_base.replace('{perfil}', 'N/A').replace('{pin}', 'N/A')
 
-    msg = mensaje_base.replace('[Nombre Cliente]', venta.cliente.nombre) \
+    first_name = venta.cliente.nombre.strip().split()[0] if (venta.cliente and venta.cliente.nombre and venta.cliente.nombre.strip()) else "Cliente"
+
+    msg = mensaje_base.replace('[Nombre Cliente]', first_name) \
                       .replace('{plataforma}', plataforma) \
                       .replace('{usuario}', usuario) \
                       .replace('{password}', password) \
@@ -311,7 +313,8 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
                 detalles_por_cuenta[detail.cuenta_madre_id] = []
             detalles_por_cuenta[detail.cuenta_madre_id].append(detail)
             
-    msg = f"Hola *{venta.cliente.nombre}*, aquí tienes los accesos para tus suscripciones de streaming:\n\n"
+    first_name = venta.cliente.nombre.strip().split()[0] if (venta.cliente and venta.cliente.nombre and venta.cliente.nombre.strip()) else "Cliente"
+    msg = f"Hola *{first_name}*, aquí tienes los accesos para tus suscripciones de streaming:\n\n"
     item_idx = 1
     
     for cm_id, list_detalles in detalles_por_cuenta.items():
