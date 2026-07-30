@@ -117,11 +117,12 @@ async def obtener_balance_periodos(db: AsyncSession):
         ini_dt = datetime.combine(cfg["inicio"], time.min)
         fin_dt = datetime.combine(cfg["fin"], time.max)
 
-        # Costo de ventas registradas en el rango (el monto_total registrado en la venta es el coste por mes)
+        # Costo de ventas registradas y concretadas en el rango (excluyendo ventas pendientes/canceladas sin pagar)
         res_ventas = await db.execute(
             select(func.sum(Venta.monto_total)).where(
                 Venta.fecha_inicio >= cfg["inicio"],
-                Venta.fecha_inicio <= cfg["fin"]
+                Venta.fecha_inicio <= cfg["fin"],
+                Venta.estado_pago.in_([EstadoPago.PAGADO, EstadoPago.PAGO_PARCIAL])
             )
         )
         costo_ventas = res_ventas.scalar() or Decimal("0.00")
