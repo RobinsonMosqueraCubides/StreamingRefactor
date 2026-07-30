@@ -22,10 +22,22 @@ api.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Redirect to /login on 401/403
+// Response Interceptor: Format error detail to string & handle 401/403
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response && error.response.data && error.response.data.detail) {
+      const detail = error.response.data.detail;
+      if (typeof detail === 'object') {
+        if (Array.isArray(detail)) {
+          error.response.data.detail = detail
+            .map((item: any) => item.msg || JSON.stringify(item))
+            .join(', ');
+        } else {
+          error.response.data.detail = detail.msg || JSON.stringify(detail);
+        }
+      }
+    }
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       localStorage.removeItem('token');
       // Only redirect if not already on the login page to avoid loops

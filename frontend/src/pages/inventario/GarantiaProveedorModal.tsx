@@ -50,7 +50,7 @@ export default function GarantiaProveedorModal({ isOpen, onClose, selectedCuenta
     try {
       const payload: any = {
         cuenta_madre_id: selectedCuenta.id,
-        tipo: tipoGarantiaProv
+        tipo_garantia: tipoGarantiaProv
       };
 
       if (tipoGarantiaProv === 'CAMBIO_CLAVE') {
