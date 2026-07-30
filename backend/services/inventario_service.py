@@ -134,7 +134,8 @@ async def create_cuenta_madre(db: AsyncSession, cuenta: CuentaMadreCreate):
             precio_compra=cuenta.precio_compra,
             fecha_compra=cuenta.fecha_compra,
             fecha_vencimiento=cuenta.fecha_vencimiento,
-            estado=cuenta.estado
+            estado=cuenta.estado,
+            notas=cuenta.notas
         )
         db.add(db_cuenta)
         
@@ -238,6 +239,7 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
         db_cuenta.fecha_compra = cuenta.fecha_compra
         db_cuenta.fecha_vencimiento = cuenta.fecha_vencimiento
         db_cuenta.estado = cuenta.estado
+        db_cuenta.notas = cuenta.notas
         await db.flush()
 
         # 2. Get existing profiles of the account from the relationship

@@ -125,6 +125,7 @@ class CuentaMadre(Base):
     fecha_compra: Mapped[date] = mapped_column(Date, nullable=False)
     fecha_vencimiento: Mapped[date] = mapped_column(Date, nullable=False)
     estado: Mapped[EstadoCuenta] = mapped_column(Enum(EstadoCuenta, name="estado_cuenta"), default=EstadoCuenta.ACTIVA)
+    notas: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     # Relationships
     proveedor: Mapped["Proveedor"] = relationship(back_populates="cuentas_madre")

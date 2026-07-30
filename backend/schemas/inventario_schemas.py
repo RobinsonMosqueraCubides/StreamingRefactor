@@ -60,6 +60,7 @@ class CuentaMadreBase(BaseModel):
     fecha_compra: date = Field(..., description="Fecha de compra de la cuenta madre")
     fecha_vencimiento: date = Field(..., description="Fecha de vencimiento de la cuenta madre")
     estado: EstadoCuenta = Field(default=EstadoCuenta.ACTIVA, description="Estado actual de la cuenta")
+    notas: Optional[str] = Field(None, description="Notas u observaciones sobre la cuenta madre")
 
     @model_validator(mode="after")
     def validate_dates(self) -> 'CuentaMadreBase':

@@ -390,6 +390,14 @@ export default function CuentasTab({
               </Card>
             </div>
 
+            {/* Notas / Observaciones */}
+            {cuenta.notas && (
+              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold text-amber-400/90 uppercase tracking-wider">Notas / Observaciones</span>
+                <p className="text-xs text-slate-300 whitespace-pre-wrap">{cuenta.notas}</p>
+              </div>
+            )}
+
             {/* Tabla de perfiles internos */}
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Perfiles Individuales ({totalPerfiles})</h4>

@@ -43,6 +43,7 @@ export default function CuentaMadreModal({
   });
   const [formEntidadPago, setFormEntidadPago] = useState('NEQUI');
   const [formEstado, setFormEstado] = useState('ACTIVA');
+  const [formNotas, setFormNotas] = useState('');
   const [editCredEmail, setEditCredEmail] = useState('');
   const [editCredPassword, setEditCredPassword] = useState('');
   const [showEditCredPassword, setShowEditCredPassword] = useState(false);
@@ -103,6 +104,7 @@ export default function CuentaMadreModal({
         setFormFechaCompra(cuentaAEditar.fecha_compra);
         setFormFechaVencimiento(cuentaAEditar.fecha_vencimiento);
         setFormEstado(cuentaAEditar.estado);
+        setFormNotas(cuentaAEditar.notas || '');
         setFormEntidadPago('NEQUI');
         setFormClavePlataforma(cuentaAEditar.clave_plataforma || '');
 
@@ -133,6 +135,7 @@ export default function CuentaMadreModal({
         setFormFechaVencimiento(`${year}-${month}-${day}`);
         setFormEntidadPago('NEQUI');
         setFormEstado('ACTIVA');
+        setFormNotas('');
         setEditCredEmail('');
         setEditCredPassword('');
         setShowEditCredPassword(false);
@@ -302,6 +305,7 @@ export default function CuentaMadreModal({
         fecha_vencimiento: formFechaVencimiento,
         estado: cuentaAEditar ? formEstado : 'ACTIVA',
         clave_plataforma: isCorreosA ? formClavePlataforma : null,
+        notas: formNotas.trim() || null,
       };
 
       if (cuentaAEditar) {
@@ -641,6 +645,19 @@ export default function CuentaMadreModal({
             value={formFechaVencimiento}
             onChange={(e) => setFormFechaVencimiento(e.target.value)}
             required
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-slate-300">
+            Notas / Observaciones (Opcional)
+          </label>
+          <textarea
+            value={formNotas}
+            onChange={(e) => setFormNotas(e.target.value)}
+            placeholder="Observaciones adicionales sobre la cuenta madre..."
+            rows={2}
+            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all resize-none"
           />
         </div>
 
