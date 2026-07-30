@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from db.database import get_db
-from schemas.finanzas_schemas import PagoVentaCreate, PagoVentaResponse, GastoManualCreate, TransaccionResponse
+from schemas.finanzas_schemas import PagoVentaCreate, PagoVentaResponse, GastoManualCreate, TransaccionResponse, ResumenBalanceResponse
 import services.finanzas_service as service
 
 finanzas_router = APIRouter(prefix="/finanzas", tags=["Finanzas"])
@@ -43,4 +43,15 @@ async def registrar_gasto_manual(gasto: GastoManualCreate, db: AsyncSession = De
 async def list_transacciones(db: AsyncSession = Depends(get_db)):
     """Obtener el historial de todas las transacciones financieras."""
     return await service.get_transacciones(db)
+
+@finanzas_router.get(
+    "/balance-periodos",
+    response_model=ResumenBalanceResponse,
+    summary="Obtener balance financiero desglosado por periodos",
+    description="Calcula ingresos reales, coste de ventas, egresos manuales y balance neto para Mes en Curso, Últimos 3 Meses y Año en Curso."
+)
+async def obtener_balance_periodos(db: AsyncSession = Depends(get_db)):
+    """Obtener el desglose del balance financiero por periodos."""
+    return await service.obtener_balance_periodos(db)
+
 

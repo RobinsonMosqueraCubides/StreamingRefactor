@@ -6,7 +6,7 @@ import Select from '../components/ui/Select';
 import api from '../api/axios';
 import { 
   TrendingUp, TrendingDown, Wallet, BarChart3, Plus, 
-  ArrowUpRight, ArrowDownRight, DollarSign, Calendar, Tag 
+  ArrowUpRight, ArrowDownRight, DollarSign, Calendar, Tag, ShieldAlert 
 } from 'lucide-react';
 
 interface Transaccion {
@@ -27,11 +27,47 @@ interface Venta {
   estado_pago: 'PAGADO' | 'PENDIENTE' | 'PAGO_PARCIAL';
 }
 
+interface BalancePeriodo {
+  periodo: 'MES_ACTUAL' | 'TRES_MESES' | 'ANIO_ACTUAL';
+  etiqueta: string;
+  ingresos_reales: number;
+  costo_ventas: number;
+  gastos_manuales: number;
+  costo_total: number;
+  balance_neto: number;
+}
+
 export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaccion[]>([]);
   const [sales, setSales] = useState<Venta[]>([]);
+  const [periodBalances, setPeriodBalances] = useState<BalancePeriodo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Margen de Riesgo (%) Persistente
+  const [riskMarginPct, setRiskMarginPct] = useState<number | "">(() => {
+    const saved = localStorage.getItem('streaming_erp_risk_margin_pct');
+    return saved !== null && saved !== "" ? parseFloat(saved) : "";
+  });
+
+  const handleRiskMarginChange = (valStr: string) => {
+    if (valStr === "") {
+      setRiskMarginPct("");
+      localStorage.setItem('streaming_erp_risk_margin_pct', "0");
+      return;
+    }
+    const parsed = parseFloat(valStr);
+    if (isNaN(parsed)) {
+      setRiskMarginPct("");
+      localStorage.setItem('streaming_erp_risk_margin_pct', "0");
+      return;
+    }
+    const cleanVal = Math.max(0, Math.min(100, parsed));
+    setRiskMarginPct(cleanVal);
+    localStorage.setItem('streaming_erp_risk_margin_pct', cleanVal.toString());
+  };
+
+  const numericRiskMarginPct = typeof riskMarginPct === 'number' ? riskMarginPct : 0;
 
   // Quick Expense Form States
   const [gastoMonto, setGastoMonto] = useState<number | "">(10000);
@@ -43,12 +79,14 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [transRes, salesRes] = await Promise.all([
+      const [transRes, salesRes, periodRes] = await Promise.all([
         api.get('/finanzas/transacciones'),
         api.get('/ventas/'),
+        api.get('/finanzas/balance-periodos'),
       ]);
       setTransactions(transRes.data);
       setSales(salesRes.data);
+      setPeriodBalances(periodRes.data.periodos || []);
     } catch (err: any) {
       setError('Error al cargar datos financieros');
     } finally {
@@ -110,12 +148,46 @@ export default function DashboardPage() {
 
   const balanceNeto = useMemo(() => ingresos - egresos, [ingresos, egresos]);
 
+  const reservaRiesgoCaja = useMemo(() => {
+    if (balanceNeto <= 0 || numericRiskMarginPct <= 0) return 0;
+    return balanceNeto * (numericRiskMarginPct / 100);
+  }, [balanceNeto, numericRiskMarginPct]);
+
+  const balanceNetoAjustado = useMemo(() => balanceNeto - reservaRiesgoCaja, [balanceNeto, reservaRiesgoCaja]);
+
   return (
     <div className="space-y-6">
-      {/* Encabezado */}
-      <div>
-        <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">Dashboard Financiero</h1>
-        <p className="text-slate-400 text-sm mt-1">Monitorea tus ingresos, egresos y cuentas por cobrar en tiempo real.</p>
+      {/* Encabezado con Casilla de Margen de Riesgo */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">Dashboard Financiero</h1>
+          <p className="text-slate-400 text-sm mt-1">Monitorea tus ingresos, egresos y cuentas por cobrar en tiempo real.</p>
+        </div>
+
+        <div className="flex items-center gap-3 bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl">
+          <div className="p-2 bg-amber-500/10 text-amber-400 rounded-lg">
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+          <div>
+            <label className="text-[11px] font-bold text-slate-300 block uppercase tracking-wider">Margen de Riesgo</label>
+            <div className="flex items-center gap-1 mt-0.5">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                placeholder="0"
+                value={riskMarginPct}
+                onChange={(e) => handleRiskMarginChange(e.target.value)}
+                onFocus={() => {
+                  if (riskMarginPct === 0) setRiskMarginPct("");
+                }}
+                className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-0.5 text-sm font-extrabold text-amber-400 focus:outline-none focus:border-amber-500 text-center"
+              />
+              <span className="text-sm font-bold text-amber-400">%</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {loading && transactions.length === 0 ? (
@@ -124,7 +196,7 @@ export default function DashboardPage() {
         <p className="text-red-400 text-sm">{error}</p>
       ) : (
         <>
-          {/* Tarjetas KPI */}
+          {/* Tarjetas KPI Principales */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 kpi-metrics-grid">
             <Card hoverEffect className="relative overflow-hidden bg-gradient-to-br from-emerald-500/45 to-emerald-500/5 dark:from-emerald-500/10 dark:to-slate-900 border-emerald-200/50 dark:border-emerald-500/10">
               <div className="flex items-center justify-between">
@@ -149,22 +221,28 @@ export default function DashboardPage() {
             </Card>
 
             <Card hoverEffect className={`relative overflow-hidden bg-gradient-to-br ${
-              balanceNeto >= 0 
+              balanceNetoAjustado >= 0 
                 ? 'from-blue-500/45 to-blue-500/5 dark:from-cyan-500/10 dark:to-slate-900 border-blue-200/50 dark:border-cyan-500/10' 
                 : 'from-rose-500/45 to-rose-500/5 dark:from-rose-500/10 dark:to-slate-900 border-rose-200/50 dark:border-rose-500/10'
             }`}>
               <div className="flex items-center justify-between">
-                <p className={`text-xs font-bold uppercase tracking-wider ${balanceNeto >= 0 ? 'text-blue-700 dark:text-cyan-400' : 'text-rose-700 dark:text-rose-400'}`}>Balance de Caja</p>
+                <p className={`text-xs font-bold uppercase tracking-wider ${balanceNetoAjustado >= 0 ? 'text-blue-700 dark:text-cyan-400' : 'text-rose-700 dark:text-rose-400'}`}>Balance de Caja</p>
                 <div className={`p-2 rounded-lg ${
-                  balanceNeto >= 0 
+                  balanceNetoAjustado >= 0 
                     ? 'bg-blue-100 dark:bg-cyan-500/20 text-blue-600 dark:text-cyan-400' 
                     : 'bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400'
                 }`}>
                   <Wallet className="w-5 h-5" />
                 </div>
               </div>
-              <h3 className="text-2xl font-extrabold mt-3 text-black dark:text-slate-100">${balanceNeto.toLocaleString('es-CO')}</h3>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Utilidad neta actual</p>
+              <h3 className="text-2xl font-extrabold mt-3 text-black dark:text-slate-100">${balanceNetoAjustado.toLocaleString('es-CO')}</h3>
+              {numericRiskMarginPct > 0 ? (
+                <p className="text-[10px] text-amber-400 font-semibold mt-1">
+                  Reserva ({numericRiskMarginPct}%): -${reservaRiesgoCaja.toLocaleString('es-CO')} (Orig: ${balanceNeto.toLocaleString('es-CO')})
+                </p>
+              ) : (
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Utilidad neta actual</p>
+              )}
             </Card>
 
             <Card hoverEffect className="relative overflow-hidden bg-gradient-to-br from-amber-500/45 to-amber-500/5 dark:from-amber-500/10 dark:to-slate-900 border-amber-200/50 dark:border-amber-500/10">
@@ -178,6 +256,83 @@ export default function DashboardPage() {
               <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Suscripciones sin liquidar</p>
             </Card>
           </div>
+
+          {/* Resumen Comparativo de Balance por Periodos */}
+          {periodBalances.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-cyan-400" /> Balance Financiero por Periodos
+                </h2>
+                <span className="text-xs text-slate-400">
+                  {numericRiskMarginPct > 0 ? `Descontando ${numericRiskMarginPct}% de reserva de riesgo` : 'Considera coste de ventas por mes y gastos de caja'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {periodBalances.map((item) => {
+                  const balanceOrig = Number(item.balance_neto);
+                  const reservaRiesgo = (balanceOrig > 0 && numericRiskMarginPct > 0) ? balanceOrig * (numericRiskMarginPct / 100) : 0;
+                  const balanceAjustado = balanceOrig - reservaRiesgo;
+                  const esPositivo = balanceAjustado >= 0;
+
+                  return (
+                    <Card key={item.periodo} hoverEffect className="bg-slate-900/60 border border-slate-800 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                          <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">{item.etiqueta}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                            esPositivo ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                          }`}>
+                            {esPositivo ? 'Ganancia' : 'Pérdida'}
+                          </span>
+                        </div>
+
+                        <div className="my-4">
+                          <p className="text-[11px] text-slate-400 uppercase font-medium">Balance Neto Ajustado</p>
+                          <h3 className={`text-2xl font-black mt-0.5 ${esPositivo ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            ${balanceAjustado.toLocaleString('es-CO')}
+                          </h3>
+                          {numericRiskMarginPct > 0 && (
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              Original: <span className="font-semibold text-slate-200">${balanceOrig.toLocaleString('es-CO')}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2 text-xs divide-y divide-slate-800/60 pt-1">
+                          <div className="flex justify-between items-center pt-1.5">
+                            <span className="text-slate-400">Ingresos Reales</span>
+                            <span className="font-semibold text-emerald-400">+${Number(item.ingresos_reales).toLocaleString('es-CO')}</span>
+                          </div>
+                          <div className="flex justify-between items-center pt-1.5">
+                            <span className="text-slate-400">Coste de Ventas</span>
+                            <span className="font-semibold text-blue-400">-${Number(item.costo_ventas).toLocaleString('es-CO')}</span>
+                          </div>
+                          <div className="flex justify-between items-center pt-1.5">
+                            <span className="text-slate-400">Gastos Manuales</span>
+                            <span className="font-semibold text-amber-400">-${Number(item.gastos_manuales).toLocaleString('es-CO')}</span>
+                          </div>
+                          {numericRiskMarginPct > 0 && (
+                            <div className="flex justify-between items-center pt-1.5 text-amber-400">
+                              <span>Reserva Riesgo ({numericRiskMarginPct}%)</span>
+                              <span className="font-semibold">-${reservaRiesgo.toLocaleString('es-CO')}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center pt-1.5 font-bold">
+                            <span className="text-slate-300">Costo Total</span>
+                            <span className="text-rose-400">-${(Number(item.costo_total) + reservaRiesgo).toLocaleString('es-CO')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Registro de Gastos Manuales */}

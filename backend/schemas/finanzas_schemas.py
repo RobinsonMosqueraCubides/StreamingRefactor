@@ -39,3 +39,24 @@ class TransaccionResponse(BaseModel):
     fecha: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Balance Periodos Schemas ---
+
+class BalancePeriodoResponse(BaseModel):
+    periodo: str  # 'MES_ACTUAL', 'TRES_MESES', 'ANIO_ACTUAL'
+    etiqueta: str
+    ingresos_reales: Decimal
+    costo_ventas: Decimal
+    gastos_manuales: Decimal
+    costo_total: Decimal
+    balance_neto: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ResumenBalanceResponse(BaseModel):
+    periodos: list[BalancePeriodoResponse]
+
+    model_config = ConfigDict(from_attributes=True)
+
