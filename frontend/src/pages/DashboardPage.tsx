@@ -31,7 +31,7 @@ interface BalancePeriodo {
   periodo: 'MES_ACTUAL' | 'TRES_MESES' | 'ANIO_ACTUAL';
   etiqueta: string;
   ingresos_reales: number;
-  costo_ventas: number;
+  costo_cuentas_madre: number;
   gastos_manuales: number;
   costo_total: number;
   balance_neto: number;
@@ -306,8 +306,8 @@ export default function DashboardPage() {
                             <span className="font-semibold text-emerald-400">+${Number(item.ingresos_reales).toLocaleString('es-CO')}</span>
                           </div>
                           <div className="flex justify-between items-center pt-1.5">
-                            <span className="text-slate-400">Coste de Ventas</span>
-                            <span className="font-semibold text-blue-400">-${Number(item.costo_ventas).toLocaleString('es-CO')}</span>
+                            <span className="text-slate-400">Cuentas Madre (Compras/Renov.)</span>
+                            <span className="font-semibold text-blue-400">-${Number(item.costo_cuentas_madre).toLocaleString('es-CO')}</span>
                           </div>
                           <div className="flex justify-between items-center pt-1.5">
                             <span className="text-slate-400">Gastos Manuales</span>

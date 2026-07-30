@@ -117,17 +117,7 @@ async def obtener_balance_periodos(db: AsyncSession):
         ini_dt = datetime.combine(cfg["inicio"], time.min)
         fin_dt = datetime.combine(cfg["fin"], time.max)
 
-        # Costo de ventas registradas y concretadas en el rango (excluyendo ventas pendientes/canceladas sin pagar)
-        res_ventas = await db.execute(
-            select(func.sum(Venta.monto_total)).where(
-                Venta.fecha_inicio >= cfg["inicio"],
-                Venta.fecha_inicio <= cfg["fin"],
-                Venta.estado_pago.in_([EstadoPago.PAGADO, EstadoPago.PAGO_PARCIAL])
-            )
-        )
-        costo_ventas = res_ventas.scalar() or Decimal("0.00")
-
-        # Ingresos reales (Pagos recibidos)
+        # Ingresos reales (Pagos recibidos de clientes en la fecha del pago)
         res_ingresos = await db.execute(
             select(func.sum(Transaccion.monto)).where(
                 Transaccion.tipo == TipoTransaccion.INGRESO,
@@ -137,7 +127,18 @@ async def obtener_balance_periodos(db: AsyncSession):
         )
         ingresos_reales = res_ingresos.scalar() or Decimal("0.00")
 
-        # Gastos manuales (Egresos de caja excluyendo compras automáticas de cuentas)
+        # Coste de Cuentas Madre (Compras y Renovaciones a proveedores en la fecha del pago/renovación)
+        res_cuentas_madre = await db.execute(
+            select(func.sum(Transaccion.monto)).where(
+                Transaccion.tipo == TipoTransaccion.EGRESO,
+                Transaccion.categoria == "COMPRA_CUENTA",
+                Transaccion.fecha >= ini_dt,
+                Transaccion.fecha <= fin_dt
+            )
+        )
+        costo_cuentas_madre = res_cuentas_madre.scalar() or Decimal("0.00")
+
+        # Gastos manuales (Egresos operativos de caja en la fecha del egreso)
         res_gastos = await db.execute(
             select(func.sum(Transaccion.monto)).where(
                 Transaccion.tipo == TipoTransaccion.EGRESO,
@@ -148,14 +149,14 @@ async def obtener_balance_periodos(db: AsyncSession):
         )
         gastos_manuales = res_gastos.scalar() or Decimal("0.00")
 
-        costo_total = costo_ventas + gastos_manuales
+        costo_total = costo_cuentas_madre + gastos_manuales
         balance_neto = ingresos_reales - costo_total
 
         resultados.append({
             "periodo": cfg["periodo"],
             "etiqueta": cfg["etiqueta"],
             "ingresos_reales": ingresos_reales,
-            "costo_ventas": costo_ventas,
+            "costo_cuentas_madre": costo_cuentas_madre,
             "gastos_manuales": gastos_manuales,
             "costo_total": costo_total,
             "balance_neto": balance_neto

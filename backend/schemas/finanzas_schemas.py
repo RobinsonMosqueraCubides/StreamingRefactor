@@ -47,12 +47,13 @@ class BalancePeriodoResponse(BaseModel):
     periodo: str  # 'MES_ACTUAL', 'TRES_MESES', 'ANIO_ACTUAL'
     etiqueta: str
     ingresos_reales: Decimal
-    costo_ventas: Decimal
+    costo_cuentas_madre: Decimal
     gastos_manuales: Decimal
     costo_total: Decimal
     balance_neto: Decimal
 
     model_config = ConfigDict(from_attributes=True)
+
 
 
 class ResumenBalanceResponse(BaseModel):
