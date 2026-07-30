@@ -136,10 +136,11 @@ async def obtener_balance_periodos(db: AsyncSession):
         )
         ingresos_reales = res_ingresos.scalar() or Decimal("0.00")
 
-        # Gastos manuales (Egresos de caja)
+        # Gastos manuales (Egresos de caja excluyendo compras automáticas de cuentas)
         res_gastos = await db.execute(
             select(func.sum(Transaccion.monto)).where(
                 Transaccion.tipo == TipoTransaccion.EGRESO,
+                Transaccion.categoria != "COMPRA_CUENTA",
                 Transaccion.fecha >= ini_dt,
                 Transaccion.fecha <= fin_dt
             )
