@@ -160,9 +160,12 @@ export default function CuentasTab({
     );
   };
 
+  // Cuentas activas excluyendo canceladas para la pestaña principal
+  const activeCuentas = cuentas.filter(c => c.estado !== 'CANCELADA');
+
   // 1. Estadísticas de Plataformas
   const platformStats = plataformas.map(plat => {
-    const platCuentas = cuentas.filter(c => c.plataforma_id === plat.id);
+    const platCuentas = activeCuentas.filter(c => c.plataforma_id === plat.id);
     const totalCuentas = platCuentas.length;
     
     // Perfiles libres (stock real disponible)
@@ -184,7 +187,7 @@ export default function CuentasTab({
 
   // 2. Estadísticas de Proveedores
   const providerStats = proveedores.map(prov => {
-    const provCuentas = cuentas.filter(c => c.proveedor_id === prov.id);
+    const provCuentas = activeCuentas.filter(c => c.proveedor_id === prov.id);
     const totalCuentas = provCuentas.length;
 
     // Cuentas por vencer en <= 2 días
@@ -198,10 +201,10 @@ export default function CuentasTab({
   });
 
   // Cuentas a vencer globalmente (para banner de advertencia rápido)
-  const expiringSoonGlobal = cuentas.filter(isExpiringSoon);
+  const expiringSoonGlobal = activeCuentas.filter(isExpiringSoon);
 
   // Filter accounts
-  const filteredCuentas = cuentas.filter(c => {
+  const filteredCuentas = activeCuentas.filter(c => {
     // 1. Filtro por buscador (email o nombre de perfil asignado)
     if (searchTerm.trim() !== '') {
       const credEmail = getCredencialEmail(c.credencial_id).toLowerCase();

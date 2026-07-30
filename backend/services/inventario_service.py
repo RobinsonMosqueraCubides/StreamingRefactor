@@ -88,6 +88,7 @@ async def _populate_clave_plataforma(db: AsyncSession, cuenta: CuentaMadre):
 async def get_cuentas_madre(db: AsyncSession, skip: int = 0, limit: int = 100):
     result = await db.execute(
         select(CuentaMadre)
+        .where(CuentaMadre.estado != EstadoCuenta.CANCELADA)
         .options(
             selectinload(CuentaMadre.perfiles),
             selectinload(CuentaMadre.proveedor),
