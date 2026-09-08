@@ -3,6 +3,7 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
+import SearchableSelect from '../../components/ui/SearchableSelect';
 import { AlertCircle, Search, Eye, EyeOff } from 'lucide-react';
 import type { Cliente, Plataforma, CuentaMadre, Credencial } from '../../types';
 
@@ -149,7 +150,15 @@ export default function EditarVentaModal({
   };
 
   const handlePlatformChange = (index: number, newPlatId: number) => {
-    const filteredAccs = cuentas.filter(c => c.plataforma_id === newPlatId && c.estado === 'ACTIVA');
+    const isPantalla = detailsList[index]?.perfil_id_present ?? true;
+    const filteredAccs = cuentas.filter(c => {
+      if (c.plataforma_id !== newPlatId || c.estado !== 'ACTIVA') return false;
+      if (isPantalla) {
+        return c.perfiles && c.perfiles.some(p => !p.asignado && !p.reportado);
+      } else {
+        return c.perfiles && c.perfiles.every(p => !p.asignado && !p.reportado);
+      }
+    });
     const firstAcc = filteredAccs[0] || null;
     
     setDetailsList(prev => prev.map((item, idx) => {
@@ -165,17 +174,15 @@ export default function EditarVentaModal({
           const cred = credenciales.find(c => c.id === firstAcc.credencial_id);
           updated.email = cred?.email || '';
           updated.originalEmail = cred?.email || '';
-          updated.password = cred?.password || '';
-          updated.originalPassword = cred?.password || '';
+          updated.password = (firstAcc.proveedor?.nombre === "Correos A" ? firstAcc.clave_plataforma : cred?.password) || '';
+          updated.originalPassword = (firstAcc.proveedor?.nombre === "Correos A" ? firstAcc.clave_plataforma : cred?.password) || '';
           
           if (item.perfil_id_present) {
-            // Find first available profile of the new account
-            const firstPerf = firstAcc.perfiles && firstAcc.perfiles.length > 0 ? firstAcc.perfiles[0] : null;
-            updated.perfil_id = firstPerf ? firstPerf.id : null;
-            updated.nombre_perfil = firstPerf ? firstPerf.nombre_perfil : '';
-            updated.pin = firstPerf?.pin || '';
-            updated.originalNombrePerfil = firstPerf ? firstPerf.nombre_perfil : '';
-            updated.originalPin = firstPerf?.pin || '';
+            const availablePerf = firstAcc.perfiles?.find(p => !p.asignado && !p.reportado) || firstAcc.perfiles?.[0] || null;
+            updated.perfil_id = availablePerf ? availablePerf.id : null;
+            // Preservar nombre de perfil y PIN existentes
+            updated.nombre_perfil = item.nombre_perfil || (availablePerf ? availablePerf.nombre_perfil : '');
+            updated.pin = item.pin || (availablePerf?.pin || '');
           } else {
             updated.perfil_id = null;
           }
@@ -183,8 +190,6 @@ export default function EditarVentaModal({
           updated.email = '';
           updated.password = '';
           updated.perfil_id = null;
-          updated.nombre_perfil = '';
-          updated.pin = '';
         }
         return updated;
       }
@@ -199,7 +204,7 @@ export default function EditarVentaModal({
       if (idx === index) {
         const updated = {
           ...item,
-          cuenta_madre_id: newAccId,
+          cuenta_madre_id: newAccId || null,
           cred_id: accObj ? accObj.credencial_id : null
         };
         
@@ -207,19 +212,25 @@ export default function EditarVentaModal({
           const cred = credenciales.find(c => c.id === accObj.credencial_id);
           updated.email = cred?.email || '';
           updated.originalEmail = cred?.email || '';
-          updated.password = cred?.password || '';
-          updated.originalPassword = cred?.password || '';
+          updated.password = (accObj.proveedor?.nombre === "Correos A" ? accObj.clave_plataforma : cred?.password) || '';
+          updated.originalPassword = (accObj.proveedor?.nombre === "Correos A" ? accObj.clave_plataforma : cred?.password) || '';
           
           if (item.perfil_id_present) {
-            const firstPerf = accObj.perfiles && accObj.perfiles.length > 0 ? accObj.perfiles[0] : null;
-            updated.perfil_id = firstPerf ? firstPerf.id : null;
-            updated.nombre_perfil = firstPerf ? firstPerf.nombre_perfil : '';
-            updated.pin = firstPerf?.pin || '';
-            updated.originalNombrePerfil = firstPerf ? firstPerf.nombre_perfil : '';
-            updated.originalPin = firstPerf?.pin || '';
+            const isSameAccount = item.originalCuentaMadreId === newAccId;
+            const currentPerf = isSameAccount ? accObj.perfiles?.find(p => p.id === item.originalPerfilId) : null;
+            const availablePerf = currentPerf || accObj.perfiles?.find(p => !p.asignado && !p.reportado) || accObj.perfiles?.[0] || null;
+            
+            updated.perfil_id = availablePerf ? availablePerf.id : null;
+            // No modificar accesos ya creados (preservar nombre de perfil y PIN)
+            updated.nombre_perfil = item.nombre_perfil || (availablePerf ? availablePerf.nombre_perfil : '');
+            updated.pin = item.pin || (availablePerf?.pin || '');
           } else {
             updated.perfil_id = null;
           }
+        } else {
+          updated.email = '';
+          updated.password = '';
+          updated.perfil_id = null;
         }
         return updated;
       }
@@ -236,10 +247,9 @@ export default function EditarVentaModal({
         return {
           ...item,
           perfil_id: newPerfId,
-          nombre_perfil: perfObj ? perfObj.nombre_perfil : '',
-          pin: perfObj?.pin || '',
-          originalNombrePerfil: perfObj ? perfObj.nombre_perfil : '',
-          originalPin: perfObj?.pin || ''
+          // Preservar nombre de perfil y PIN existentes
+          nombre_perfil: item.nombre_perfil || (perfObj ? perfObj.nombre_perfil : ''),
+          pin: item.pin || (perfObj?.pin || ''),
         };
       }
       return item;
@@ -262,6 +272,9 @@ export default function EditarVentaModal({
 
   const handleAddDetail = () => {
     const tempId = `new-${Date.now()}`;
+    const client = clientes.find(c => String(c.id) === String(clienteId));
+    const primerNombre = client && client.nombre ? client.nombre.trim().split(/\s+/)[0] : '';
+
     const newDetail = {
       id: tempId,
       perfil_id: null,
@@ -270,7 +283,7 @@ export default function EditarVentaModal({
       cred_id: null,
       email: '',
       password: '',
-      nombre_perfil: '',
+      nombre_perfil: primerNombre,
       pin: '',
       perfil_id_present: true,
       isCorreosA: false,
@@ -561,8 +574,36 @@ export default function EditarVentaModal({
           
           <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
             {detailsList.map((d, index) => {
-              // Filters
-              const platformCuentas = cuentas.filter(c => c.plataforma_id === d.plataforma_id && c.estado === 'ACTIVA');
+              // Filters: solo mostrar cuentas disponibles según tipo de servicio
+              const platformCuentas = cuentas.filter(c => {
+                if (c.plataforma_id !== d.plataforma_id || c.estado !== 'ACTIVA') return false;
+
+                // Siempre permitir la cuenta que ya está asignada actualmente a este servicio
+                const isCurrentAccount = c.id === d.cuenta_madre_id;
+                if (isCurrentAccount) return true;
+
+                if (d.perfil_id_present) {
+                  // PANTALLA: al menos 1 perfil libre (no asignado y no reportado)
+                  return c.perfiles && c.perfiles.some(p => !p.asignado && !p.reportado);
+                } else {
+                  // CUENTA: todos los perfiles libres
+                  return c.perfiles && c.perfiles.every(p => !p.asignado && !p.reportado);
+                }
+              });
+
+              const accountOptions = platformCuentas.map(c => {
+                const cred = credenciales.find(cr => cr.id === c.credencial_id);
+                const email = cred?.email || `Cuenta #${c.id}`;
+                const libres = c.perfiles ? c.perfiles.filter(p => !p.asignado && !p.reportado).length : 0;
+                const total = c.max_perfiles || (c.perfiles ? c.perfiles.length : 0);
+                const isCurrent = c.id === d.cuenta_madre_id;
+                return {
+                  value: c.id,
+                  label: email,
+                  subLabel: isCurrent ? `Actual • Libres: ${libres}/${total}` : `Libres: ${libres}/${total}`
+                };
+              });
+
               const selectedAccount = cuentas.find(c => c.id === d.cuenta_madre_id);
               const accountPerfiles = selectedAccount ? selectedAccount.perfiles : [];
 
@@ -611,21 +652,14 @@ export default function EditarVentaModal({
                     {/* Account Selector */}
                     <div>
                       <label className="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Cuenta (Correo)</label>
-                      <Select
+                      <SearchableSelect
                         value={d.cuenta_madre_id || ''}
-                        onChange={(e) => handleAccountChange(index, parseInt(e.target.value))}
+                        onChange={(val) => handleAccountChange(index, parseInt(val))}
+                        placeholder="-- Seleccionar cuenta --"
+                        searchPlaceholder="Buscar por correo..."
+                        options={accountOptions}
                         className="!py-2 !px-2.5 min-h-[38px] text-xs bg-slate-900 border-slate-800 text-slate-200"
-                      >
-                        <option value="">-- Seleccionar cuenta --</option>
-                        {platformCuentas.map(c => {
-                          const cred = credenciales.find(cr => cr.id === c.credencial_id);
-                          return (
-                            <option key={c.id} value={c.id}>
-                              {cred?.email || `Cuenta #${c.id}`}
-                            </option>
-                          );
-                        })}
-                      </Select>
+                      />
                     </div>
 
                     {/* Profile Selector */}

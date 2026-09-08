@@ -184,7 +184,7 @@ export default function VentasPage() {
     if (registeredVenta) {
       const initial: any = {};
       const clientObj = clientes.find(c => c.id === registeredVenta.cliente_id);
-      const defaultUser = clientObj ? clientObj.nombre : 'Usuario';
+      const defaultUser = clientObj && clientObj.nombre ? clientObj.nombre.trim().split(/\s+/)[0] : 'Usuario';
       
       // Contar cuántos perfiles pertenecen a cada cuenta madre en esta venta
       const perfilesPorCuenta: { [key: number]: number } = {};
