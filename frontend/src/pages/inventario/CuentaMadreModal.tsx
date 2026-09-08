@@ -3,6 +3,7 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
+import SearchableSelect from '../../components/ui/SearchableSelect';
 import api from '../../api/axios';
 import { AlertCircle, Plus, Eye, EyeOff } from 'lucide-react';
 
@@ -432,21 +433,19 @@ export default function CuentaMadreModal({
                   Credenciales de Acceso (Correos Propios)
                 </span>
                 
-                <Select
+                <SearchableSelect
                   label="Seleccionar Correo Propio"
                   value={selectedCorreoPropioId}
-                  onChange={(e) => setSelectedCorreoPropioId(e.target.value)}
-                >
-                  {correosPropios.length === 0 ? (
-                    <option value="">No hay correos propios registrados</option>
-                  ) : (
-                    correosPropios.map((cp) => (
-                      <option key={cp.id} value={cp.id}>
-                        {cp.correo_gmail} {cp.nombre_correo ? `(${cp.nombre_correo})` : ''}
-                      </option>
-                    ))
-                  )}
-                </Select>
+                  onChange={(val) => setSelectedCorreoPropioId(val)}
+                  placeholder={correosPropios.length === 0 ? "No hay correos propios registrados" : "Seleccionar correo propio..."}
+                  searchPlaceholder="Buscar correo propio o nombre..."
+                  options={correosPropios.map((cp) => ({
+                    value: cp.id,
+                    label: cp.correo_gmail,
+                    subLabel: cp.nombre_correo || undefined,
+                  }))}
+                  disabled={correosPropios.length === 0}
+                />
 
                 <div className="relative">
                   <Input
@@ -551,15 +550,18 @@ export default function CuentaMadreModal({
                   </div>
                 </div>
               ) : (
-                <Select
+                <SearchableSelect
                   label="Seleccionar Credencial"
                   value={formCredencialId}
-                  onChange={(e) => setFormCredencialId(e.target.value)}
-                >
-                  {credenciales.map((c) => (
-                    <option key={c.id} value={c.id}>{c.email}</option>
-                  ))}
-                </Select>
+                  onChange={(val) => setFormCredencialId(val)}
+                  placeholder={credenciales.length === 0 ? "No hay credenciales registradas" : "Seleccionar credencial..."}
+                  searchPlaceholder="Buscar credencial por correo..."
+                  options={credenciales.map((c) => ({
+                    value: c.id,
+                    label: c.email,
+                  }))}
+                  disabled={credenciales.length === 0}
+                />
               )}
             </div>
           );
