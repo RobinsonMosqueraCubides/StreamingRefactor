@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -70,6 +70,14 @@ export default function CuentaMadreModal({
   const [selectedCorreoPropioId, setSelectedCorreoPropioId] = useState('');
   const [formClavePlataforma, setFormClavePlataforma] = useState('');
   const [showClavePlataforma, setShowClavePlataforma] = useState(false);
+
+  // Canceladas integration & password tracking
+  const [canceladas, setCanceladas] = useState<any[]>([]);
+  const [existingCredPassword, setExistingCredPassword] = useState('');
+  const [showExistingCredPassword, setShowExistingCredPassword] = useState(false);
+  const [isPasswordFromCanceladas, setIsPasswordFromCanceladas] = useState(false);
+  const [isClavePlatFromCanceladas, setIsClavePlatFromCanceladas] = useState(false);
+  const [isNewCredFromCanceladas, setIsNewCredFromCanceladas] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -143,6 +151,17 @@ export default function CuentaMadreModal({
         setFormClavePlataforma('');
       }
 
+      // Cargar cuentas canceladas
+      const loadCanceladas = async () => {
+        try {
+          const res = await api.get('/cuentas_madre/canceladas/list');
+          setCanceladas(res.data || []);
+        } catch (e) {
+          console.error("Error al cargar cuentas canceladas:", e);
+        }
+      };
+      loadCanceladas();
+
       setCreateNewCred(false);
       setCreateNewProv(false);
       setCreateNewPlat(false);
@@ -154,25 +173,91 @@ export default function CuentaMadreModal({
       setError('');
       setShowCredPassword(false);
       setShowClavePlataforma(false);
-      setShowCredPassword(false);
-      setShowCredPassword(false);
+      setExistingCredPassword('');
+      setShowExistingCredPassword(false);
+      setIsPasswordFromCanceladas(false);
+      setIsClavePlatFromCanceladas(false);
+      setIsNewCredFromCanceladas(false);
     }
   }, [isOpen, proveedores, plataformas, credenciales, cuentaAEditar]);
 
+  // Helper para obtener la última clave guardada en canceladas para un correo y plataforma
+  const getCancelledClave = useCallback((email: string, platId: string): string | null => {
+    if (!email || !platId || !canceladas.length) return null;
+    const platObj = plataformas.find((p) => String(p.id) === String(platId));
+    if (!platObj) return null;
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPlatName = platObj.nombre.trim().toLowerCase();
+
+    const found = canceladas.find(
+      (c) =>
+        c.correo?.trim().toLowerCase() === normalizedEmail &&
+        c.plataforma_nombre?.trim().toLowerCase() === normalizedPlatName &&
+        c.clave
+    );
+    return found ? found.clave : null;
+  }, [canceladas, plataformas]);
+
+  // Efecto para autocompletar la contraseña cuando se selecciona una credencial existente
+  useEffect(() => {
+    if (!cuentaAEditar && formCredencialId && formPlataformaId) {
+      const cred = credenciales.find((c) => String(c.id) === String(formCredencialId));
+      if (cred) {
+        const cancelledClave = getCancelledClave(cred.email, formPlataformaId);
+        if (cancelledClave) {
+          setExistingCredPassword(cancelledClave);
+          setIsPasswordFromCanceladas(true);
+        } else {
+          setExistingCredPassword(cred.password || '');
+          setIsPasswordFromCanceladas(false);
+        }
+      } else {
+        setExistingCredPassword('');
+        setIsPasswordFromCanceladas(false);
+      }
+    }
+  }, [formCredencialId, formPlataformaId, credenciales, getCancelledClave, cuentaAEditar]);
+
+  // Efecto para autocompletar la contraseña cuando se escribe un correo en "Crear Nueva"
+  useEffect(() => {
+    if (!cuentaAEditar && createNewCred && newCredEmail && formPlataformaId) {
+      const cancelledClave = getCancelledClave(newCredEmail, formPlataformaId);
+      if (cancelledClave) {
+        setNewCredPassword(cancelledClave);
+        setIsNewCredFromCanceladas(true);
+      } else {
+        setIsNewCredFromCanceladas(false);
+      }
+    }
+  }, [newCredEmail, formPlataformaId, createNewCred, getCancelledClave, cuentaAEditar]);
+
+  // Efecto para "Correos A": buscar en canceladas y en cuentas activas
   useEffect(() => {
     const checkExistingKey = async () => {
       if (formProveedorId && selectedCorreoPropioId && formPlataformaId && !cuentaAEditar) {
-        const selectedProvObj = proveedores.find(p => String(p.id) === formProveedorId);
+        const selectedProvObj = proveedores.find((p) => String(p.id) === formProveedorId);
         if (selectedProvObj?.nombre === "Correos A") {
-          const matchCp = correosPropios.find(cp => String(cp.id) === selectedCorreoPropioId);
+          const matchCp = correosPropios.find((cp) => String(cp.id) === selectedCorreoPropioId);
           if (matchCp) {
+            // 1. Revisar si estuvo cancelado en esta plataforma
+            const cancelledClave = getCancelledClave(matchCp.correo_gmail, formPlataformaId);
+            if (cancelledClave) {
+              setFormClavePlataforma(cancelledClave);
+              setIsClavePlatFromCanceladas(true);
+              return;
+            }
+
+            // 2. Si no, buscar en cuentas madre activas
+            setIsClavePlatFromCanceladas(false);
             try {
               const res = await api.get('/cuentas_madre/');
               const list = res.data;
-              const found = list.find((c: any) => 
-                c.clave_plataforma && 
-                String(c.plataforma_id) === String(formPlataformaId) &&
-                credenciales.find(cr => cr.id === c.credencial_id)?.email.toLowerCase() === matchCp.correo_gmail.toLowerCase()
+              const found = list.find(
+                (c: any) =>
+                  c.clave_plataforma &&
+                  String(c.plataforma_id) === String(formPlataformaId) &&
+                  credenciales.find((cr) => cr.id === c.credencial_id)?.email.toLowerCase() === matchCp.correo_gmail.toLowerCase()
               );
               if (found) {
                 setFormClavePlataforma(found.clave_plataforma);
@@ -187,7 +272,7 @@ export default function CuentaMadreModal({
       }
     };
     checkExistingKey();
-  }, [selectedCorreoPropioId, formPlataformaId, formProveedorId, correosPropios, credenciales, proveedores, cuentaAEditar]);
+  }, [selectedCorreoPropioId, formPlataformaId, formProveedorId, correosPropios, credenciales, proveedores, getCancelledClave, cuentaAEditar]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,7 +344,7 @@ export default function CuentaMadreModal({
           finalCredencialId = newCredRes.data.id;
         }
       } else {
-        // 3. Crear credencial en caliente
+        // 3. Crear o actualizar credencial
         if (createNewCred) {
           if (!newCredEmail || !newCredPassword) {
             setError('Completa el correo y la contraseña de la nueva credencial.');
@@ -271,6 +356,19 @@ export default function CuentaMadreModal({
             password: newCredPassword,
           });
           finalCredencialId = credRes.data.id;
+        } else if (!cuentaAEditar && finalCredencialId) {
+          if (!existingCredPassword.trim()) {
+            setError('La contraseña de la credencial es obligatoria.');
+            setLoading(false);
+            return;
+          }
+          const currentCred = credenciales.find(c => c.id === finalCredencialId);
+          if (currentCred && currentCred.password !== existingCredPassword) {
+            await api.put(`/credenciales/${finalCredencialId}`, {
+              email: currentCred.email,
+              password: existingCredPassword,
+            });
+          }
         }
       }
 
@@ -453,9 +551,17 @@ export default function CuentaMadreModal({
                     placeholder="Contraseña para la plataforma..."
                     type={showClavePlataforma ? 'text' : 'password'}
                     value={formClavePlataforma}
-                    onChange={(e) => setFormClavePlataforma(e.target.value)}
+                    onChange={(e) => {
+                      setFormClavePlataforma(e.target.value);
+                      setIsClavePlatFromCanceladas(false);
+                    }}
                     required
                   />
+                  {isClavePlatFromCanceladas && (
+                    <span className="absolute right-9 top-1 text-[10px] text-amber-400 font-medium">
+                      (Recuperada de canceladas)
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => setShowClavePlataforma(!showClavePlataforma)}
@@ -537,9 +643,17 @@ export default function CuentaMadreModal({
                       placeholder="••••••••"
                       type={showCredPassword ? 'text' : 'password'}
                       value={newCredPassword}
-                      onChange={(e) => setNewCredPassword(e.target.value)}
+                      onChange={(e) => {
+                        setNewCredPassword(e.target.value);
+                        setIsNewCredFromCanceladas(false);
+                      }}
                       required
                     />
+                    {isNewCredFromCanceladas && (
+                      <span className="absolute right-9 top-1 text-[10px] text-amber-400 font-medium">
+                        (Recuperada de canceladas)
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => setShowCredPassword(!showCredPassword)}
@@ -550,18 +664,46 @@ export default function CuentaMadreModal({
                   </div>
                 </div>
               ) : (
-                <SearchableSelect
-                  label="Seleccionar Credencial"
-                  value={formCredencialId}
-                  onChange={(val) => setFormCredencialId(val)}
-                  placeholder={credenciales.length === 0 ? "No hay credenciales registradas" : "Seleccionar credencial..."}
-                  searchPlaceholder="Buscar credencial por correo..."
-                  options={credenciales.map((c) => ({
-                    value: c.id,
-                    label: c.email,
-                  }))}
-                  disabled={credenciales.length === 0}
-                />
+                <div className="space-y-3">
+                  <SearchableSelect
+                    label="Seleccionar Credencial"
+                    value={formCredencialId}
+                    onChange={(val) => setFormCredencialId(val)}
+                    placeholder={credenciales.length === 0 ? "No hay credenciales registradas" : "Seleccionar credencial..."}
+                    searchPlaceholder="Buscar credencial por correo..."
+                    options={credenciales.map((c) => ({
+                      value: c.id,
+                      label: c.email,
+                    }))}
+                    disabled={credenciales.length === 0}
+                  />
+
+                  <div className="relative">
+                    <Input
+                      label="Contraseña de la Cuenta"
+                      placeholder="••••••••"
+                      type={showExistingCredPassword ? 'text' : 'password'}
+                      value={existingCredPassword}
+                      onChange={(e) => {
+                        setExistingCredPassword(e.target.value);
+                        setIsPasswordFromCanceladas(false);
+                      }}
+                      required
+                    />
+                    {isPasswordFromCanceladas && (
+                      <span className="absolute right-9 top-1 text-[10px] text-amber-400 font-medium">
+                        (Recuperada de canceladas)
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowExistingCredPassword(!showExistingCredPassword)}
+                      className="absolute right-2.5 top-8.5 text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer bg-transparent border-none"
+                    >
+                      {showExistingCredPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           );
