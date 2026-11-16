@@ -7,6 +7,17 @@ from schemas.ventas_schemas import VentaCreate, VentaUpdate
 from core.exceptions import BusinessRuleError
 from decimal import Decimal
 import urllib.parse
+import re
+
+def _format_whatsapp_target(contacto: str) -> str:
+    """Normalize a phone number or WhatsApp username for https://wa.me/<target> URLs."""
+    cleaned = (contacto or "").strip()
+    cleaned = re.sub(r"^https?://(www\.)?wa\.me/", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^wa\.me/", "", cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.split("?")[0].strip().strip("/")
+    if cleaned.startswith("@"):
+        cleaned = cleaned[1:].strip()
+    return cleaned.replace("+", "").replace(" ", "").replace("-", "")
 
 async def get_ventas(db: AsyncSession, skip: int = 0, limit: int = 100):
     result = await db.execute(
@@ -326,7 +337,7 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
                       .replace('{monto}', f"{db_detalle.precio_aplicado:,.2f}" if isinstance(db_detalle.precio_aplicado, Decimal) else str(db_detalle.precio_aplicado)) \
                       .replace('{fecha_corte}', venta.fecha_corte.strftime("%Y-%m-%d"))
 
-    phone = venta.cliente.telefono.replace('+', '').replace(' ', '')
+    phone = _format_whatsapp_target(venta.cliente.telefono)
     encoded_msg = urllib.parse.quote(msg)
     return f"https://wa.me/{phone}?text={encoded_msg}"
 
@@ -412,7 +423,7 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
     msg += f"Fecha de Vencimiento: *{venta.fecha_corte.strftime('%Y-%m-%d')}*\n\n"
     msg += "¡Gracias por tu confianza y preferencia! 🚀"
     
-    phone = venta.cliente.telefono.replace('+', '').replace(' ', '')
+    phone = _format_whatsapp_target(venta.cliente.telefono)
     encoded_msg = urllib.parse.quote(msg)
     return f"https://wa.me/{phone}?text={encoded_msg}"
 
@@ -602,6 +613,18 @@ async def update_venta(db: AsyncSession, venta_id: int, venta_data: VentaUpdate)
                                 )
                             if det_update.pin is not None:
                                 perf.pin = det_update.pin
+                elif tipo_unidad == "CUENTA" and db_detail.cuenta_madre_id is not None and det_update.nombre_perfil is not None:
+                    res_first = await db.execute(
+                        select(Perfil)
+                        .where(Perfil.cuenta_madre_id == db_detail.cuenta_madre_id)
+                        .order_by(Perfil.id.asc())
+                        .limit(1)
+                    )
+                    first_perf = res_first.scalar_one_or_none()
+                    if first_perf:
+                        first_perf.nombre_perfil = await _resolve_unique_profile_name(
+                            db, first_perf.cuenta_madre_id, first_perf.id, det_update.nombre_perfil
+                        )
                 await db.flush()
 
         # 2b. Process new details
@@ -658,6 +681,11 @@ async def update_venta(db: AsyncSession, venta_id: int, venta_data: VentaUpdate)
                     raise BusinessRuleError(f"La Cuenta Madre #{db_cm.id} no posee perfiles configurados.")
 
                 precio_unitario = Decimal(str(det_update.precio_aplicado or 0)) / Decimal(len(perfiles))
+
+                if det_update.nombre_perfil is not None and perfiles:
+                    perfiles[0].nombre_perfil = await _resolve_unique_profile_name(
+                        db, db_cm.id, perfiles[0].id, det_update.nombre_perfil
+                    )
 
                 for perfil in perfiles:
                     perfil.asignado = True

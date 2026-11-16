@@ -69,10 +69,12 @@ export default function EditarVentaModal({
         let profileUser = '';
         let pinVal = '';
         if (cm && cm.perfiles) {
-          const matchPerfil = cm.perfiles.find((p: any) => p.id === d.perfil_id);
-          if (matchPerfil) {
-            profileUser = matchPerfil.nombre_perfil;
-            pinVal = matchPerfil.pin || '';
+          const targetPerf = d.perfil_id
+            ? cm.perfiles.find((p: any) => p.id === d.perfil_id)
+            : [...cm.perfiles].sort((a: any, b: any) => a.id - b.id)[0];
+          if (targetPerf) {
+            profileUser = targetPerf.nombre_perfil;
+            pinVal = targetPerf.pin || '';
           }
         }
 
@@ -121,7 +123,7 @@ export default function EditarVentaModal({
   const filteredClientes = useMemo(() => {
     return clientes.filter(c =>
       c.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) ||
-      c.telefono.includes(clienteSearch)
+      c.telefono.toLowerCase().includes(clienteSearch.toLowerCase())
     );
   }, [clientes, clienteSearch]);
 
@@ -382,6 +384,10 @@ export default function EditarVentaModal({
                 updatedItem.pin = firstPerf?.pin || '';
               } else {
                 updatedItem.perfil_id = null;
+                const clientObj = clientes.find(c => String(c.id) === String(clienteId));
+                const primerNombre = clientObj && clientObj.nombre ? clientObj.nombre.trim().split(/\s+/)[0] : '';
+                const firstAccountPerf = accObj.perfiles && accObj.perfiles.length > 0 ? [...accObj.perfiles].sort((a, b) => a.id - b.id)[0] : null;
+                updatedItem.nombre_perfil = item.nombre_perfil || primerNombre || (firstAccountPerf ? firstAccountPerf.nombre_perfil : '');
               }
             }
           }
@@ -776,28 +782,28 @@ export default function EditarVentaModal({
                       </div>
                     </div>
 
+                    <div>
+                      <label className="text-[9px] font-semibold text-slate-500 uppercase block mb-1">
+                        {d.perfil_id_present ? 'Nombre Perfil (Modificar)' : 'Nombre Perfil 1 (Modificar)'}
+                      </label>
+                      <input
+                        type="text"
+                        value={d.nombre_perfil}
+                        onChange={(e) => handleDetailTextChange(index, 'nombre_perfil', e.target.value)}
+                        className="w-full bg-slate-955 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300 font-sans focus:border-cyan-500 focus:outline-none"
+                      />
+                    </div>
                     {d.perfil_id_present && (
-                      <>
-                        <div>
-                          <label className="text-[9px] font-semibold text-slate-500 uppercase block mb-1">Nombre Perfil (Modificar)</label>
-                          <input
-                            type="text"
-                            value={d.nombre_perfil}
-                            onChange={(e) => handleDetailTextChange(index, 'nombre_perfil', e.target.value)}
-                            className="w-full bg-slate-955 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300 font-sans focus:border-cyan-500 focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-semibold text-slate-500 uppercase block mb-1">PIN (Modificar)</label>
-                          <input
-                            type="text"
-                            value={d.pin}
-                            onChange={(e) => handleDetailTextChange(index, 'pin', e.target.value)}
-                            placeholder="Vacío o PIN"
-                            className="w-full bg-slate-955 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300 font-mono focus:border-cyan-500 focus:outline-none"
-                          />
-                        </div>
-                      </>
+                      <div>
+                        <label className="text-[9px] font-semibold text-slate-500 uppercase block mb-1">PIN (Modificar)</label>
+                        <input
+                          type="text"
+                          value={d.pin}
+                          onChange={(e) => handleDetailTextChange(index, 'pin', e.target.value)}
+                          placeholder="Vacío o PIN"
+                          className="w-full bg-slate-955 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300 font-mono focus:border-cyan-500 focus:outline-none"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>

@@ -12,9 +12,33 @@ import { Search, UserPlus, Phone, ShieldAlert, ShieldCheck, Edit } from 'lucide-
 import type { Cliente, Proveedor } from '../types';
 import { useMetadata } from '../context/MetadataContext';
 
+const formatWhatsAppTarget = (contacto: string) => {
+  return contacto
+    .trim()
+    .replace(/^https?:\/\/(www\.)?wa\.me\//i, '')
+    .replace(/^wa\.me\//i, '')
+    .split('?')[0]
+    .replace(/^@/, '')
+    .replace(/[+\s-]/g, '')
+    .replace(/\/+$/, '');
+};
+
+const isValidContactOrUsername = (val: string) => {
+  const cleaned = val
+    .trim()
+    .replace(/^https?:\/\/(www\.)?wa\.me\//i, '')
+    .replace(/^wa\.me\//i, '')
+    .split('?')[0]
+    .replace(/^@/, '')
+    .replace(/\/+$/, '');
+  const noSep = cleaned.replace(/[\s-]/g, '');
+  if (/^\+?[0-9]{7,15}$/.test(noSep)) return true;
+  return /^[a-zA-Z0-9._]{3,50}$/.test(cleaned) && /[a-zA-Z]/.test(cleaned);
+};
+
 const actorFormSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  telefono: z.string().regex(/^\+?[0-9]{7,15}$/, 'Número de teléfono inválido (ej: +573001234567 o 3001234567)'),
+  telefono: z.string().refine(isValidContactOrUsername, 'Ingresa un teléfono válido (ej: +573001234567) o un username de WhatsApp (ej: agaraystreaming)'),
   tipo: z.enum(['FINAL', 'REVENDEDOR']),
   dias_gracia_max: z.number().int().min(0, 'No puede ser negativo'),
   saldo_a_favor: z.number().min(0, 'No puede ser negativo'),
@@ -167,12 +191,12 @@ export default function ClientesPage() {
 
   const filteredClientes = clientes.filter(c =>
     c.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.telefono.includes(searchQuery)
+    c.telefono.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredProveedores = proveedores.filter(p =>
     p.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.telefono.includes(searchQuery)
+    p.telefono.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -259,7 +283,7 @@ export default function ClientesPage() {
                 <div className="mt-3 space-y-1.5 text-xs text-slate-400">
                   <p className="flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-slate-500" />
-                    <a href={`https://wa.me/${cliente.telefono.replace('+', '')}`} target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">
+                    <a href={`https://wa.me/${formatWhatsAppTarget(cliente.telefono)}`} target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">
                       {cliente.telefono}
                     </a>
                   </p>
@@ -373,8 +397,8 @@ export default function ClientesPage() {
           />
 
           <Input
-            label="Teléfono Celular"
-            placeholder="Ej: +573001234567"
+            label="Teléfono o Username de WhatsApp"
+            placeholder="Ej: +573001234567 o agaraystreaming"
             error={errors.telefono?.message}
             {...register('telefono')}
           />

@@ -76,8 +76,8 @@ export default function ClienteRapidoModal({ isOpen, onClose, onSuccess }: Clien
         />
 
         <Input
-          label="Teléfono Celular"
-          placeholder="Ej: +573001234567"
+          label="Teléfono o Username de WhatsApp"
+          placeholder="Ej: +573001234567 o agaraystreaming"
           value={telefono}
           onChange={(e) => setTelefono(e.target.value)}
           required

@@ -48,14 +48,14 @@ export default function SuccessModal({
     try {
       // First, save the custom profile names and PINs to the database!
       const savePromises = registeredVenta.detalles.map((detail: any) => {
-        if (!detail.perfil_id || detail.tipo_unidad === 'CUENTA' || registeredVenta.tipo_venta === 'CUENTA') {
+        if (!detail.perfil_id) {
           return Promise.resolve();
         }
         const editData = editablePerfiles[detail.perfil_id];
         if (editData) {
           return api.put(`/perfiles/${detail.perfil_id}`, {
             nombre_perfil: editData.nombre_perfil,
-            pin: editData.pin
+            pin: editData.pin || null
           });
         }
         return Promise.resolve();
@@ -124,6 +124,10 @@ export default function SuccessModal({
               );
 
               if (esCuentaCompleta) {
+                const firstDetail = [...listDetalles].sort((a: any, b: any) => (a.perfil_id || 0) - (b.perfil_id || 0))[0];
+                const firstPerfilId = firstDetail?.perfil_id;
+                const editFirstData = firstPerfilId ? (editablePerfiles[firstPerfilId] || { nombre_perfil: '', pin: '' }) : null;
+
                 return (
                   <div key={cmId} className="bg-slate-950/60 border border-slate-850 p-4 rounded-xl space-y-4">
                     <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
@@ -153,6 +157,19 @@ export default function SuccessModal({
                         </p>
                       </div>
                     </div>
+
+                    {firstPerfilId && editFirstData && (
+                      <Input
+                        label="Nombre para Perfil 1"
+                        value={editFirstData.nombre_perfil}
+                        onChange={(e) => setEditablePerfiles((prev: any) => ({
+                          ...prev,
+                          [firstPerfilId]: { ...editFirstData, nombre_perfil: e.target.value }
+                        }))}
+                        placeholder="Ej. Juan"
+                        required
+                      />
+                    )}
                   </div>
                 );
               } else {

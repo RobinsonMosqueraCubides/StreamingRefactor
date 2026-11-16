@@ -196,6 +196,17 @@ export default function VentasPage() {
         }
       });
 
+      // Para cuentas completas, identificar el Perfil 1 (menor perfil_id) por cuenta_madre_id
+      const firstCuentaPerfilId: { [cmId: number]: number } = {};
+      registeredVenta.detalles.forEach((det: any) => {
+        const esCuenta = det.tipo_unidad === 'CUENTA' || registeredVenta.tipo_venta === 'CUENTA';
+        if (esCuenta && det.cuenta_madre_id && det.perfil_id) {
+          if (!firstCuentaPerfilId[det.cuenta_madre_id] || det.perfil_id < firstCuentaPerfilId[det.cuenta_madre_id]) {
+            firstCuentaPerfilId[det.cuenta_madre_id] = det.perfil_id;
+          }
+        }
+      });
+
       const usedNamesByCm: { [key: number]: Set<string> } = {};
       const cuentaContadores: { [key: number]: number } = {};
       
@@ -203,6 +214,11 @@ export default function VentasPage() {
         const cmId = det.cuenta_madre_id;
         const cm = cuentas.find(c => c.id === cmId);
         const esCuentaCompleta = det.tipo_unidad === 'CUENTA' || registeredVenta.tipo_venta === 'CUENTA' || !det.perfil_id;
+        const isFirstOfCuentaCompleta = esCuentaCompleta && cmId && det.perfil_id && firstCuentaPerfilId[cmId] === det.perfil_id;
+
+        if (esCuentaCompleta && !isFirstOfCuentaCompleta) {
+          return;
+        }
         
         let nombreSugerido = defaultUser;
         let pinSugerido = "";
@@ -215,10 +231,12 @@ export default function VentasPage() {
             usedNamesByCm[cmId] = new Set(existingNames);
           }
 
-          cuentaContadores[cmId] = (cuentaContadores[cmId] || 0) + 1;
-          const tieneMultiples = perfilesPorCuenta[cmId] > 1;
-          if (tieneMultiples) {
-            nombreSugerido = `${defaultUser} ${cuentaContadores[cmId]}`;
+          if (!esCuentaCompleta) {
+            cuentaContadores[cmId] = (cuentaContadores[cmId] || 0) + 1;
+            const tieneMultiples = perfilesPorCuenta[cmId] > 1;
+            if (tieneMultiples) {
+              nombreSugerido = `${defaultUser} ${cuentaContadores[cmId]}`;
+            }
           }
           if (usedNamesByCm[cmId].has(nombreSugerido)) {
             let suffix = 2;
@@ -476,14 +494,14 @@ export default function VentasPage() {
     setLoading(true);
     try {
       const savePromises = registeredVenta.detalles.map((detail: any) => {
-        if (!detail.perfil_id || detail.tipo_unidad === 'CUENTA' || registeredVenta.tipo_venta === 'CUENTA') {
+        if (!detail.perfil_id) {
           return Promise.resolve();
         }
         const editData = editablePerfiles[detail.perfil_id];
         if (editData) {
           return api.put(`/perfiles/${detail.perfil_id}`, {
             nombre_perfil: editData.nombre_perfil,
-            pin: editData.pin
+            pin: editData.pin || null
           });
         }
         return Promise.resolve();

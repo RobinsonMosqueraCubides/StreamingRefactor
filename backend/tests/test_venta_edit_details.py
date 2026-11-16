@@ -4,8 +4,9 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from db.database import SessionLocal
 from db.models import CuentaMadre, Perfil, Venta, DetalleVenta, Plataforma, Proveedor, Credencial, Cliente, EstadoCuenta
-from services.ventas_service import update_venta, get_venta, create_venta
+from services.ventas_service import update_venta, get_venta, create_venta, generate_whatsapp_link, generate_whatsapp_consolidated
 from schemas.ventas_schemas import VentaUpdate, VentaDetalleUpdate, VentaCreate, VentaItemCreate
+from schemas.actor_schemas import ClienteCreate
 from decimal import Decimal
 from datetime import date, timedelta
 
@@ -407,6 +408,119 @@ async def test_update_venta_two_screens_same_account():
             assert db_p2.asignado is True
             assert db_p2.nombre_perfil == "Cliente 2"
             assert db_p2.pin == "2222"
+        finally:
+            await db.rollback()
+            if venta_id:
+                await db.execute(delete(DetalleVenta).where(DetalleVenta.venta_id == venta_id))
+                await db.execute(delete(Venta).where(Venta.id == venta_id))
+            if cuenta_madre_id:
+                await db.execute(delete(Perfil).where(Perfil.cuenta_madre_id == cuenta_madre_id))
+                await db.execute(delete(CuentaMadre).where(CuentaMadre.id == cuenta_madre_id))
+            if plataforma_id:
+                await db.execute(delete(Plataforma).where(Plataforma.id == plataforma_id))
+            if proveedor_id:
+                await db.execute(delete(Proveedor).where(Proveedor.id == proveedor_id))
+            if credencial_id:
+                await db.execute(delete(Credencial).where(Credencial.id == credencial_id))
+            if cliente_id:
+                await db.execute(delete(Cliente).where(Cliente.id == cliente_id))
+            await db.commit()
+
+
+
+@pytest.mark.asyncio
+async def test_cliente_whatsapp_username_and_link():
+    c_at = ClienteCreate(nombre="Andres Garay", telefono="@agaraystreaming")
+    assert c_at.telefono == "agaraystreaming"
+
+    c_url = ClienteCreate(nombre="Andres Garay", telefono="https://wa.me/agaraystreaming")
+    assert c_url.telefono == "agaraystreaming"
+
+    async with SessionLocal() as db:
+        await db.rollback()
+        plataforma_id = None
+        proveedor_id = None
+        credencial_id = None
+        cliente_id = None
+        cuenta_madre_id = None
+        venta_id = None
+        unique_suffix = str(int(time.time())) + "_wa_user"
+
+        try:
+            plataforma = Plataforma(nombre=f"Plat_{unique_suffix}")
+            db.add(plataforma)
+            proveedor = Proveedor(nombre=f"Prov_{unique_suffix}", telefono="314" + unique_suffix[:7])
+            db.add(proveedor)
+            credencial = Credencial(email=f"wa_{unique_suffix}@correo.com", password="password")
+            db.add(credencial)
+            cliente = Cliente(nombre=f"Andres_{unique_suffix}", telefono=f"agaray_{unique_suffix}", tipo="FINAL")
+            db.add(cliente)
+            await db.flush()
+
+            plataforma_id = plataforma.id
+            proveedor_id = proveedor.id
+            credencial_id = credencial.id
+            cliente_id = cliente.id
+
+            cuenta_madre = CuentaMadre(
+                proveedor_id=proveedor.id,
+                credencial_id=credencial.id,
+                plataforma_id=plataforma.id,
+                max_perfiles=2,
+                precio_compra=Decimal("100.00"),
+                fecha_compra=date.today(),
+                fecha_vencimiento=date.today() + timedelta(days=30),
+                estado=EstadoCuenta.ACTIVA
+            )
+            db.add(cuenta_madre)
+            await db.flush()
+            cuenta_madre_id = cuenta_madre.id
+
+            p1 = Perfil(cuenta_madre_id=cuenta_madre.id, nombre_perfil="Perfil 1", pin=None, asignado=False)
+            p2 = Perfil(cuenta_madre_id=cuenta_madre.id, nombre_perfil="Perfil 2", pin=None, asignado=False)
+            db.add_all([p1, p2])
+            await db.commit()
+
+            venta_in = VentaCreate(
+                cliente_id=cliente.id,
+                fecha_inicio=date.today(),
+                fecha_corte=date.today() + timedelta(days=30),
+                monto_total=Decimal("40000.00"),
+                items=[
+                    VentaItemCreate(
+                        plataforma_id=plataforma.id,
+                        precio_aplicado=Decimal("40000.00"),
+                        tipo_unidad="CUENTA",
+                        cuenta_madre_id=cuenta_madre.id,
+                    ),
+                ],
+            )
+            created = await create_venta(db, venta_in)
+            venta_id = created.id
+
+            wa_consolidated = await generate_whatsapp_consolidated(db, venta_id)
+            assert wa_consolidated.startswith(f"https://wa.me/agaray_{unique_suffix}?text=")
+
+            wa_single = await generate_whatsapp_link(db, venta_id, created.detalles[0].id, "cobro")
+            assert wa_single.startswith(f"https://wa.me/agaray_{unique_suffix}?text=")
+
+            # Verify updating Perfil 1 name on CUENTA sale
+            upd = VentaUpdate(
+                detalles=[
+                    VentaDetalleUpdate(
+                        id=d.id,
+                        cuenta_madre_id=cuenta_madre.id,
+                        perfil_id=0,
+                        tipo_unidad="CUENTA",
+                        precio_aplicado=d.precio_aplicado,
+                        nombre_perfil="Andres" if idx == 0 else None,
+                    )
+                    for idx, d in enumerate(created.detalles)
+                ]
+            )
+            await update_venta(db, venta_id, upd)
+            db_p1 = await db.get(Perfil, p1.id)
+            assert db_p1.nombre_perfil == "Andres"
         finally:
             await db.rollback()
             if venta_id:

@@ -106,7 +106,7 @@ export default function POSPanel({
   const filteredClientes = useMemo(() => {
     return clientes.filter(c =>
       c.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) ||
-      c.telefono.includes(clienteSearch)
+      c.telefono.toLowerCase().includes(clienteSearch.toLowerCase())
     );
   }, [clientes, clienteSearch]);
 

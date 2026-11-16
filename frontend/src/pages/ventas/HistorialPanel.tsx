@@ -98,10 +98,6 @@ export default function HistorialPanel({
     }
   };
 
-  const getClienteName = (clientId: number) => {
-    return clientes.find(c => c.id === clientId)?.nombre || `Cliente #${clientId}`;
-  };
-
   const getPlataformaName = (platId: number) => {
     if (!platId) return 'Plataforma Desconocida';
     return plataformas.find(p => p.id === platId)?.nombre || `Plataforma #${platId}`;
@@ -251,8 +247,16 @@ export default function HistorialPanel({
   const filteredSalesList: any[] = [];
   
   sales.forEach(sale => {
-    const clientName = getClienteName(sale.cliente_id).toLowerCase();
-    const matchesSearch = clientName.includes(historySearch.toLowerCase()) || String(sale.id).includes(historySearch);
+    const query = historySearch.trim().toLowerCase();
+    const clienteObj = clientes.find(c => c.id === sale.cliente_id);
+    const clientName = (clienteObj?.nombre || `Cliente #${sale.cliente_id}`).toLowerCase();
+    const clientContact = (clienteObj?.telefono || '').toLowerCase();
+    const matchesEmail = (sale.detalles || []).some((d: any) => {
+      const cm = cuentas.find(c => c.id === d.cuenta_madre_id);
+      const cred = credenciales.find(cr => cr.id === cm?.credencial_id);
+      return (cred?.email || '').toLowerCase().includes(query);
+    });
+    const matchesSearch = !query || clientName.includes(query) || clientContact.includes(query) || String(sale.id).includes(query) || matchesEmail;
     
     if (!matchesSearch) return;
 
@@ -328,7 +332,7 @@ export default function HistorialPanel({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="sm:col-span-2">
           <Input
-            placeholder="Buscar por cliente o folio..."
+            placeholder="Buscar por cliente, correo de cuenta o folio..."
             value={historySearch}
             onChange={(e) => setHistorySearch(e.target.value)}
             leftIcon={<Search className="w-4 h-4 text-slate-500" />}
@@ -618,11 +622,11 @@ export default function HistorialPanel({
                                   );
 
                                   if (isCuentaCompleta) {
+                                    const sortedDetalles = [...listDetalles].sort((a: any, b: any) => (a.perfil_id || 0) - (b.perfil_id || 0));
                                     renderList.push({
                                       isCuentaCompleta: true,
-                                      // Force perfil_id to null so getTipoUnidadBadge shows "Cuenta Completa" and PIN/profile form fields are skipped
-                                      detail: { ...listDetalles[0], perfil_id: null },
-                                      allDetails: listDetalles
+                                      detail: { ...sortedDetalles[0] },
+                                      allDetails: sortedDetalles
                                     });
                                   } else {
                                     listDetalles.forEach(d => {
@@ -654,11 +658,12 @@ export default function HistorialPanel({
 
                                   let profileUser = cliente.nombre;
                                   let pinVal = 'N/A';
-                                  if (!item.isCuentaCompleta && cm && cm.perfiles) {
-                                    const matchPerfil = cm.perfiles.find((p: any) => p.id === detail.perfil_id);
+                                  if (cm && cm.perfiles) {
+                                    const targetPerfilId = detail.perfil_id || (item.isCuentaCompleta ? [...cm.perfiles].sort((a, b) => a.id - b.id)[0]?.id : null);
+                                    const matchPerfil = targetPerfilId ? cm.perfiles.find((p: any) => p.id === targetPerfilId) : null;
                                     if (matchPerfil) {
                                       profileUser = matchPerfil.nombre_perfil;
-                                      if (matchPerfil.pin) pinVal = matchPerfil.pin;
+                                      if (!item.isCuentaCompleta && matchPerfil.pin) pinVal = matchPerfil.pin;
                                     }
                                   }
 
@@ -734,7 +739,9 @@ export default function HistorialPanel({
                                           {detail.perfil_id ? (
                                             <>
                                               <div>
-                                                <label className="text-[9px] text-slate-500 uppercase block mb-1">Nombre Perfil</label>
+                                                <label className="text-[9px] text-slate-500 uppercase block mb-1">
+                                                  {item.isCuentaCompleta ? 'Nombre Perfil 1' : 'Nombre Perfil'}
+                                                </label>
                                                 <input
                                                   type="text"
                                                   value={editProfileName}
@@ -742,16 +749,22 @@ export default function HistorialPanel({
                                                   className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-sans focus:border-cyan-550 focus:outline-none"
                                                 />
                                               </div>
-                                              <div>
-                                                <label className="text-[9px] text-slate-500 uppercase block mb-1">PIN</label>
-                                                <input
-                                                  type="text"
-                                                  value={editPin}
-                                                  onChange={(e) => setEditPin(e.target.value)}
-                                                  placeholder="Vacío o PIN"
-                                                  className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none"
-                                                />
-                                              </div>
+                                              {!item.isCuentaCompleta ? (
+                                                <div>
+                                                  <label className="text-[9px] text-slate-500 uppercase block mb-1">PIN</label>
+                                                  <input
+                                                    type="text"
+                                                    value={editPin}
+                                                    onChange={(e) => setEditPin(e.target.value)}
+                                                    placeholder="Vacío o PIN"
+                                                    className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:border-cyan-550 focus:outline-none"
+                                                  />
+                                                </div>
+                                              ) : (
+                                                <div className="flex items-center">
+                                                  <p className="text-[11px] text-slate-500 italic mt-3">Cuenta Completa (Perfil 1)</p>
+                                                </div>
+                                              )}
                                             </>
                                           ) : (
                                             <div className="col-span-2 flex items-center">
@@ -779,10 +792,15 @@ export default function HistorialPanel({
                                               </button>
                                             )}
                                           </p>
-                                          {detail.perfil_id ? (
+                                          {detail.perfil_id && !item.isCuentaCompleta ? (
                                             <>
                                               <p className="truncate">Perfil: <strong className="text-slate-200 font-sans select-all">{profileUser}</strong></p>
                                               <p className="truncate">PIN: <strong className="text-cyan-400 font-sans select-all">{pinVal}</strong></p>
+                                            </>
+                                          ) : item.isCuentaCompleta ? (
+                                            <>
+                                              <p className="truncate">Perfil 1: <strong className="text-slate-200 font-sans select-all">{profileUser}</strong></p>
+                                              <p className="truncate text-sky-400 font-sans">Cuenta Completa</p>
                                             </>
                                           ) : (
                                             <p className="col-span-2 text-sky-400 font-sans font-bold select-none">
