@@ -34,11 +34,11 @@ export default function MainLayout() {
   }, []);
 
   const navItems = [
-    { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/', label: 'Finanzas', icon: LayoutDashboard, end: true },
     { to: '/clientes', label: 'Clientes', icon: Users },
     { to: '/inventario', label: 'Inventario', icon: Database },
     { to: '/ventas', label: 'Ventas', icon: ShoppingCart },
-    { to: '/configuracion', label: 'Configuración', icon: Settings },
+    { to: '/configuracion', label: 'Mensajes', icon: Settings },
   ];
 
   const handleLogout = () => {

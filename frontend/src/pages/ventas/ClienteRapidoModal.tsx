@@ -18,6 +18,7 @@ export default function ClienteRapidoModal({ isOpen, onClose, onSuccess }: Clien
   const { refreshMetadata } = useMetadata();
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [username, setUsername] = useState('');
   const [tipo, setTipo] = useState('FINAL');
   const [diasGraciaMax, setDiasGraciaMax] = useState(0);
   const [error, setError] = useState('');
@@ -27,8 +28,8 @@ export default function ClienteRapidoModal({ isOpen, onClose, onSuccess }: Clien
     e.preventDefault();
     setError('');
     
-    if (!nombre.trim() || !telefono.trim()) {
-      setError('Nombre y teléfono son obligatorios.');
+    if (!nombre.trim() || (!telefono.trim() && !username.trim())) {
+      setError('El nombre y al menos un contacto (teléfono o username de WhatsApp) son obligatorios.');
       return;
     }
 
@@ -36,7 +37,8 @@ export default function ClienteRapidoModal({ isOpen, onClose, onSuccess }: Clien
     try {
       const res = await api.post('/clientes/', {
         nombre: nombre.trim(),
-        telefono: telefono.trim(),
+        telefono: telefono.trim() || null,
+        username: username.trim() || null,
         tipo,
         estado: 'ACTIVO',
         dias_gracia_max: Number(diasGraciaMax) || 0
@@ -48,6 +50,7 @@ export default function ClienteRapidoModal({ isOpen, onClose, onSuccess }: Clien
       // Reset state
       setNombre('');
       setTelefono('');
+      setUsername('');
       setTipo('FINAL');
       setDiasGraciaMax(0);
     } catch (err: any) {
@@ -76,11 +79,17 @@ export default function ClienteRapidoModal({ isOpen, onClose, onSuccess }: Clien
         />
 
         <Input
-          label="Teléfono o Username de WhatsApp"
-          placeholder="Ej: +573001234567 o agaraystreaming"
+          label="Teléfono (WhatsApp)"
+          placeholder="Ej: +573001234567"
           value={telefono}
           onChange={(e) => setTelefono(e.target.value)}
-          required
+        />
+
+        <Input
+          label="Username de WhatsApp"
+          placeholder="Ej: agaraystreaming"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         />
 
         <Select

@@ -1,10 +1,17 @@
 export interface Cliente {
   id: number;
   nombre: string;
-  telefono: string;
+  telefono: string | null;
+  username?: string | null;
   tipo: 'FINAL' | 'REVENDEDOR';
   estado: 'ACTIVO' | 'BANEADO';
   dias_gracia_max: number;
+}
+
+export interface EnlaceProveedor {
+  id?: number;
+  nombre: string;
+  url: string;
 }
 
 export interface Proveedor {
@@ -12,6 +19,7 @@ export interface Proveedor {
   nombre: string;
   telefono: string;
   saldo_a_favor: number;
+  enlaces?: EnlaceProveedor[];
 }
 
 export interface Plataforma {

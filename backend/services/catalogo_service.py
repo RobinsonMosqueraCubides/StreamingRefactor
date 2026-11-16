@@ -108,7 +108,56 @@ async def delete_combo(db: AsyncSession, combo_id: int):
 
 # --- PlantillaMensaje Services ---
 
+DEFAULT_PLANTILLAS = [
+    {
+        "nombre": "compra",
+        "mensaje": (
+            "Hola *{cliente}*, aquí tienes los accesos para tus suscripciones de streaming:\n\n"
+            "{detalle_accesos}"
+            "Fecha de Vencimiento: *{fecha_corte}*\n\n"
+            "¡Gracias por tu confianza y preferencia! 🚀"
+        ),
+    },
+    {
+        "nombre": "cambio_credenciales",
+        "mensaje": (
+            "Hola {cliente}, aquí tienes tus credenciales para {plataforma}:\n"
+            "• Correo: {usuario}\n"
+            "• Clave: {password}\n"
+            "• Perfil: {perfil}\n"
+            "• PIN: {pin}\n"
+            "Fecha de corte: {fecha_corte}"
+        ),
+    },
+    {
+        "nombre": "cobro",
+        "mensaje": (
+            "Hola {cliente}, te recordamos que tu suscripción de {plataforma} vence pronto ({fecha_corte}). "
+            "Puedes renovarla realizando el pago de {monto} COP."
+        ),
+    },
+    {
+        "nombre": "corte",
+        "mensaje": (
+            "Hola {cliente}, tu suscripción de {plataforma} ha vencido ({fecha_corte}) y los perfiles asociados "
+            "han sido suspendidos. Realiza tu pago de {monto} COP para reactivarlos."
+        ),
+    },
+]
+
+
+async def ensure_default_plantillas(db: AsyncSession) -> None:
+    result = await db.execute(select(PlantillaMensaje.nombre))
+    existing_names = set(result.scalars().all())
+    missing = [p for p in DEFAULT_PLANTILLAS if p["nombre"] not in existing_names]
+    if missing:
+        for p in missing:
+            db.add(PlantillaMensaje(nombre=p["nombre"], mensaje=p["mensaje"]))
+        await db.commit()
+
+
 async def get_plantillas(db: AsyncSession, skip: int = 0, limit: int = 100):
+    await ensure_default_plantillas(db)
     result = await db.execute(select(PlantillaMensaje).offset(skip).limit(limit))
     return result.scalars().all()
 

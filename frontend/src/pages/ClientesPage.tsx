@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,8 +8,9 @@ import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import api from '../api/axios';
-import { Search, UserPlus, Phone, ShieldAlert, ShieldCheck, Edit } from 'lucide-react';
-import type { Cliente, Proveedor } from '../types';
+import { Search, UserPlus, Phone, AtSign, ShieldAlert, ShieldCheck, Edit, ExternalLink } from 'lucide-react';
+import type { Cliente, Proveedor, EnlaceProveedor } from '../types';
+import ProveedorLinksInput from '../components/ui/ProveedorLinksInput';
 import { useMetadata } from '../context/MetadataContext';
 
 const formatWhatsAppTarget = (contacto: string) => {
@@ -23,28 +24,37 @@ const formatWhatsAppTarget = (contacto: string) => {
     .replace(/\/+$/, '');
 };
 
-const isValidContactOrUsername = (val: string) => {
-  const cleaned = val
+const stripWhatsAppPrefix = (val: string) =>
+  val
     .trim()
     .replace(/^https?:\/\/(www\.)?wa\.me\//i, '')
     .replace(/^wa\.me\//i, '')
     .split('?')[0]
     .replace(/^@/, '')
     .replace(/\/+$/, '');
-  const noSep = cleaned.replace(/[\s-]/g, '');
-  if (/^\+?[0-9]{7,15}$/.test(noSep)) return true;
+
+const isValidPhone = (val: string) => {
+  const noSep = stripWhatsAppPrefix(val).replace(/[\s-]/g, '');
+  return /^\+?[0-9]{7,15}$/.test(noSep);
+};
+
+const isValidUsername = (val: string) => {
+  const cleaned = stripWhatsAppPrefix(val);
   return /^[a-zA-Z0-9._]{3,50}$/.test(cleaned) && /[a-zA-Z]/.test(cleaned);
 };
 
-const actorFormSchema = z.object({
+const isValidContactOrUsername = (val: string) => isValidPhone(val) || isValidUsername(val);
+
+const baseActorFormSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  telefono: z.string().refine(isValidContactOrUsername, 'Ingresa un teléfono válido (ej: +573001234567) o un username de WhatsApp (ej: agaraystreaming)'),
+  telefono: z.string(),
+  username: z.string(),
   tipo: z.enum(['FINAL', 'REVENDEDOR']),
   dias_gracia_max: z.number().int().min(0, 'No puede ser negativo'),
   saldo_a_favor: z.number().min(0, 'No puede ser negativo'),
 });
 
-type ActorFormValues = z.infer<typeof actorFormSchema>;
+type ActorFormValues = z.infer<typeof baseActorFormSchema>;
 
 export default function ClientesPage() {
   const { refreshMetadata } = useMetadata();
@@ -62,12 +72,50 @@ export default function ClientesPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedActorId, setSelectedActorId] = useState<number | null>(null);
   const [formError, setFormError] = useState('');
+  const [provLinks, setProvLinks] = useState<EnlaceProveedor[]>([]);
+
+  const actorFormSchema = useMemo(() => baseActorFormSchema.superRefine((data, ctx) => {
+    const tel = (data.telefono || '').trim();
+    const user = (data.username || '').trim();
+    if (activeTab === 'clientes') {
+      if (!tel && !user) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Ingresa al menos un teléfono o un username de WhatsApp',
+          path: ['telefono'],
+        });
+      }
+      if (tel && !isValidPhone(tel)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Ingresa un teléfono válido de 7 a 15 dígitos (ej: +573001234567)',
+          path: ['telefono'],
+        });
+      }
+      if (user && !isValidUsername(user)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Ingresa un username de WhatsApp válido (ej: agaraystreaming)',
+          path: ['username'],
+        });
+      }
+    } else {
+      if (!tel || !isValidContactOrUsername(tel)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Ingresa un teléfono válido (ej: +573001234567) o un username de WhatsApp',
+          path: ['telefono'],
+        });
+      }
+    }
+  }), [activeTab]);
 
   const { register, handleSubmit: handleFormSubmit, reset, formState: { errors } } = useForm<ActorFormValues>({
     resolver: zodResolver(actorFormSchema),
     defaultValues: {
       nombre: '',
       telefono: '',
+      username: '',
       tipo: 'FINAL',
       dias_gracia_max: 3,
       saldo_a_favor: 0,
@@ -109,10 +157,12 @@ export default function ClientesPage() {
     reset({
       nombre: '',
       telefono: '',
+      username: '',
       tipo: 'FINAL',
       dias_gracia_max: 3,
       saldo_a_favor: 0,
     });
+    setProvLinks([]);
     setFormError('');
     setIsModalOpen(true);
   };
@@ -122,11 +172,13 @@ export default function ClientesPage() {
     setSelectedActorId(actor.id);
     reset({
       nombre: actor.nombre,
-      telefono: actor.telefono,
+      telefono: actor.telefono || '',
+      username: 'username' in actor ? (actor.username || '') : '',
       tipo: 'tipo' in actor ? actor.tipo : 'FINAL',
       dias_gracia_max: 'dias_gracia_max' in actor ? actor.dias_gracia_max : 3,
       saldo_a_favor: 'saldo_a_favor' in actor ? actor.saldo_a_favor : 0,
     });
+    setProvLinks('enlaces' in actor && Array.isArray(actor.enlaces) ? actor.enlaces.map(e => ({ nombre: e.nombre, url: e.url })) : []);
     setFormError('');
     setIsModalOpen(true);
   };
@@ -137,7 +189,8 @@ export default function ClientesPage() {
       if (activeTab === 'clientes') {
         const payload = {
           nombre: data.nombre,
-          telefono: data.telefono,
+          telefono: data.telefono?.trim() || null,
+          username: data.username?.trim() || null,
           tipo: data.tipo,
           estado: 'ACTIVO',
           dias_gracia_max: data.dias_gracia_max,
@@ -150,10 +203,14 @@ export default function ClientesPage() {
         await fetchClientes();
         await refreshMetadata();
       } else {
+        const cleanLinks = provLinks
+          .filter(l => l.url.trim() !== '')
+          .map(l => ({ nombre: l.nombre.trim() || 'Link', url: l.url.trim() }));
         const payload = {
           nombre: data.nombre,
           telefono: data.telefono,
           saldo_a_favor: data.saldo_a_favor,
+          enlaces: cleanLinks,
         };
         if (modalMode === 'add') {
           await api.post('/proveedores/', payload);
@@ -174,7 +231,8 @@ export default function ClientesPage() {
       if (cliente.estado === 'BANEADO') {
         await api.put(`/clientes/${cliente.id}`, {
           nombre: cliente.nombre,
-          telefono: cliente.telefono,
+          telefono: cliente.telefono || null,
+          username: cliente.username || null,
           tipo: cliente.tipo,
           estado: 'ACTIVO',
           dias_gracia_max: cliente.dias_gracia_max,
@@ -189,10 +247,14 @@ export default function ClientesPage() {
     }
   };
 
-  const filteredClientes = clientes.filter(c =>
-    c.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.telefono.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredClientes = clientes.filter(c => {
+    const q = searchQuery.toLowerCase();
+    return (
+      c.nombre.toLowerCase().includes(q) ||
+      (c.telefono || '').toLowerCase().includes(q) ||
+      (c.username || '').toLowerCase().includes(q)
+    );
+  });
 
   const filteredProveedores = proveedores.filter(p =>
     p.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -247,7 +309,7 @@ export default function ClientesPage() {
       {/* Barra de búsqueda */}
       <div className="max-w-md">
         <Input
-          placeholder="Buscar por nombre o teléfono..."
+          placeholder="Buscar por nombre, teléfono o username..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           leftIcon={<Search className="w-4 h-4 text-slate-500" />}
@@ -281,12 +343,22 @@ export default function ClientesPage() {
                   </span>
                 </div>
                 <div className="mt-3 space-y-1.5 text-xs text-slate-400">
-                  <p className="flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-slate-500" />
-                    <a href={`https://wa.me/${formatWhatsAppTarget(cliente.telefono)}`} target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">
-                      {cliente.telefono}
-                    </a>
-                  </p>
+                  {cliente.telefono && (
+                    <p className="flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-slate-500" />
+                      <a href={`https://wa.me/${formatWhatsAppTarget(cliente.telefono)}`} target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">
+                        {cliente.telefono}
+                      </a>
+                    </p>
+                  )}
+                  {cliente.username && (
+                    <p className="flex items-center gap-1.5">
+                      <AtSign className="w-3.5 h-3.5 text-slate-500" />
+                      <a href={`https://wa.me/${formatWhatsAppTarget(cliente.username)}`} target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">
+                        {cliente.username}
+                      </a>
+                    </p>
+                  )}
                   <p>Días de gracia: <span className="text-slate-200 font-medium">{cliente.dias_gracia_max}</span></p>
                   <p>
                     Estado:{' '}
@@ -347,6 +419,22 @@ export default function ClientesPage() {
                       ${proveedor.saldo_a_favor.toLocaleString('es-CO')} COP
                     </span>
                   </p>
+                  {proveedor.enlaces && proveedor.enlaces.length > 0 && (
+                    <div className="pt-1.5 flex flex-wrap gap-1.5">
+                      {proveedor.enlaces.map((lnk, idx) => (
+                        <a
+                          key={lnk.id ?? idx}
+                          href={lnk.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          {lnk.nombre || 'Link'}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -396,12 +484,30 @@ export default function ClientesPage() {
             {...register('nombre')}
           />
 
-          <Input
-            label="Teléfono o Username de WhatsApp"
-            placeholder="Ej: +573001234567 o agaraystreaming"
-            error={errors.telefono?.message}
-            {...register('telefono')}
-          />
+          {activeTab === 'clientes' ? (
+            <>
+              <Input
+                label="Teléfono (WhatsApp)"
+                placeholder="Ej: +573001234567"
+                error={errors.telefono?.message}
+                {...register('telefono')}
+              />
+
+              <Input
+                label="Username de WhatsApp"
+                placeholder="Ej: agaraystreaming"
+                error={errors.username?.message}
+                {...register('username')}
+              />
+            </>
+          ) : (
+            <Input
+              label="Teléfono o Username de WhatsApp"
+              placeholder="Ej: +573001234567 o agaraystreaming"
+              error={errors.telefono?.message}
+              {...register('telefono')}
+            />
+          )}
 
           {activeTab === 'clientes' ? (
             <>
@@ -424,13 +530,16 @@ export default function ClientesPage() {
               />
             </>
           ) : (
-            <Input
-              label="Saldo a Favor (COP)"
-              type="number"
-              error={errors.saldo_a_favor?.message}
-              {...register('saldo_a_favor', { valueAsNumber: true })}
-              min={0}
-            />
+            <>
+              <Input
+                label="Saldo a Favor (COP)"
+                type="number"
+                error={errors.saldo_a_favor?.message}
+                {...register('saldo_a_favor', { valueAsNumber: true })}
+                min={0}
+              />
+              <ProveedorLinksInput links={provLinks} onChange={setProvLinks} />
+            </>
           )}
         </form>
       </Modal>

@@ -13,7 +13,8 @@ import GarantiaProveedorModal from './inventario/GarantiaProveedorModal';
 import RenovacionCuentaModal from './inventario/RenovacionCuentaModal';
 import CancelarCuentaModal from './inventario/CancelarCuentaModal';
 import { Database, Plus, Users, Mail, XCircle } from 'lucide-react';
-import type { CuentaMadre, Proveedor, Plataforma } from '../types';
+import type { CuentaMadre, Proveedor, Plataforma, EnlaceProveedor } from '../types';
+import ProveedorLinksInput from '../components/ui/ProveedorLinksInput';
 import { useMetadata } from '../context/MetadataContext';
 
 export default function InventarioPage() {
@@ -41,6 +42,7 @@ export default function InventarioPage() {
   const [provTelefono, setProvTelefono] = useState('');
   const [provSaldo, setProvSaldo] = useState<number | "">(0);
   const [provError, setProvError] = useState('');
+  const [provLinks, setProvLinks] = useState<EnlaceProveedor[]>([]);
 
   // Platforms CRUD Modals
   const [isPlatModalOpen, setIsPlatModalOpen] = useState(false);
@@ -122,6 +124,7 @@ export default function InventarioPage() {
     setProvNombre('');
     setProvTelefono('');
     setProvSaldo(0);
+    setProvLinks([]);
     setProvError('');
     setIsProvModalOpen(true);
   };
@@ -131,6 +134,7 @@ export default function InventarioPage() {
     setProvNombre(p.nombre);
     setProvTelefono(p.telefono);
     setProvSaldo(p.saldo_a_favor);
+    setProvLinks(Array.isArray(p.enlaces) ? p.enlaces.map(e => ({ nombre: e.nombre, url: e.url })) : []);
     setProvError('');
     setIsProvModalOpen(true);
   };
@@ -143,7 +147,10 @@ export default function InventarioPage() {
       const payload = {
         nombre: provNombre,
         telefono: provTelefono,
-        saldo_a_favor: Number(provSaldo) || 0
+        saldo_a_favor: Number(provSaldo) || 0,
+        enlaces: provLinks
+          .filter(l => l.url.trim() !== '')
+          .map(l => ({ nombre: l.nombre.trim() || 'Link', url: l.url.trim() }))
       };
 
       if (selectedProv) {
@@ -414,6 +421,7 @@ export default function InventarioPage() {
             }}
             min="0"
           />
+          <ProveedorLinksInput links={provLinks} onChange={setProvLinks} />
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-850">
             <Button type="button" variant="ghost" onClick={() => setIsProvModalOpen(false)}>
               Cancelar

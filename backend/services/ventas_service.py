@@ -5,6 +5,7 @@ from db.models import Venta, DetalleVenta, Perfil, CuentaMadre, Plataforma, Esta
 from db.database import get_or_404
 from schemas.ventas_schemas import VentaCreate, VentaUpdate
 from core.exceptions import BusinessRuleError
+from datetime import date
 from decimal import Decimal
 import urllib.parse
 import re
@@ -18,6 +19,47 @@ def _format_whatsapp_target(contacto: str) -> str:
     if cleaned.startswith("@"):
         cleaned = cleaned[1:].strip()
     return cleaned.replace("+", "").replace(" ", "").replace("-", "")
+
+
+def _resolve_whatsapp_target(cliente) -> str:
+    """Prioritize phone number; fall back to WhatsApp username when phone is not saved."""
+    if cliente and getattr(cliente, "telefono", None) and cliente.telefono.strip():
+        return _format_whatsapp_target(cliente.telefono)
+    if cliente and getattr(cliente, "username", None) and cliente.username.strip():
+        return _format_whatsapp_target(cliente.username)
+    raise BusinessRuleError("El cliente no tiene teléfono ni username de WhatsApp registrado")
+
+
+def _render_template_vars(template_text: str, ctx: dict) -> str:
+    """Replace supported WhatsApp template placeholders consistently."""
+    replacements = {
+        "[Nombre Cliente]": ctx.get("cliente", "Cliente"),
+        "{cliente}": ctx.get("cliente", "Cliente"),
+        "{nombre_completo}": ctx.get("nombre_completo", ctx.get("cliente", "Cliente")),
+        "{plataforma}": ctx.get("plataforma", "N/A"),
+        "[Plataforma]": ctx.get("plataforma", "N/A"),
+        "{usuario}": ctx.get("usuario", "N/A"),
+        "{email}": ctx.get("usuario", "N/A"),
+        "[Email]": ctx.get("usuario", "N/A"),
+        "{password}": ctx.get("password", "N/A"),
+        "{clave}": ctx.get("password", "N/A"),
+        "[Clave]": ctx.get("password", "N/A"),
+        "{perfil}": ctx.get("perfil", "N/A"),
+        "[Perfil]": ctx.get("perfil", "N/A"),
+        "{pin}": ctx.get("pin", "N/A"),
+        "[PIN]": ctx.get("pin", "N/A"),
+        "{monto}": ctx.get("monto", "0.00"),
+        "[Monto]": ctx.get("monto", "0.00"),
+        "{fecha_inicio}": ctx.get("fecha_inicio", ""),
+        "[Fecha Inicio]": ctx.get("fecha_inicio", ""),
+        "{fecha_corte}": ctx.get("fecha_corte", ""),
+        "[Fecha Corte]": ctx.get("fecha_corte", ""),
+        "{detalle_accesos}": ctx.get("detalle_accesos", ""),
+    }
+    msg = template_text
+    for key, val in replacements.items():
+        msg = msg.replace(key, str(val))
+    return msg
 
 async def get_ventas(db: AsyncSession, skip: int = 0, limit: int = 100):
     result = await db.execute(
@@ -238,6 +280,7 @@ async def renovar_venta(db: AsyncSession, venta_id: int, nueva_fecha_corte):
     from db.models import PagoVenta
     try:
         db_venta = await get_venta(db, venta_id)
+        db_venta.fecha_inicio = date.today()
         db_venta.fecha_corte = nueva_fecha_corte
         db_venta.estado_pago = EstadoPago.PENDIENTE
         
@@ -327,17 +370,22 @@ async def generate_whatsapp_link(db: AsyncSession, venta_id: int, detail_id: int
         mensaje_base = mensaje_base.replace('{perfil}', 'N/A').replace('{pin}', 'N/A')
 
     first_name = venta.cliente.nombre.strip().split()[0] if (venta.cliente and venta.cliente.nombre and venta.cliente.nombre.strip()) else "Cliente"
+    monto_str = f"{db_detalle.precio_aplicado:,.2f}" if isinstance(db_detalle.precio_aplicado, Decimal) else str(db_detalle.precio_aplicado)
 
-    msg = mensaje_base.replace('[Nombre Cliente]', first_name) \
-                      .replace('{plataforma}', plataforma) \
-                      .replace('{usuario}', usuario) \
-                      .replace('{password}', password) \
-                      .replace('{perfil}', profile_name) \
-                      .replace('{pin}', pin_val) \
-                      .replace('{monto}', f"{db_detalle.precio_aplicado:,.2f}" if isinstance(db_detalle.precio_aplicado, Decimal) else str(db_detalle.precio_aplicado)) \
-                      .replace('{fecha_corte}', venta.fecha_corte.strftime("%Y-%m-%d"))
+    msg = _render_template_vars(mensaje_base, {
+        "cliente": first_name,
+        "nombre_completo": venta.cliente.nombre if venta.cliente else "Cliente",
+        "plataforma": plataforma,
+        "usuario": usuario,
+        "password": password,
+        "perfil": profile_name,
+        "pin": pin_val,
+        "monto": monto_str,
+        "fecha_inicio": venta.fecha_inicio.strftime("%Y-%m-%d") if venta.fecha_inicio else "",
+        "fecha_corte": venta.fecha_corte.strftime("%Y-%m-%d") if venta.fecha_corte else "",
+    })
 
-    phone = _format_whatsapp_target(venta.cliente.telefono)
+    phone = _resolve_whatsapp_target(venta.cliente)
     encoded_msg = urllib.parse.quote(msg)
     return f"https://wa.me/{phone}?text={encoded_msg}"
 
@@ -360,7 +408,7 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
             detalles_por_cuenta[detail.cuenta_madre_id].append(detail)
             
     first_name = venta.cliente.nombre.strip().split()[0] if (venta.cliente and venta.cliente.nombre and venta.cliente.nombre.strip()) else "Cliente"
-    msg = f"Hola *{first_name}*, aquí tienes los accesos para tus suscripciones de streaming:\n\n"
+    detalle_accesos = ""
     item_idx = 1
     
     for cm_id, list_detalles in detalles_por_cuenta.items():
@@ -398,9 +446,9 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
         
         if es_cuenta_completa:
             # Reportar como cuenta completa simplificada
-            msg += f"*{item_idx}. {plat_name}*\n"
-            msg += f"   • Correo: `{email}`\n"
-            msg += f"   • Clave: `{password}`\n\n"
+            detalle_accesos += f"*{item_idx}. {plat_name}*\n"
+            detalle_accesos += f"   • Correo: `{email}`\n"
+            detalle_accesos += f"   • Clave: `{password}`\n\n"
             item_idx += 1
         else:
             # Reportar perfiles individuales
@@ -412,18 +460,35 @@ async def generate_whatsapp_consolidated(db: AsyncSession, venta_id: int) -> str
                 profile_name = perfil.nombre_perfil if perfil else venta.cliente.nombre
                 pin_val = perfil.pin if (perfil and perfil.pin) else "N/A"
                 
-                msg += f"*{item_idx}. {plat_name}*\n"
-                msg += f"   • Correo: `{email}`\n"
-                msg += f"   • Clave: `{password}`\n"
+                detalle_accesos += f"*{item_idx}. {plat_name}*\n"
+                detalle_accesos += f"   • Correo: `{email}`\n"
+                detalle_accesos += f"   • Clave: `{password}`\n"
 
-                msg += f"   • Perfil (Usuario): *{profile_name}*\n"
-                msg += f"   • PIN: *{pin_val}*\n\n"
+                detalle_accesos += f"   • Perfil (Usuario): *{profile_name}*\n"
+                detalle_accesos += f"   • PIN: *{pin_val}*\n\n"
                 item_idx += 1
         
-    msg += f"Fecha de Vencimiento: *{venta.fecha_corte.strftime('%Y-%m-%d')}*\n\n"
-    msg += "¡Gracias por tu confianza y preferencia! 🚀"
+    stmt_temp = select(PlantillaMensaje).where(PlantillaMensaje.nombre == "compra")
+    res_temp = await db.execute(stmt_temp)
+    temp_compra = res_temp.scalar_one_or_none()
+
+    if temp_compra:
+        monto_total_str = f"{venta.monto_total:,.2f}" if isinstance(venta.monto_total, Decimal) else str(venta.monto_total)
+        msg = _render_template_vars(temp_compra.mensaje, {
+            "cliente": first_name,
+            "nombre_completo": venta.cliente.nombre if venta.cliente else "Cliente",
+            "monto": monto_total_str,
+            "fecha_inicio": venta.fecha_inicio.strftime("%Y-%m-%d") if venta.fecha_inicio else "",
+            "fecha_corte": venta.fecha_corte.strftime("%Y-%m-%d") if venta.fecha_corte else "",
+            "detalle_accesos": detalle_accesos,
+        })
+    else:
+        msg = f"Hola *{first_name}*, aquí tienes los accesos para tus suscripciones de streaming:\n\n"
+        msg += detalle_accesos
+        msg += f"Fecha de Vencimiento: *{venta.fecha_corte.strftime('%Y-%m-%d')}*\n\n"
+        msg += "¡Gracias por tu confianza y preferencia! 🚀"
     
-    phone = _format_whatsapp_target(venta.cliente.telefono)
+    phone = _resolve_whatsapp_target(venta.cliente)
     encoded_msg = urllib.parse.quote(msg)
     return f"https://wa.me/{phone}?text={encoded_msg}"
 

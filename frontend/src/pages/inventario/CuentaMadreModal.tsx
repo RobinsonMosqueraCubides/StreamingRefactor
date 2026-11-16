@@ -7,7 +7,8 @@ import SearchableSelect from '../../components/ui/SearchableSelect';
 import api from '../../api/axios';
 import { AlertCircle, Plus, Eye, EyeOff } from 'lucide-react';
 
-import type { Proveedor, Plataforma, Credencial, CuentaMadre } from '../../types';
+import type { Proveedor, Plataforma, Credencial, CuentaMadre, EnlaceProveedor } from '../../types';
+import ProveedorLinksInput from '../../components/ui/ProveedorLinksInput';
 
 interface CuentaMadreModalProps {
   isOpen: boolean;
@@ -58,6 +59,7 @@ export default function CuentaMadreModal({
   const [createNewProv, setCreateNewProv] = useState(false);
   const [newProvNombre, setNewProvNombre] = useState('');
   const [newProvTelefono, setNewProvTelefono] = useState('');
+  const [newProvLinks, setNewProvLinks] = useState<EnlaceProveedor[]>([]);
 
   const [createNewPlat, setCreateNewPlat] = useState(false);
   const [newPlatNombre, setNewPlatNombre] = useState('');
@@ -294,7 +296,10 @@ export default function CuentaMadreModal({
         const provRes = await api.post('/proveedores/', {
           nombre: newProvNombre,
           telefono: newProvTelefono,
-          saldo_a_favor: 0.0
+          saldo_a_favor: 0.0,
+          enlaces: newProvLinks
+            .filter(l => l.url.trim() !== '')
+            .map(l => ({ nombre: l.nombre.trim() || 'Link', url: l.url.trim() }))
         });
         finalProveedorId = provRes.data.id;
       }
@@ -454,6 +459,7 @@ export default function CuentaMadreModal({
           </div>
 
           {createNewProv ? (
+            <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 label="Nombre del Proveedor"
@@ -469,6 +475,8 @@ export default function CuentaMadreModal({
                 onChange={(e) => setNewProvTelefono(e.target.value)}
                 required
               />
+            </div>
+            <ProveedorLinksInput links={newProvLinks} onChange={setNewProvLinks} />
             </div>
           ) : (
             <Select

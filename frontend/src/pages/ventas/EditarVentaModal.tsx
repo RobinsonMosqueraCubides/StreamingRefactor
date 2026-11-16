@@ -51,7 +51,7 @@ export default function EditarVentaModal({
     if (selectedSale) {
       setClienteId(String(selectedSale.cliente_id));
       const client = clientes.find(c => c.id === selectedSale.cliente_id);
-      setClienteSearch(client ? `${client.nombre} (${client.telefono})` : `Cliente #${selectedSale.cliente_id}`);
+      setClienteSearch(client ? `${client.nombre} (${client.telefono || (client.username ? `@${client.username}` : 'Sin contacto')})` : `Cliente #${selectedSale.cliente_id}`);
       
       setFechaInicio(selectedSale.fecha_inicio);
       setFechaCorte(selectedSale.fecha_corte);
@@ -121,15 +121,20 @@ export default function EditarVentaModal({
   }, []);
 
   const filteredClientes = useMemo(() => {
+    const q = clienteSearch.toLowerCase();
     return clientes.filter(c =>
-      c.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) ||
-      c.telefono.toLowerCase().includes(clienteSearch.toLowerCase())
+      c.nombre.toLowerCase().includes(q) ||
+      (c.telefono || '').toLowerCase().includes(q) ||
+      (c.username || '').toLowerCase().includes(q)
     );
   }, [clientes, clienteSearch]);
 
   const handleSelectCliente = (c: Cliente) => {
     setClienteId(String(c.id));
-    setClienteSearch(`${c.nombre} (${c.telefono})`);
+    const contact = c.telefono && c.username
+      ? `${c.telefono} / @${c.username}`
+      : (c.telefono || (c.username ? `@${c.username}` : 'Sin contacto'));
+    setClienteSearch(`${c.nombre} (${contact})`);
     setShowClientDropdown(false);
   };
 
@@ -532,7 +537,7 @@ export default function EditarVentaModal({
                           clienteId === String(c.id) ? 'bg-cyan-500/10 text-cyan-400 font-bold' : ''
                         }`}
                       >
-                        {c.nombre} <span className="text-[10px] text-slate-500 font-mono">({c.telefono})</span>
+                        {c.nombre} <span className="text-[10px] text-slate-500 font-mono">({c.telefono || (c.username ? `@${c.username}` : 'N/A')})</span>
                       </div>
                     ))
                   )}

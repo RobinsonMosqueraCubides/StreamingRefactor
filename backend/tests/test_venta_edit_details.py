@@ -430,11 +430,21 @@ async def test_update_venta_two_screens_same_account():
 
 @pytest.mark.asyncio
 async def test_cliente_whatsapp_username_and_link():
-    c_at = ClienteCreate(nombre="Andres Garay", telefono="@agaraystreaming")
-    assert c_at.telefono == "agaraystreaming"
+    c_at = ClienteCreate(nombre="Andres Garay", username="@agaraystreaming")
+    assert c_at.username == "agaraystreaming"
+    assert c_at.telefono is None
 
-    c_url = ClienteCreate(nombre="Andres Garay", telefono="https://wa.me/agaraystreaming")
-    assert c_url.telefono == "agaraystreaming"
+    c_url = ClienteCreate(nombre="Andres Garay", username="https://wa.me/agaraystreaming")
+    assert c_url.username == "agaraystreaming"
+
+    c_both = ClienteCreate(nombre="Andres Garay", telefono="+57 300 123 4567", username="@agaraystreaming")
+    assert c_both.telefono == "+573001234567"
+    assert c_both.username == "agaraystreaming"
+
+    import pytest
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        ClienteCreate(nombre="Andres Garay", telefono="", username="")
 
     async with SessionLocal() as db:
         await db.rollback()
@@ -453,7 +463,7 @@ async def test_cliente_whatsapp_username_and_link():
             db.add(proveedor)
             credencial = Credencial(email=f"wa_{unique_suffix}@correo.com", password="password")
             db.add(credencial)
-            cliente = Cliente(nombre=f"Andres_{unique_suffix}", telefono=f"agaray_{unique_suffix}", tipo="FINAL")
+            cliente = Cliente(nombre=f"Andres_{unique_suffix}", telefono=None, username=f"agaray_{unique_suffix}", tipo="FINAL")
             db.add(cliente)
             await db.flush()
 
@@ -503,6 +513,14 @@ async def test_cliente_whatsapp_username_and_link():
 
             wa_single = await generate_whatsapp_link(db, venta_id, created.detalles[0].id, "cobro")
             assert wa_single.startswith(f"https://wa.me/agaray_{unique_suffix}?text=")
+
+            # Verify phone number is prioritized over username when both exist
+            cliente.telefono = f"+57300{unique_suffix[:7]}"
+            await db.commit()
+            wa_consolidated_tel = await generate_whatsapp_consolidated(db, venta_id)
+            assert wa_consolidated_tel.startswith(f"https://wa.me/57300{unique_suffix[:7]}?text=")
+            wa_single_tel = await generate_whatsapp_link(db, venta_id, created.detalles[0].id, "cobro")
+            assert wa_single_tel.startswith(f"https://wa.me/57300{unique_suffix[:7]}?text=")
 
             # Verify updating Perfil 1 name on CUENTA sale
             upd = VentaUpdate(

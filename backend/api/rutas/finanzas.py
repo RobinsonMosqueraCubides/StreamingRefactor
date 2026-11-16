@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
+from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from db.database import get_db
-from schemas.finanzas_schemas import PagoVentaCreate, PagoVentaResponse, GastoManualCreate, TransaccionResponse, ResumenBalanceResponse
+from schemas.finanzas_schemas import PagoVentaCreate, PagoVentaResponse, GastoManualCreate, TransaccionResponse, ResumenBalanceResponse, ResumenMensualResponse
 import services.finanzas_service as service
 
 finanzas_router = APIRouter(prefix="/finanzas", tags=["Finanzas"])
@@ -53,5 +54,19 @@ async def list_transacciones(db: AsyncSession = Depends(get_db)):
 async def obtener_balance_periodos(db: AsyncSession = Depends(get_db)):
     """Obtener el desglose del balance financiero por periodos."""
     return await service.obtener_balance_periodos(db)
+
+
+@finanzas_router.get(
+    "/resumen-mensual",
+    response_model=ResumenMensualResponse,
+    summary="Obtener estadísticas financieras mensuales",
+    description="Retorna ventas contabilizadas en el mes de su fecha de inicio/renovación, desglose por plataforma, contraste de egresos y comparativa anual."
+)
+async def obtener_resumen_mensual(
+    anio: int = Query(default_factory=lambda: date.today().year, ge=2020, le=2100),
+    mes: int = Query(default_factory=lambda: date.today().month, ge=1, le=12),
+    db: AsyncSession = Depends(get_db)
+):
+    return await service.obtener_resumen_mensual(db, anio, mes)
 
 

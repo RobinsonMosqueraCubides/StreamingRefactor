@@ -65,12 +65,7 @@ async def create_enlace_proveedor(db: AsyncSession, provider_id: int, obj) -> En
     # Validar existencia de proveedor
     await get_or_404(db, Proveedor, provider_id)
     
-    # Validar límite de 2 enlaces
-    stmt = select(func.count(EnlaceProveedor.id)).where(EnlaceProveedor.proveedor_id == provider_id)
-    res = await db.execute(stmt)
-    count = res.scalar() or 0
-    if count >= 2:
-        raise BusinessRuleError("No se pueden agregar más de 2 enlaces por proveedor.")
+    # Múltiples enlaces permitidos por proveedor
         
     try:
         db_obj = EnlaceProveedor(

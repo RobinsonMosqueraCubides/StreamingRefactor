@@ -64,7 +64,8 @@ class Cliente(Base):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(150), nullable=False)
-    telefono: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
+    telefono: Mapped[Optional[str]] = mapped_column(String(60), unique=True, nullable=True)
+    username: Mapped[Optional[str]] = mapped_column(String(60), unique=True, nullable=True)
     tipo: Mapped[TipoCliente] = mapped_column(Enum(TipoCliente, name="tipo_cliente"), default=TipoCliente.FINAL)
     estado: Mapped[EstadoCliente] = mapped_column(Enum(EstadoCliente, name="estado_cliente"), default=EstadoCliente.ACTIVO)
     dias_gracia_max: Mapped[int] = mapped_column(default=3)

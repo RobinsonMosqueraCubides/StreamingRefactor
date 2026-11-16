@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from db.models import EntidadFinanciera
 
@@ -55,9 +55,61 @@ class BalancePeriodoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-
 class ResumenBalanceResponse(BaseModel):
     periodos: list[BalancePeriodoResponse]
 
     model_config = ConfigDict(from_attributes=True)
 
+
+# --- Resumen Mensual Detallado Schemas ---
+
+class PlataformaVentaStats(BaseModel):
+    plataforma_id: int | None = None
+    plataforma: str
+    pantallas_vendidas: int
+    cuentas_completas_vendidas: int
+    total_vendido: Decimal
+    costo_cuentas_madre: Decimal
+    utilidad_estimada: Decimal
+
+
+class VentaMensualItem(BaseModel):
+    id: int
+    cliente_nombre: str
+    plataformas: str
+    tipo_venta: str
+    fecha_inicio: date
+    fecha_corte: date
+    monto_total: Decimal
+    estado_pago: str
+    origen: str  # 'ACTIVA' o 'CORTADA'
+
+
+class MesAnualComparativo(BaseModel):
+    mes: int
+    etiqueta: str
+    ventas_mes: Decimal
+    egresos_mes: Decimal
+    balance_neto: Decimal
+    cantidad_ventas: int
+
+
+class ResumenMensualResponse(BaseModel):
+    anio: int
+    mes: int
+    etiqueta_mes: str
+    total_vendido_mes: Decimal
+    total_cobrado_mes: Decimal
+    total_pendiente_mes: Decimal
+    ingresos_caja_mes: Decimal
+    egresos_cuentas_madre_mes: Decimal
+    egresos_gastos_manuales_mes: Decimal
+    total_egresos_mes: Decimal
+    balance_ventas_vs_egresos: Decimal
+    balance_caja_real: Decimal
+    cantidad_ventas: int
+    pantallas_vendidas: int
+    cuentas_completas_vendidas: int
+    por_plataforma: list[PlataformaVentaStats]
+    ventas_detalle: list[VentaMensualItem]
+    comparativa_anual: list[MesAnualComparativo]

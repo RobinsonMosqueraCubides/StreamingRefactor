@@ -1,12 +1,6 @@
 import Button from '../../components/ui/Button';
-import { Users, Trash2, Edit2, AlertTriangle } from 'lucide-react';
-
-interface Proveedor {
-  id: number;
-  nombre: string;
-  telefono: string;
-  saldo_a_favor: number;
-}
+import { Users, Trash2, Edit2, AlertTriangle, ExternalLink } from 'lucide-react';
+import type { Proveedor } from '../../types';
 
 interface ProveedoresTabProps {
   proveedores: Proveedor[];
@@ -56,12 +50,28 @@ export default function ProveedoresTab({
               key={p.id} 
               className="bg-slate-950/40 border border-slate-850 p-4 rounded-xl space-y-3 flex flex-col justify-between"
             >
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <p className="text-sm font-bold text-slate-200">{p.nombre}</p>
                 <p className="text-xs text-slate-500">Teléfono: <strong>{p.telefono}</strong></p>
                 <p className="text-xs text-slate-400">
                   Saldo a Favor: <strong className="text-cyan-400 font-mono">${p.saldo_a_favor.toLocaleString('es-CO')} COP</strong>
                 </p>
+                {p.enlaces && p.enlaces.length > 0 && (
+                  <div className="pt-1 flex flex-wrap gap-1.5">
+                    {p.enlaces.map((lnk, idx) => (
+                      <a
+                        key={lnk.id ?? idx}
+                        href={lnk.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        {lnk.nombre || 'Link'}
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 pt-2 border-t border-slate-850/50 justify-end">

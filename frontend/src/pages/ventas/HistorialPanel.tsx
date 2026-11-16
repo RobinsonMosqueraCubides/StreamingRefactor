@@ -4,6 +4,7 @@ import Select from '../../components/ui/Select';
 import Input from '../../components/ui/Input';
 import api from '../../api/axios';
 import VentaDetalleModal from './VentaDetalleModal';
+import { useMetadata } from '../../context/MetadataContext';
 import { 
   Search, ShieldAlert, AlertTriangle, ChevronDown, ChevronUp, Eye, EyeOff, Smartphone, Scissors
 } from 'lucide-react';
@@ -48,6 +49,10 @@ export default function HistorialPanel({
   onDeleteVenta
 }: HistorialPanelProps) {
   const [showPasswords, setShowPasswords] = useState<{[key: string]: boolean}>({});
+  const { plantillas } = useMetadata();
+  const customTemplates = (plantillas || []).filter(
+    (p: any) => !['compra', 'cambio_credenciales', 'cobro', 'corte'].includes(p.nombre)
+  );
   const [waLoading, setWaLoading] = useState<{[key: string]: boolean}>({});
   const [expandedClients, setExpandedClients] = useState<{[key: number]: boolean}>({});
   const [selectedSaleForModal, setSelectedSaleForModal] = useState<any | null>(null);
@@ -250,7 +255,7 @@ export default function HistorialPanel({
     const query = historySearch.trim().toLowerCase();
     const clienteObj = clientes.find(c => c.id === sale.cliente_id);
     const clientName = (clienteObj?.nombre || `Cliente #${sale.cliente_id}`).toLowerCase();
-    const clientContact = (clienteObj?.telefono || '').toLowerCase();
+    const clientContact = `${clienteObj?.telefono || ''} ${clienteObj?.username || ''}`.toLowerCase();
     const matchesEmail = (sale.detalles || []).some((d: any) => {
       const cm = cuentas.find(c => c.id === d.cuenta_madre_id);
       const cred = credenciales.find(cr => cr.id === cm?.credencial_id);
@@ -283,7 +288,7 @@ export default function HistorialPanel({
   filteredSalesList.forEach(sale => {
     const clientId = sale.cliente_id;
     if (!groupedByClient[clientId]) {
-      const cliente = clientes.find(c => c.id === clientId) || { id: clientId, nombre: `Cliente #${clientId}`, telefono: 'N/A', tipo: 'FINAL', estado: 'ACTIVO', dias_gracia_max: 0 } as Cliente;
+      const cliente = clientes.find(c => c.id === clientId) || { id: clientId, nombre: `Cliente #${clientId}`, telefono: 'N/A', username: null, tipo: 'FINAL', estado: 'ACTIVO', dias_gracia_max: 0 } as Cliente;
       groupedByClient[clientId] = {
         cliente,
         sales: []
@@ -379,7 +384,13 @@ export default function HistorialPanel({
                       Cliente ID: #{cliente.id}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
-                      Celular: {cliente.telefono}
+                      {cliente.telefono && cliente.username
+                        ? `Cel: ${cliente.telefono} · @${cliente.username}`
+                        : cliente.telefono
+                          ? `Celular: ${cliente.telefono}`
+                          : cliente.username
+                            ? `WhatsApp: @${cliente.username}`
+                            : 'Contacto: N/A'}
                     </span>
                   </div>
 
@@ -845,6 +856,26 @@ export default function HistorialPanel({
                                             <Scissors className="w-3.5 h-3.5" />
                                             {corteLoading[`${sale.id}-${detail.id}`] ? 'Cortando...' : 'Confirmar Corte'}
                                           </button>
+                                        )}
+
+                                        {customTemplates.length > 0 && (
+                                          <select
+                                            defaultValue=""
+                                            onChange={(e) => {
+                                              if (e.target.value) {
+                                                handleOpenWhatsAppLink(sale.id, detail.id, e.target.value);
+                                                e.target.value = '';
+                                              }
+                                            }}
+                                            className="text-xs font-semibold text-purple-300 bg-purple-500/10 border border-purple-500/20 hover:border-purple-500/40 px-2.5 py-1.5 rounded-lg cursor-pointer focus:outline-none w-full sm:w-auto"
+                                          >
+                                            <option value="" disabled className="bg-slate-900 text-slate-400">Enviar plantilla...</option>
+                                            {customTemplates.map((tpl: any) => (
+                                              <option key={tpl.id} value={tpl.nombre} className="bg-slate-900 text-slate-200">
+                                                {tpl.nombre}
+                                              </option>
+                                            ))}
+                                          </select>
                                         )}
 
                                         <button

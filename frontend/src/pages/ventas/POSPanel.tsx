@@ -104,15 +104,22 @@ export default function POSPanel({
   };
 
   const filteredClientes = useMemo(() => {
+    const q = clienteSearch.toLowerCase();
     return clientes.filter(c =>
-      c.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) ||
-      c.telefono.toLowerCase().includes(clienteSearch.toLowerCase())
+      c.nombre.toLowerCase().includes(q) ||
+      (c.telefono || '').toLowerCase().includes(q) ||
+      (c.username || '').toLowerCase().includes(q)
     );
   }, [clientes, clienteSearch]);
 
+  const formatClientContact = (c: Cliente) => {
+    if (c.telefono && c.username) return `${c.telefono} / @${c.username}`;
+    return c.telefono || (c.username ? `@${c.username}` : 'Sin contacto');
+  };
+
   const handleSelectCliente = (c: Cliente) => {
     setClienteId(String(c.id));
-    setClienteSearch(`${c.nombre} (${c.telefono})`);
+    setClienteSearch(`${c.nombre} (${formatClientContact(c)})`);
     setShowClientDropdown(false);
   };
 
@@ -203,7 +210,7 @@ export default function POSPanel({
                     className="px-4 py-2.5 hover:bg-slate-800 text-slate-200 text-sm cursor-pointer transition-colors"
                   >
                     <p className="font-semibold">{c.nombre}</p>
-                    <p className="text-xs text-slate-500">{c.telefono}</p>
+                    <p className="text-xs text-slate-500">{formatClientContact(c)}</p>
                   </div>
                 ))}
               </div>

@@ -73,7 +73,8 @@ export default function VentaDetalleModal({
   const cliente = clientes.find(c => c.id === sale.cliente_id) || {
     id: sale.cliente_id,
     nombre: `Cliente #${sale.cliente_id}`,
-    telefono: 'N/A'
+    telefono: 'N/A',
+    username: null
   };
 
   const getPlataformaName = (platId: number) => {
@@ -208,7 +209,9 @@ export default function VentaDetalleModal({
               <span>Cliente</span>
             </div>
             <p className="text-sm font-bold text-slate-200">{cliente.nombre}</p>
-            <p className="text-xs text-slate-400 font-mono">Celular: {cliente.telefono}</p>
+            <p className="text-xs text-slate-400 font-mono">
+              {cliente.telefono ? `Celular: ${cliente.telefono}` : ''}{cliente.telefono && cliente.username ? ' · ' : ''}{cliente.username ? `@${cliente.username}` : (!cliente.telefono ? 'Sin contacto' : '')}
+            </p>
           </div>
 
           <div className="space-y-1.5">
