@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 // Lazy loading of page components
 const DashboardPage = lazy(() => import('../pages/DashboardPage'));
+const FinanzasPage = lazy(() => import('../pages/FinanzasPage'));
 const ClientesPage = lazy(() => import('../pages/ClientesPage'));
 const InventarioPage = lazy(() => import('../pages/InventarioPage'));
 const VentasPage = lazy(() => import('../pages/VentasPage'));
@@ -34,6 +35,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<LoadingSpinner />}>
                 <DashboardPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'finanzas',
+            element: (
+              <Suspense fallback={<LoadingSpinner />}>
+                <FinanzasPage />
               </Suspense>
             ),
           },

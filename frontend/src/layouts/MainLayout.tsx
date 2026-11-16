@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Database, ShoppingCart, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Database, ShoppingCart, Settings, LogOut, BarChart3 } from 'lucide-react';
 
 export default function MainLayout() {
   const navigate = useNavigate();
@@ -34,7 +34,8 @@ export default function MainLayout() {
   }, []);
 
   const navItems = [
-    { to: '/', label: 'Finanzas', icon: LayoutDashboard, end: true },
+    { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/finanzas', label: 'Finanzas', icon: BarChart3 },
     { to: '/clientes', label: 'Clientes', icon: Users },
     { to: '/inventario', label: 'Inventario', icon: Database },
     { to: '/ventas', label: 'Ventas', icon: ShoppingCart },
