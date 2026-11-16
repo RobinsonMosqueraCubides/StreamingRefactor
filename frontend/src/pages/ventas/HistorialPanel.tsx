@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Card from '../../components/ui/Card';
+import { getDaysDiff } from '../../utils/dateUtils';
 import Select from '../../components/ui/Select';
 import Input from '../../components/ui/Input';
 import api from '../../api/axios';
@@ -108,15 +109,7 @@ export default function HistorialPanel({
     return plataformas.find(p => p.id === platId)?.nombre || `Plataforma #${platId}`;
   };
 
-  const getDaysDiff = (targetDateStr: string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const target = new Date(targetDateStr);
-    target.setHours(0, 0, 0, 0);
-    
-    const diffTime = target.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
+
 
   const getStatusColor = (status: string) => {
     if (status === 'PAGADO') return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import { getLocalDateString, addDaysToDateString, getDaysBetween } from '../../utils/dateUtils';
 import Select from '../../components/ui/Select';
 import SearchableSelect from '../../components/ui/SearchableSelect';
 import api from '../../api/axios';
@@ -34,15 +35,8 @@ export default function CuentaMadreModal({
   const [formCredencialId, setFormCredencialId] = useState('');
   const [formMaxPerfiles, setFormMaxPerfiles] = useState<number | "">(5);
   const [formPrecioCompra, setFormPrecioCompra] = useState<number | "">(30000);
-  const [formFechaCompra, setFormFechaCompra] = useState(new Date().toISOString().split('T')[0]);
-  const [formFechaVencimiento, setFormFechaVencimiento] = useState(() => {
-    const d = new Date(new Date().toISOString().split('T')[0] + 'T00:00:00');
-    d.setDate(d.getDate() + 30);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  });
+  const [formFechaCompra, setFormFechaCompra] = useState(() => getLocalDateString());
+  const [formFechaVencimiento, setFormFechaVencimiento] = useState(() => addDaysToDateString(getLocalDateString(), 30));
   const [formEntidadPago, setFormEntidadPago] = useState('NEQUI');
   const [formEstado, setFormEstado] = useState('ACTIVA');
   const [formNotas, setFormNotas] = useState('');
@@ -135,15 +129,9 @@ export default function CuentaMadreModal({
 
         setFormMaxPerfiles(5);
         setFormPrecioCompra(30000);
-        const hoy = new Date().toISOString().split('T')[0];
-        const venc = new Date(hoy + 'T00:00:00');
-        venc.setDate(venc.getDate() + 30);
-        const year = venc.getFullYear();
-        const month = String(venc.getMonth() + 1).padStart(2, '0');
-        const day = String(venc.getDate()).padStart(2, '0');
-        
+        const hoy = getLocalDateString();
         setFormFechaCompra(hoy);
-        setFormFechaVencimiento(`${year}-${month}-${day}`);
+        setFormFechaVencimiento(addDaysToDateString(hoy, 30));
         setFormEntidadPago('NEQUI');
         setFormEstado('ACTIVA');
         setFormNotas('');
@@ -776,17 +764,8 @@ export default function CuentaMadreModal({
               const val = e.target.value;
               setFormFechaCompra(val);
               if (val && formFechaVencimiento) {
-                const oldStart = new Date(formFechaCompra + 'T00:00:00');
-                const oldEnd = new Date(formFechaVencimiento + 'T00:00:00');
-                const diffTime = oldEnd.getTime() - oldStart.getTime();
-                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-                const newStart = new Date(val + 'T00:00:00');
-                newStart.setDate(newStart.getDate() + (diffDays > 0 ? diffDays : 30));
-                const year = newStart.getFullYear();
-                const month = String(newStart.getMonth() + 1).padStart(2, '0');
-                const day = String(newStart.getDate()).padStart(2, '0');
-                setFormFechaVencimiento(`${year}-${month}-${day}`);
+                const diffDays = getDaysBetween(formFechaCompra, formFechaVencimiento);
+                setFormFechaVencimiento(addDaysToDateString(val, diffDays > 0 ? diffDays : 30));
               }
             }}
             required

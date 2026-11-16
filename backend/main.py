@@ -1,3 +1,14 @@
+import os
+import time
+
+# Configurar zona horaria de Colombia (America/Bogota) a nivel de proceso en Linux/Render
+os.environ["TZ"] = "America/Bogota"
+if hasattr(time, "tzset"):
+    try:
+        time.tzset()
+    except Exception:
+        pass
+
 from fastapi import FastAPI, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware

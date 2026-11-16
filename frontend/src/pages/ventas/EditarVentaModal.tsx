@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import { addDaysToDateString, getDaysBetween } from '../../utils/dateUtils';
 import Select from '../../components/ui/Select';
 import SearchableSelect from '../../components/ui/SearchableSelect';
 import { AlertCircle, Search, Eye, EyeOff } from 'lucide-react';
@@ -141,18 +142,8 @@ export default function EditarVentaModal({
   const handleFechaInicioChange = (val: string) => {
     setFechaInicio(val);
     if (val && fechaCorte) {
-      const oldStart = new Date(fechaInicio + 'T00:00:00');
-      const oldEnd = new Date(fechaCorte + 'T00:00:00');
-      const diffTime = oldEnd.getTime() - oldStart.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-      const newStart = new Date(val + 'T00:00:00');
-      newStart.setDate(newStart.getDate() + (diffDays > 0 ? diffDays : 30));
-      
-      const year = newStart.getFullYear();
-      const month = String(newStart.getMonth() + 1).padStart(2, '0');
-      const day = String(newStart.getDate()).padStart(2, '0');
-      setFechaCorte(`${year}-${month}-${day}`);
+      const diffDays = getDaysBetween(fechaInicio, fechaCorte);
+      setFechaCorte(addDaysToDateString(val, diffDays > 0 ? diffDays : 30));
     }
   };
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import { addDaysToDateString } from '../../utils/dateUtils';
 import { AlertCircle } from 'lucide-react';
 
 interface RenovacionCuentaModalProps {
@@ -26,9 +27,7 @@ export default function RenovacionCuentaModal({ isOpen, onClose, selectedCuenta,
 
   useEffect(() => {
     if (selectedCuenta) {
-      const originalDate = new Date(selectedCuenta.fecha_vencimiento);
-      originalDate.setDate(originalDate.getDate() + 30);
-      const suggestedStr = originalDate.toISOString().split('T')[0];
+      const suggestedStr = addDaysToDateString(selectedCuenta.fecha_vencimiento, 30);
       setNewFechaVencimiento(suggestedStr);
       setError('');
       setSuccess('');

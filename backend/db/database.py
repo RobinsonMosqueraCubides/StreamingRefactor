@@ -13,10 +13,12 @@ class Base(DeclarativeBase):
         "pk": "pk_%(table_name)s"
     })
 
-# Determinar argumentos de conexión especiales para SQLite
+# Determinar argumentos de conexión especiales para SQLite o PostgreSQL
 connect_args = {}
 if settings.DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False
+elif "postgresql" in settings.DATABASE_URL:
+    connect_args["server_settings"] = {"timezone": "America/Bogota"}
 
 # Crear motor asíncrono
 engine = create_async_engine(
@@ -52,4 +54,3 @@ async def get_or_404(db: AsyncSession, model, ident: int, options=None):
     if not entity:
         raise NotFoundError(f"{model.__name__} con id {ident} no encontrado/a")
     return entity
-

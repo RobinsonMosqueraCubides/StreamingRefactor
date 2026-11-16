@@ -278,9 +278,10 @@ async def create_venta(db: AsyncSession, venta: VentaCreate):
 async def renovar_venta(db: AsyncSession, venta_id: int, nueva_fecha_corte):
     from sqlalchemy import delete
     from db.models import PagoVenta
+    from core.time_utils import get_bogota_date
     try:
         db_venta = await get_venta(db, venta_id)
-        db_venta.fecha_inicio = date.today()
+        db_venta.fecha_inicio = get_bogota_date()
         db_venta.fecha_corte = nueva_fecha_corte
         db_venta.estado_pago = EstadoPago.PENDIENTE
         

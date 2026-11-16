@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import { addDaysToDateString } from '../../utils/dateUtils';
 import { AlertCircle } from 'lucide-react';
 
 interface RenovacionModalProps {
@@ -26,9 +27,7 @@ export default function RenovacionModal({ isOpen, onClose, selectedSale, onSubmi
 
   useEffect(() => {
     if (selectedSale) {
-      const originalDate = new Date(selectedSale.fecha_corte);
-      originalDate.setDate(originalDate.getDate() + 30);
-      const suggestedStr = originalDate.toISOString().split('T')[0];
+      const suggestedStr = addDaysToDateString(selectedSale.fecha_corte, 30);
       setNuevaFechaCorte(suggestedStr);
       setError('');
       setSuccess('');

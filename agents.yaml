@@ -1,0 +1,51 @@
+version: "1.0"
+workflow: "full-stack-pipeline"
+
+agents:
+  planner:
+    name: "planner-agent"
+    model: "argon"
+    reasoning_effort: "medium"
+    role: "Technical Architect & Orchestrator"
+    description: "Diseña la arquitectura, contratos API y asigna complejidad a los demás agentes."
+    prompt_file: ".agents/prompts/planner-agent.md"
+    outputs:
+      - "architecture_plan.md"
+      - "openapi_contract.json"
+      - "task_routing.json"
+
+  backend:
+    name: "backend-fastapi-agent"
+    model: "flash-3.8"
+    reasoning_effort: "medium" # Dinámico: 'low' para CRUD/schemas simples, 'medium' para lógica compleja
+    role: "FastAPI Backend Developer"
+    prompt_file: ".agents/prompts/backend-fastapi-agent.md"
+    depends_on: ["planner"]
+    context_files:
+      - "openapi_contract.json"
+
+  frontend:
+    name: "frontend-react-agent"
+    model: "flash-3.8"
+    reasoning_effort: "medium" # Dinámico: 'low' para UI estática, 'medium' para estado/integración
+    role: "React TypeScript Developer"
+    prompt_file: ".agents/prompts/frontend-react-agent.md"
+    depends_on: ["planner"]
+    context_files:
+      - "openapi_contract.json"
+
+  testing:
+    name: "qa-testing-agent"
+    model: "flash-3.8"
+    reasoning_effort: "low" # Dinámico: 'low' para unit tests, 'medium' para tests de integración asíncronos
+    role: "Automated QA Engineer (Pytest & Vitest)"
+    prompt_file: ".agents/prompts/qa-testing-agent.md"
+    depends_on: ["backend", "frontend"]
+
+  optimizer:
+    name: "optimizer-agent"
+    model: "flash-3.8"
+    reasoning_effort: "medium"
+    role: "Performance & Refactoring Specialist"
+    prompt_file: ".agents/prompts/optimizer-agent.md"
+    depends_on: ["testing"]

@@ -11,6 +11,7 @@ import { ShoppingCart, History, Scissors } from 'lucide-react';
 import type { VentaItem, CuentaMadre, Venta, VentaDetalle } from '../types';
 import { useMetadata } from '../context/MetadataContext';
 import ClienteRapidoModal from './ventas/ClienteRapidoModal';
+import { getLocalDateString, addDaysToDateString, getDaysBetween } from '../utils/dateUtils';
 
 export default function VentasPage() {
   const { 
@@ -29,34 +30,15 @@ export default function VentasPage() {
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [nota, setNota] = useState('');
-  const [fechaInicio, setFechaInicio] = useState(
-    new Date().toISOString().split('T')[0]
-  );
-  const [fechaCorte, setFechaCorte] = useState(() => {
-    const d = new Date(new Date().toISOString().split('T')[0] + 'T00:00:00');
-    d.setDate(d.getDate() + 30);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  });
+  const [fechaInicio, setFechaInicio] = useState(() => getLocalDateString());
+  const [fechaCorte, setFechaCorte] = useState(() => addDaysToDateString(getLocalDateString(), 30));
 
   // Recalcular la fecha de corte automáticamente al cambiar la fecha de inicio, manteniendo el rango previo
   const handleFechaInicioChange = (newInicio: string) => {
     setFechaInicio(newInicio);
     if (newInicio && fechaCorte) {
-      const oldStart = new Date(fechaInicio + 'T00:00:00');
-      const oldEnd = new Date(fechaCorte + 'T00:00:00');
-      const diffTime = oldEnd.getTime() - oldStart.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-      const newStart = new Date(newInicio + 'T00:00:00');
-      newStart.setDate(newStart.getDate() + (diffDays > 0 ? diffDays : 30));
-      
-      const year = newStart.getFullYear();
-      const month = String(newStart.getMonth() + 1).padStart(2, '0');
-      const day = String(newStart.getDate()).padStart(2, '0');
-      setFechaCorte(`${year}-${month}-${day}`);
+      const diffDays = getDaysBetween(fechaInicio, fechaCorte);
+      setFechaCorte(addDaysToDateString(newInicio, diffDays > 0 ? diffDays : 30));
     }
   };
 

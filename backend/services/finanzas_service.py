@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+from core.time_utils import get_bogota_date
 import calendar
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -72,7 +73,7 @@ async def get_transacciones(db: AsyncSession):
     return result.scalars().all()
 
 async def obtener_balance_periodos(db: AsyncSession):
-    hoy = date.today()
+    hoy = get_bogota_date()
     
     # 1. Mes en Curso
     inicio_mes_actual = date(hoy.year, hoy.month, 1)

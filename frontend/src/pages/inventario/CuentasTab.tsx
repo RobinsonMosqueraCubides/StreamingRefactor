@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Card from '../../components/ui/Card';
+import { getDaysDiff } from '../../utils/dateUtils';
 import Select from '../../components/ui/Select';
 import { 
   ChevronDown, ChevronUp, Database, DollarSign, RefreshCw, 
@@ -57,15 +58,7 @@ export default function CuentasTab({
     return credenciales.find(c => c.id === credId)?.password || 'N/A';
   };
 
-  const getDaysDiff = (targetDateStr: string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const target = new Date(targetDateStr);
-    target.setHours(0, 0, 0, 0);
-    
-    const diffTime = target.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
+
 
   const getEstadoBadgeColor = (estado: string) => {
     if (estado === 'ACTIVA') return 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';

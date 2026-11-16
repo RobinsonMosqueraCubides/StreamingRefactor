@@ -7,6 +7,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db.database import Base
+from core.time_utils import get_bogota_now_naive
 
 # --- Enums ---
 
@@ -212,7 +213,7 @@ class PagoVenta(Base):
     venta_id: Mapped[int] = mapped_column(ForeignKey("ventas.id", ondelete="CASCADE"))
     monto: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     entidad: Mapped[EntidadFinanciera] = mapped_column(Enum(EntidadFinanciera, name="entidad_financiera"), nullable=False)
-    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=get_bogota_now_naive, server_default=func.now())
     
     # Relationships
     venta: Mapped["Venta"] = relationship(back_populates="pagos")
@@ -227,7 +228,7 @@ class Transaccion(Base):
     monto: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     entidad: Mapped[EntidadFinanciera] = mapped_column(Enum(EntidadFinanciera, name="entidad_financiera"), nullable=False)
     referencia_id: Mapped[Optional[int]] = mapped_column(nullable=True)
-    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=get_bogota_now_naive, server_default=func.now())
     
     __table_args__ = (
         CheckConstraint("tipo IN ('INGRESO', 'EGRESO')", name="check_tipo_transaccion"),
@@ -257,7 +258,7 @@ class GarantiaProveedor(Base):
     cuenta_madre_id: Mapped[int] = mapped_column(ForeignKey("cuentas_madre.id", ondelete="CASCADE"))
     tipo_garantia: Mapped[TipoGarantiaProveedor] = mapped_column(Enum(TipoGarantiaProveedor, name="tipo_garantia_proveedor"), nullable=False)
     monto_saldo_a_favor: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
-    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=get_bogota_now_naive, server_default=func.now())
     resuelto: Mapped[bool] = mapped_column(default=False)
     
     # Relationships
@@ -289,7 +290,7 @@ class VentaVencida(Base):
     fecha_fin: Mapped[date] = mapped_column(Date, nullable=False)
     plataforma: Mapped[str] = mapped_column(String(100), nullable=False)
     cuenta_madre: Mapped[str] = mapped_column(String(150), nullable=False)
-    fecha_corte_registro: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
+    fecha_corte_registro: Mapped[datetime] = mapped_column(DateTime, default=get_bogota_now_naive, server_default=func.now())
 
 
 class CorreoPropio(Base):
@@ -326,7 +327,7 @@ class NotaVenta(Base):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     contenido: Mapped[str] = mapped_column(Text, nullable=False)
-    fecha_creacion: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
+    fecha_creacion: Mapped[datetime] = mapped_column(DateTime, default=get_bogota_now_naive, server_default=func.now())
 
 
 class ClavePlataformaCorreoPropio(Base):
@@ -359,7 +360,7 @@ class CuentaMadreCancelada(Base):
     precio_compra: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     fecha_compra: Mapped[date] = mapped_column(Date, nullable=False)
     fecha_vencimiento: Mapped[date] = mapped_column(Date, nullable=False)
-    fecha_cancelacion: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, server_default=func.now())
+    fecha_cancelacion: Mapped[datetime] = mapped_column(DateTime, default=get_bogota_now_naive, server_default=func.now())
     motivo_cancelacion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     devolucion_caja: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0.0)
     devolucion_proveedor: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0.0)

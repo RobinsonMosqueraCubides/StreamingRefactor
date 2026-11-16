@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query, status
 from datetime import date
+from core.time_utils import get_bogota_date
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
@@ -63,8 +64,8 @@ async def obtener_balance_periodos(db: AsyncSession = Depends(get_db)):
     description="Retorna ventas contabilizadas en el mes de su fecha de inicio/renovación, desglose por plataforma, contraste de egresos y comparativa anual."
 )
 async def obtener_resumen_mensual(
-    anio: int = Query(default_factory=lambda: date.today().year, ge=2020, le=2100),
-    mes: int = Query(default_factory=lambda: date.today().month, ge=1, le=12),
+    anio: int = Query(default_factory=lambda: get_bogota_date().year, ge=2020, le=2100),
+    mes: int = Query(default_factory=lambda: get_bogota_date().month, ge=1, le=12),
     db: AsyncSession = Depends(get_db)
 ):
     return await service.obtener_resumen_mensual(db, anio, mes)
