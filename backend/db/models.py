@@ -85,7 +85,7 @@ class Proveedor(Base):
     
     # Relationships
     cuentas_madre: Mapped[List["CuentaMadre"]] = relationship(back_populates="proveedor")
-    enlaces: Mapped[List["EnlaceProveedor"]] = relationship(back_populates="proveedor", cascade="all, delete-orphan")
+    enlaces: Mapped[List["EnlaceProveedor"]] = relationship(back_populates="proveedor", cascade="all, delete-orphan", lazy="selectin")
 
     __table_args__ = (
         CheckConstraint("saldo_a_favor >= 0", name="check_saldo_positivo"),

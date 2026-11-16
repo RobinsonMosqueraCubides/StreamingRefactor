@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
-from db.models import Credencial, CuentaMadre, Perfil, Transaccion, EstadoCuenta, TipoTransaccion
+from db.models import Credencial, CuentaMadre, Perfil, Proveedor, Transaccion, EstadoCuenta, TipoTransaccion
 from db.database import get_or_404
 from schemas.inventario_schemas import (
     CredencialCreate, CredencialUpdate,
@@ -91,7 +91,7 @@ async def get_cuentas_madre(db: AsyncSession, skip: int = 0, limit: int = 100):
         .where(CuentaMadre.estado != EstadoCuenta.CANCELADA)
         .options(
             selectinload(CuentaMadre.perfiles),
-            selectinload(CuentaMadre.proveedor),
+            selectinload(CuentaMadre.proveedor).selectinload(Proveedor.enlaces),
             selectinload(CuentaMadre.credencial)
         )
         .offset(skip)
@@ -109,7 +109,7 @@ async def get_cuenta_madre(db: AsyncSession, cuenta_id: int):
         cuenta_id,
         options=[
             selectinload(CuentaMadre.perfiles),
-            selectinload(CuentaMadre.proveedor),
+            selectinload(CuentaMadre.proveedor).selectinload(Proveedor.enlaces),
             selectinload(CuentaMadre.credencial)
         ]
     )
