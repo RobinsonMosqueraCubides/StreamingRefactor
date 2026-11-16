@@ -285,6 +285,7 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
                         combo_id=None,
                         cuenta_madre_id=cuenta_id,
                         perfil_id=new_perfil.id,
+                        tipo_unidad="CUENTA",
                         precio_aplicado=Decimal(0)
                     )
                     db.add(new_detail)
@@ -305,6 +306,7 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
                     new_unit_price = total_cuenta_precio / Decimal(len(all_details))
                     for d in all_details:
                         d.precio_aplicado = new_unit_price
+                        d.tipo_unidad = "CUENTA"
 
                 # Recalculate sale type
                 stmt_sale = select(Venta).where(Venta.id == whole_account_sale_id)
@@ -358,6 +360,7 @@ async def update_cuenta_madre(db: AsyncSession, cuenta_id: int, cuenta: CuentaMa
                     new_unit_price = total_cuenta_precio / Decimal(len(remaining_details))
                     for d in remaining_details:
                         d.precio_aplicado = new_unit_price
+                        d.tipo_unidad = "CUENTA"
 
                 # Recalculate sale type
                 stmt_sale = select(Venta).where(Venta.id == whole_account_sale_id)
@@ -526,7 +529,10 @@ async def update_perfil(db: AsyncSession, perfil_id: int, perfil: PerfilUpdate):
     
     try:
         if perfil.nombre_perfil is not None:
-            db_perfil.nombre_perfil = perfil.nombre_perfil
+            from services.ventas_service import _resolve_unique_profile_name
+            db_perfil.nombre_perfil = await _resolve_unique_profile_name(
+                db, db_perfil.cuenta_madre_id, db_perfil.id, perfil.nombre_perfil
+            )
         if perfil.pin is not None:
             db_perfil.pin = perfil.pin
         if perfil.asignado is not None:

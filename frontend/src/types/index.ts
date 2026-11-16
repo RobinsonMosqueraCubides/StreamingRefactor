@@ -57,6 +57,7 @@ export interface VentaDetalle {
   combo_id: number | null;
   cuenta_madre_id: number;
   perfil_id: number;
+  tipo_unidad?: 'PANTALLA' | 'CUENTA';
   precio_aplicado: number;
 }
 
@@ -67,6 +68,7 @@ export interface Venta {
   fecha_corte: string;
   monto_total: number;
   estado_pago: 'PENDIENTE' | 'PAGO_PARCIAL' | 'PAGADO';
+  tipo_venta?: string;
   detalles: VentaDetalle[];
 }
 

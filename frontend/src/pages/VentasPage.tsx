@@ -188,43 +188,61 @@ export default function VentasPage() {
       
       // Contar cuántos perfiles pertenecen a cada cuenta madre en esta venta
       const perfilesPorCuenta: { [key: number]: number } = {};
+      const salePerfilIds = new Set<number>();
       registeredVenta.detalles.forEach((det: any) => {
+        if (det.perfil_id) salePerfilIds.add(det.perfil_id);
         if (det.cuenta_madre_id) {
           perfilesPorCuenta[det.cuenta_madre_id] = (perfilesPorCuenta[det.cuenta_madre_id] || 0) + 1;
         }
       });
 
+      const usedNamesByCm: { [key: number]: Set<string> } = {};
       const cuentaContadores: { [key: number]: number } = {};
       
       registeredVenta.detalles.forEach((det: any) => {
         const cmId = det.cuenta_madre_id;
         const cm = cuentas.find(c => c.id === cmId);
+        const esCuentaCompleta = det.tipo_unidad === 'CUENTA' || registeredVenta.tipo_venta === 'CUENTA' || !det.perfil_id;
         
         let nombreSugerido = defaultUser;
         let pinSugerido = "";
         
         if (cmId) {
+          if (!usedNamesByCm[cmId]) {
+            const existingNames = (cm?.perfiles || [])
+              .filter(p => !salePerfilIds.has(p.id))
+              .map(p => p.nombre_perfil);
+            usedNamesByCm[cmId] = new Set(existingNames);
+          }
+
           cuentaContadores[cmId] = (cuentaContadores[cmId] || 0) + 1;
           const tieneMultiples = perfilesPorCuenta[cmId] > 1;
           if (tieneMultiples) {
             nombreSugerido = `${defaultUser} ${cuentaContadores[cmId]}`;
           }
-          
-          // Es cuenta completa si todos los perfiles de la cuenta madre se vendieron en esta misma orden
-          const esCuentaCompleta = cm ? (perfilesPorCuenta[cmId] === cm.max_perfiles) : false;
+          if (usedNamesByCm[cmId].has(nombreSugerido)) {
+            let suffix = 2;
+            while (usedNamesByCm[cmId].has(`${defaultUser} ${suffix}`)) {
+              suffix++;
+            }
+            nombreSugerido = `${defaultUser} ${suffix}`;
+          }
+          usedNamesByCm[cmId].add(nombreSugerido);
           
           // Solo sugerimos PIN aleatorio si es pantalla individual (no es cuenta completa)
           if (!esCuentaCompleta) {
             pinSugerido = Math.floor(1000 + Math.random() * 9000).toString();
           }
-        } else {
+        } else if (!esCuentaCompleta) {
           pinSugerido = Math.floor(1000 + Math.random() * 9000).toString();
         }
 
-        initial[det.perfil_id] = {
-          nombre_perfil: nombreSugerido,
-          pin: pinSugerido
-        };
+        if (det.perfil_id) {
+          initial[det.perfil_id] = {
+            nombre_perfil: nombreSugerido,
+            pin: pinSugerido
+          };
+        }
       });
       setEditablePerfiles(initial);
     }
@@ -458,6 +476,9 @@ export default function VentasPage() {
     setLoading(true);
     try {
       const savePromises = registeredVenta.detalles.map((detail: any) => {
+        if (!detail.perfil_id || detail.tipo_unidad === 'CUENTA' || registeredVenta.tipo_venta === 'CUENTA') {
+          return Promise.resolve();
+        }
         const editData = editablePerfiles[detail.perfil_id];
         if (editData) {
           return api.put(`/perfiles/${detail.perfil_id}`, {

@@ -86,7 +86,7 @@ export default function EditarVentaModal({
           password: (cm?.proveedor?.nombre === "Correos A" ? cm.clave_plataforma : cred?.password) || '',
           nombre_perfil: profileUser,
           pin: pinVal,
-          perfil_id_present: !!d.perfil_id,
+          perfil_id_present: d.tipo_unidad ? d.tipo_unidad === 'PANTALLA' : !!d.perfil_id,
           isCorreosA: cm?.proveedor?.nombre === "Correos A",
           precio_aplicado: d.precio_aplicado,
           
@@ -149,12 +149,30 @@ export default function EditarVentaModal({
     }
   };
 
+  const findAvailablePerfilForRow = (accObj: CuentaMadre | undefined, rowIndex: number, currentList: any[]) => {
+    if (!accObj || !accObj.perfiles) return null;
+    const selectedElsewhere = new Set(
+      currentList
+        .filter((_, idx) => idx !== rowIndex)
+        .map(it => it.perfil_id)
+        .filter(Boolean)
+    );
+    const originalIdsInSale = new Set(
+      currentList.map(it => it.originalPerfilId).filter(Boolean)
+    );
+    return accObj.perfiles.find(p => {
+      if (selectedElsewhere.has(p.id)) return false;
+      if (!p.asignado && !p.reportado) return true;
+      return originalIdsInSale.has(p.id) && !p.reportado;
+    }) || null;
+  };
+
   const handlePlatformChange = (index: number, newPlatId: number) => {
     const isPantalla = detailsList[index]?.perfil_id_present ?? true;
     const filteredAccs = cuentas.filter(c => {
       if (c.plataforma_id !== newPlatId || c.estado !== 'ACTIVA') return false;
       if (isPantalla) {
-        return c.perfiles && c.perfiles.some(p => !p.asignado && !p.reportado);
+        return !!findAvailablePerfilForRow(c, index, detailsList);
       } else {
         return c.perfiles && c.perfiles.every(p => !p.asignado && !p.reportado);
       }
@@ -178,9 +196,8 @@ export default function EditarVentaModal({
           updated.originalPassword = (firstAcc.proveedor?.nombre === "Correos A" ? firstAcc.clave_plataforma : cred?.password) || '';
           
           if (item.perfil_id_present) {
-            const availablePerf = firstAcc.perfiles?.find(p => !p.asignado && !p.reportado) || firstAcc.perfiles?.[0] || null;
+            const availablePerf = findAvailablePerfilForRow(firstAcc, index, prev);
             updated.perfil_id = availablePerf ? availablePerf.id : null;
-            // Preservar nombre de perfil y PIN existentes
             updated.nombre_perfil = item.nombre_perfil || (availablePerf ? availablePerf.nombre_perfil : '');
             updated.pin = item.pin || (availablePerf?.pin || '');
           } else {
@@ -216,12 +233,16 @@ export default function EditarVentaModal({
           updated.originalPassword = (accObj.proveedor?.nombre === "Correos A" ? accObj.clave_plataforma : cred?.password) || '';
           
           if (item.perfil_id_present) {
+            const selectedElsewhere = new Set(
+              prev.filter((_, oIdx) => oIdx !== index).map(it => it.perfil_id).filter(Boolean)
+            );
             const isSameAccount = item.originalCuentaMadreId === newAccId;
-            const currentPerf = isSameAccount ? accObj.perfiles?.find(p => p.id === item.originalPerfilId) : null;
-            const availablePerf = currentPerf || accObj.perfiles?.find(p => !p.asignado && !p.reportado) || accObj.perfiles?.[0] || null;
+            const currentPerf = isSameAccount && item.originalPerfilId && !selectedElsewhere.has(item.originalPerfilId)
+              ? accObj.perfiles?.find(p => p.id === item.originalPerfilId)
+              : null;
+            const availablePerf = currentPerf || findAvailablePerfilForRow(accObj, index, prev);
             
             updated.perfil_id = availablePerf ? availablePerf.id : null;
-            // No modificar accesos ya creados (preservar nombre de perfil y PIN)
             updated.nombre_perfil = item.nombre_perfil || (availablePerf ? availablePerf.nombre_perfil : '');
             updated.pin = item.pin || (availablePerf?.pin || '');
           } else {
@@ -274,6 +295,15 @@ export default function EditarVentaModal({
     const tempId = `new-${Date.now()}`;
     const client = clientes.find(c => String(c.id) === String(clienteId));
     const primerNombre = client && client.nombre ? client.nombre.trim().split(/\s+/)[0] : '';
+    const existingRowNames = new Set(detailsList.map(d => d.nombre_perfil).filter(Boolean));
+    let suggestedName = primerNombre;
+    if (suggestedName && existingRowNames.has(suggestedName)) {
+      let suffix = 2;
+      while (existingRowNames.has(`${primerNombre} ${suffix}`)) {
+        suffix++;
+      }
+      suggestedName = `${primerNombre} ${suffix}`;
+    }
 
     const newDetail = {
       id: tempId,
@@ -283,7 +313,7 @@ export default function EditarVentaModal({
       cred_id: null,
       email: '',
       password: '',
-      nombre_perfil: primerNombre,
+      nombre_perfil: suggestedName,
       pin: '',
       perfil_id_present: true,
       isCorreosA: false,
@@ -346,7 +376,7 @@ export default function EditarVentaModal({
             const accObj = cuentas.find(c => c.id === item.cuenta_madre_id);
             if (accObj) {
               if (isPresent) {
-                const firstPerf = accObj.perfiles && accObj.perfiles.length > 0 ? accObj.perfiles[0] : null;
+                const firstPerf = findAvailablePerfilForRow(accObj, index, prev);
                 updatedItem.perfil_id = firstPerf ? firstPerf.id : null;
                 updatedItem.nombre_perfil = firstPerf ? firstPerf.nombre_perfil : '';
                 updatedItem.pin = firstPerf?.pin || '';
@@ -674,13 +704,16 @@ export default function EditarVentaModal({
                           <option value="">-- Seleccionar perfil --</option>
                           {accountPerfiles.map(p => {
                             const isThisPerf = p.id === d.originalPerfilId;
-                            const statusText = isThisPerf 
-                              ? ' (Actual)' 
-                              : p.asignado 
-                                ? ' (Ocupado)' 
-                                : ' (Disponible)';
+                            const isSelectedElsewhere = detailsList.some((other, oIdx) => oIdx !== index && other.perfil_id === p.id);
+                            const statusText = isSelectedElsewhere
+                              ? ' (En uso en esta venta)'
+                              : isThisPerf
+                                ? ' (Actual)'
+                                : p.asignado
+                                  ? ' (Ocupado)'
+                                  : ' (Disponible)';
                             return (
-                              <option key={p.id} value={p.id} disabled={p.asignado && !isThisPerf}>
+                              <option key={p.id} value={p.id} disabled={(p.asignado && !isThisPerf) || isSelectedElsewhere}>
                                 {p.nombre_perfil}{statusText}
                               </option>
                             );

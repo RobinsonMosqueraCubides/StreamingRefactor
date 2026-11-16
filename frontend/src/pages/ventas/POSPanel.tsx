@@ -116,6 +116,14 @@ export default function POSPanel({
     setShowClientDropdown(false);
   };
 
+  const getRemainingFreeCount = (c: CuentaMadre) => {
+    const dbFree = c.perfiles.filter(p => !p.asignado && !p.reportado).length;
+    const hasFullAccountInCart = items.some(it => it.cuenta_madre_id === c.id && it.tipo_unidad === 'CUENTA');
+    if (hasFullAccountInCart) return 0;
+    const screensInCart = items.filter(it => it.cuenta_madre_id === c.id && it.tipo_unidad === 'PANTALLA').length;
+    return Math.max(0, dbFree - screensInCart);
+  };
+
   const availableStockCuentas = useMemo(() => {
     if (!selectedPlatId) return [];
     const platIdNum = parseInt(selectedPlatId);
@@ -123,15 +131,15 @@ export default function POSPanel({
     return cuentas.filter(c => {
       if (c.plataforma_id !== platIdNum || c.estado !== 'ACTIVA') return false;
       
-      const freePerfiles = c.perfiles.filter(p => !p.asignado && !p.reportado);
+      const freeCount = getRemainingFreeCount(c);
       
       if (tipoUnidad === 'PANTALLA') {
-        return freePerfiles.length > 0;
+        return freeCount > 0;
       } else {
-        return freePerfiles.length === c.max_perfiles;
+        return freeCount === c.max_perfiles;
       }
     });
-  }, [cuentas, selectedPlatId, tipoUnidad]);
+  }, [cuentas, selectedPlatId, tipoUnidad, items]);
 
   const filteredStockCuentas = useMemo(() => {
     return availableStockCuentas.filter(c => {
@@ -277,7 +285,7 @@ export default function POSPanel({
                       const cred = credenciales.find(cr => cr.id === c.credencial_id);
                       const email = cred?.email || `Cuenta #${c.id}`;
                       const provName = getProveedorName(c.proveedor_id);
-                      const freePerfilesCount = c.perfiles.filter(p => !p.asignado && !p.reportado).length;
+                      const freePerfilesCount = getRemainingFreeCount(c);
 
                       return (
                         <div

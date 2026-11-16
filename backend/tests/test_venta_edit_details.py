@@ -4,8 +4,8 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from db.database import SessionLocal
 from db.models import CuentaMadre, Perfil, Venta, DetalleVenta, Plataforma, Proveedor, Credencial, Cliente, EstadoCuenta
-from services.ventas_service import update_venta, get_venta
-from schemas.ventas_schemas import VentaUpdate, VentaDetalleUpdate
+from services.ventas_service import update_venta, get_venta, create_venta
+from schemas.ventas_schemas import VentaUpdate, VentaDetalleUpdate, VentaCreate, VentaItemCreate
 from decimal import Decimal
 from datetime import date, timedelta
 
@@ -177,6 +177,237 @@ async def test_update_venta_sync_details():
 
         finally:
             # Cleanup
+            await db.rollback()
+            if venta_id:
+                await db.execute(delete(DetalleVenta).where(DetalleVenta.venta_id == venta_id))
+                await db.execute(delete(Venta).where(Venta.id == venta_id))
+            if cuenta_madre_id:
+                await db.execute(delete(Perfil).where(Perfil.cuenta_madre_id == cuenta_madre_id))
+                await db.execute(delete(CuentaMadre).where(CuentaMadre.id == cuenta_madre_id))
+            if plataforma_id:
+                await db.execute(delete(Plataforma).where(Plataforma.id == plataforma_id))
+            if proveedor_id:
+                await db.execute(delete(Proveedor).where(Proveedor.id == proveedor_id))
+            if credencial_id:
+                await db.execute(delete(Credencial).where(Credencial.id == credencial_id))
+            if cliente_id:
+                await db.execute(delete(Cliente).where(Cliente.id == cliente_id))
+            await db.commit()
+
+
+
+@pytest.mark.asyncio
+async def test_create_venta_two_screens_same_account():
+    async with SessionLocal() as db:
+        await db.rollback()
+
+        plataforma_id = None
+        proveedor_id = None
+        credencial_id = None
+        cliente_id = None
+        cuenta_madre_id = None
+        venta_id = None
+
+        unique_suffix = str(int(time.time())) + "_two_screens"
+
+        try:
+            plataforma = Plataforma(nombre=f"Plat_{unique_suffix}")
+            db.add(plataforma)
+            proveedor = Proveedor(nombre=f"Prov_{unique_suffix}", telefono="310" + unique_suffix[:7])
+            db.add(proveedor)
+            credencial = Credencial(email=f"two_{unique_suffix}@correo.com", password="password")
+            db.add(credencial)
+            cliente = Cliente(nombre=f"Client_{unique_suffix}", telefono="311" + unique_suffix[:7], tipo="FINAL")
+            db.add(cliente)
+            await db.flush()
+
+            plataforma_id = plataforma.id
+            proveedor_id = proveedor.id
+            credencial_id = credencial.id
+            cliente_id = cliente.id
+
+            cuenta_madre = CuentaMadre(
+                proveedor_id=proveedor.id,
+                credencial_id=credencial.id,
+                plataforma_id=plataforma.id,
+                max_perfiles=2,
+                precio_compra=Decimal("100.00"),
+                fecha_compra=date.today(),
+                fecha_vencimiento=date.today() + timedelta(days=30),
+                estado=EstadoCuenta.ACTIVA
+            )
+            db.add(cuenta_madre)
+            await db.flush()
+            cuenta_madre_id = cuenta_madre.id
+
+            p1 = Perfil(cuenta_madre_id=cuenta_madre.id, nombre_perfil="Perfil 1", pin=None, asignado=False)
+            p2 = Perfil(cuenta_madre_id=cuenta_madre.id, nombre_perfil="Perfil 2", pin=None, asignado=False)
+            db.add_all([p1, p2])
+            await db.commit()
+
+            venta_in = VentaCreate(
+                cliente_id=cliente.id,
+                fecha_inicio=date.today(),
+                fecha_corte=date.today() + timedelta(days=30),
+                monto_total=Decimal("30000.00"),
+                items=[
+                    VentaItemCreate(
+                        plataforma_id=plataforma.id,
+                        precio_aplicado=Decimal("15000.00"),
+                        tipo_unidad="PANTALLA",
+                        cuenta_madre_id=cuenta_madre.id,
+                    ),
+                    VentaItemCreate(
+                        plataforma_id=plataforma.id,
+                        precio_aplicado=Decimal("15000.00"),
+                        tipo_unidad="PANTALLA",
+                        cuenta_madre_id=cuenta_madre.id,
+                    ),
+                ],
+            )
+
+            created = await create_venta(db, venta_in)
+            venta_id = created.id
+
+            assert len(created.detalles) == 2
+            assert created.tipo_venta == "COMBO"
+            assert created.detalles[0].perfil_id is not None
+            assert created.detalles[1].perfil_id is not None
+            assert created.detalles[0].perfil_id != created.detalles[1].perfil_id
+            assert created.detalles[0].tipo_unidad == "PANTALLA"
+            assert created.detalles[1].tipo_unidad == "PANTALLA"
+
+            db_p1 = await db.get(Perfil, p1.id)
+            db_p2 = await db.get(Perfil, p2.id)
+            assert db_p1.asignado is True
+            assert db_p2.asignado is True
+        finally:
+            await db.rollback()
+            if venta_id:
+                await db.execute(delete(DetalleVenta).where(DetalleVenta.venta_id == venta_id))
+                await db.execute(delete(Venta).where(Venta.id == venta_id))
+            if cuenta_madre_id:
+                await db.execute(delete(Perfil).where(Perfil.cuenta_madre_id == cuenta_madre_id))
+                await db.execute(delete(CuentaMadre).where(CuentaMadre.id == cuenta_madre_id))
+            if plataforma_id:
+                await db.execute(delete(Plataforma).where(Plataforma.id == plataforma_id))
+            if proveedor_id:
+                await db.execute(delete(Proveedor).where(Proveedor.id == proveedor_id))
+            if credencial_id:
+                await db.execute(delete(Credencial).where(Credencial.id == credencial_id))
+            if cliente_id:
+                await db.execute(delete(Cliente).where(Cliente.id == cliente_id))
+            await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_update_venta_two_screens_same_account():
+    async with SessionLocal() as db:
+        await db.rollback()
+
+        plataforma_id = None
+        proveedor_id = None
+        credencial_id = None
+        cliente_id = None
+        cuenta_madre_id = None
+        venta_id = None
+
+        unique_suffix = str(int(time.time())) + "_upd_two"
+
+        try:
+            plataforma = Plataforma(nombre=f"Plat_{unique_suffix}")
+            db.add(plataforma)
+            proveedor = Proveedor(nombre=f"Prov_{unique_suffix}", telefono="312" + unique_suffix[:7])
+            db.add(proveedor)
+            credencial = Credencial(email=f"upd_{unique_suffix}@correo.com", password="password")
+            db.add(credencial)
+            cliente = Cliente(nombre=f"Client_{unique_suffix}", telefono="313" + unique_suffix[:7], tipo="FINAL")
+            db.add(cliente)
+            await db.flush()
+
+            plataforma_id = plataforma.id
+            proveedor_id = proveedor.id
+            credencial_id = credencial.id
+            cliente_id = cliente.id
+
+            cuenta_madre = CuentaMadre(
+                proveedor_id=proveedor.id,
+                credencial_id=credencial.id,
+                plataforma_id=plataforma.id,
+                max_perfiles=2,
+                precio_compra=Decimal("100.00"),
+                fecha_compra=date.today(),
+                fecha_vencimiento=date.today() + timedelta(days=30),
+                estado=EstadoCuenta.ACTIVA
+            )
+            db.add(cuenta_madre)
+            await db.flush()
+            cuenta_madre_id = cuenta_madre.id
+
+            p1 = Perfil(cuenta_madre_id=cuenta_madre.id, nombre_perfil="Cliente", pin="1111", asignado=True)
+            p2 = Perfil(cuenta_madre_id=cuenta_madre.id, nombre_perfil="Perfil 2", pin=None, asignado=False)
+            db.add_all([p1, p2])
+            await db.flush()
+
+            venta = Venta(
+                cliente_id=cliente.id,
+                fecha_inicio=date.today(),
+                fecha_corte=date.today() + timedelta(days=30),
+                monto_total=Decimal("15000.00"),
+                tipo_venta="PANTALLA",
+                estado_pago="PAGADO"
+            )
+            db.add(venta)
+            await db.flush()
+            venta_id = venta.id
+
+            det1 = DetalleVenta(
+                venta_id=venta.id,
+                cuenta_madre_id=cuenta_madre.id,
+                perfil_id=p1.id,
+                tipo_unidad="PANTALLA",
+                precio_aplicado=Decimal("15000.00")
+            )
+            db.add(det1)
+            await db.commit()
+
+            # Add second screen on the same account without specifying perfil_id and with colliding nombre_perfil
+            venta_update = VentaUpdate(
+                detalles=[
+                    VentaDetalleUpdate(
+                        id=det1.id,
+                        cuenta_madre_id=cuenta_madre.id,
+                        perfil_id=p1.id,
+                        tipo_unidad="PANTALLA",
+                        precio_aplicado=Decimal("15000.00"),
+                    ),
+                    VentaDetalleUpdate(
+                        id=None,
+                        plataforma_id=plataforma.id,
+                        cuenta_madre_id=cuenta_madre.id,
+                        perfil_id=0,
+                        tipo_unidad="PANTALLA",
+                        precio_aplicado=Decimal("15000.00"),
+                        nombre_perfil="Cliente",
+                        pin="2222",
+                    ),
+                ],
+                monto_total=Decimal("30000.00"),
+            )
+
+            updated = await update_venta(db, venta.id, venta_update)
+            assert len(updated.detalles) == 2
+            assert updated.tipo_venta == "COMBO"
+            assert updated.detalles[0].perfil_id != updated.detalles[1].perfil_id
+            assert updated.detalles[1].perfil_id == p2.id
+
+            db_p1 = await db.get(Perfil, p1.id)
+            db_p2 = await db.get(Perfil, p2.id)
+            assert db_p1.asignado is True
+            assert db_p2.asignado is True
+            assert db_p2.nombre_perfil == "Cliente 2"
+            assert db_p2.pin == "2222"
+        finally:
             await db.rollback()
             if venta_id:
                 await db.execute(delete(DetalleVenta).where(DetalleVenta.venta_id == venta_id))

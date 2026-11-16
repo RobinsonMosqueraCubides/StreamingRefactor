@@ -194,7 +194,7 @@ export default function HistorialPanel({
         </span>
       );
     }
-    if (!d.perfil_id) {
+    if (!d.perfil_id || d.tipo_unidad === 'CUENTA') {
       return (
         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-sky-400 select-none">
           Cuenta Completa
@@ -420,7 +420,10 @@ export default function HistorialPanel({
                         const cmId = parseInt(cmIdStr);
                         const cm = cuentas.find(c => c.id === cmId);
                         const platName = getDetailPlatName(listDetalles[0]);
-                        const isCuentaCompleta = cm && (listDetalles.length === cm.max_perfiles);
+                        const isCuentaCompleta = cm && (
+                          sale.tipo_venta === 'CUENTA' ||
+                          listDetalles.every((d: any) => d.tipo_unidad === 'CUENTA' || !d.perfil_id)
+                        );
 
                         if (isCuentaCompleta) {
                           saleItems.push({
@@ -609,7 +612,10 @@ export default function HistorialPanel({
                                 Object.entries(detailsByCuentaRender).forEach(([cmIdStr, listDetalles]) => {
                                   const cmId = parseInt(cmIdStr);
                                   const cm = cuentas.find(c => c.id === cmId);
-                                  const isCuentaCompleta = cm && (listDetalles.length === cm.max_perfiles);
+                                  const isCuentaCompleta = cm && (
+                                    sale.tipo_venta === 'CUENTA' ||
+                                    listDetalles.every((d: any) => d.tipo_unidad === 'CUENTA' || !d.perfil_id)
+                                  );
 
                                   if (isCuentaCompleta) {
                                     renderList.push({

@@ -48,6 +48,9 @@ export default function SuccessModal({
     try {
       // First, save the custom profile names and PINs to the database!
       const savePromises = registeredVenta.detalles.map((detail: any) => {
+        if (!detail.perfil_id || detail.tipo_unidad === 'CUENTA' || registeredVenta.tipo_venta === 'CUENTA') {
+          return Promise.resolve();
+        }
         const editData = editablePerfiles[detail.perfil_id];
         if (editData) {
           return api.put(`/perfiles/${detail.perfil_id}`, {
@@ -114,8 +117,11 @@ export default function SuccessModal({
               const password = (cm?.proveedor?.nombre === "Correos A" ? cm.clave_plataforma : cred?.password) || 'N/A';
               const platName = getPlataformaName(cm?.plataforma_id || 0);
 
-              // Es cuenta completa si el número de perfiles vendidos es igual al max perfiles de la cuenta madre
-              const esCuentaCompleta = cm && (listDetalles.length === cm.max_perfiles);
+              // Es cuenta completa únicamente si la venta o los detalles son de tipo CUENTA
+              const esCuentaCompleta = cm && (
+                registeredVenta.tipo_venta === 'CUENTA' ||
+                listDetalles.every((d: any) => d.tipo_unidad === 'CUENTA' || !d.perfil_id)
+              );
 
               if (esCuentaCompleta) {
                 return (

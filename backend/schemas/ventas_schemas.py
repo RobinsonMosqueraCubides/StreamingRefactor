@@ -19,6 +19,7 @@ class DetalleVentaResponse(BaseModel):
     combo_id: Optional[int] = None
     cuenta_madre_id: Optional[int] = None
     perfil_id: Optional[int] = None
+    tipo_unidad: str = "PANTALLA"
     precio_aplicado: Decimal
 
     model_config = ConfigDict(from_attributes=True)

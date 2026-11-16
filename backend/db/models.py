@@ -193,6 +193,7 @@ class DetalleVenta(Base):
     combo_id: Mapped[Optional[int]] = mapped_column(ForeignKey("combos.id"), nullable=True)
     cuenta_madre_id: Mapped[Optional[int]] = mapped_column(ForeignKey("cuentas_madre.id"), nullable=True)
     perfil_id: Mapped[Optional[int]] = mapped_column(ForeignKey("perfiles.id"), nullable=True)
+    tipo_unidad: Mapped[str] = mapped_column(String(20), nullable=False, default="PANTALLA", server_default="PANTALLA")
     precio_aplicado: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     
     # Relationships
