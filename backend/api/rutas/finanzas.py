@@ -5,7 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from db.database import get_db
-from schemas.finanzas_schemas import PagoVentaCreate, PagoVentaResponse, GastoManualCreate, TransaccionResponse, ResumenBalanceResponse, ResumenMensualResponse
+from schemas.finanzas_schemas import (
+    PagoVentaCreate,
+    PagoVentaResponse,
+    GastoManualCreate,
+    TransaccionResponse,
+    ResumenBalanceResponse,
+    ResumenMensualResponse,
+    ReporteFinancieroResponse,
+)
 import services.finanzas_service as service
 
 finanzas_router = APIRouter(prefix="/finanzas", tags=["Finanzas"])
@@ -69,5 +77,22 @@ async def obtener_resumen_mensual(
     db: AsyncSession = Depends(get_db)
 ):
     return await service.obtener_resumen_mensual(db, anio, mes)
+
+
+@finanzas_router.get(
+    "/reporte",
+    response_model=ReporteFinancieroResponse,
+    summary="Obtener reporte financiero unificado (Anual, Mensual o Rango)",
+    description="Aplica la lógica de caja del Dashboard (ingresos, egresos, balance neto y por cobrar) por año, mes específico o rango de fechas, incluyendo detalle de compras de cuentas madre, otros egresos e ingresos."
+)
+async def obtener_reporte_financiero(
+    anio: int = Query(default_factory=lambda: get_bogota_date().year, ge=2020, le=2100),
+    mes: int | None = Query(default=None, ge=1, le=12),
+    fecha_inicio: date | None = Query(default=None),
+    fecha_fin: date | None = Query(default=None),
+    db: AsyncSession = Depends(get_db)
+):
+    return await service.obtener_reporte_financiero(db, anio, mes, fecha_inicio, fecha_fin)
+
 
 

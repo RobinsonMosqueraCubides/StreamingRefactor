@@ -7,6 +7,7 @@ from decimal import Decimal
 from sqlalchemy.orm import selectinload
 from db.models import Venta, DetalleVenta, PagoVenta, Transaccion, CuentaMadre, VentaVencida, Plataforma, EstadoPago, TipoTransaccion
 from db.database import get_or_404
+from core.exceptions import BusinessRuleError
 from schemas.finanzas_schemas import PagoVentaCreate, GastoManualCreate
 
 async def registrar_pago_venta(db: AsyncSession, venta_id: int, pago: PagoVentaCreate):
@@ -413,4 +414,327 @@ async def obtener_resumen_mensual(db: AsyncSession, anio: int, mes: int):
         "ventas_detalle": ventas_detalle,
         "comparativa_anual": comparativa_anual,
     }
+
+
+def _calc_sale_pending(venta: Venta) -> tuple[Decimal, Decimal]:
+    """Retorna (abonado, saldo_pendiente) para una venta activa usando la lógica de caja."""
+    monto_total = venta.monto_total or Decimal("0.00")
+    if venta.estado_pago == EstadoPago.PAGADO:
+        return monto_total, Decimal("0.00")
+    if venta.estado_pago == EstadoPago.PAGO_PARCIAL:
+        abonado = sum((p.monto for p in (venta.pagos or [])), Decimal("0.00"))
+        saldo = max(Decimal("0.00"), monto_total - abonado)
+        return abonado, saldo
+    return Decimal("0.00"), monto_total
+
+
+def _extract_sale_platforms(venta: Venta) -> str:
+    names: list[str] = []
+    for d in venta.detalles:
+        if d.cuenta_madre and d.cuenta_madre.plataforma:
+            name = d.cuenta_madre.plataforma.nombre
+        elif d.combo:
+            name = f"Combo: {d.combo.nombre}"
+        else:
+            name = "Otras"
+        if name not in names:
+            names.append(name)
+    return ", ".join(names) if names else "Sin detalle"
+
+
+async def obtener_reporte_financiero(
+    db: AsyncSession,
+    anio: int,
+    mes: int | None = None,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+):
+    """Reporte financiero unificado (Anual, Mensual o Rango) replicando la lógica de caja del Dashboard."""
+    if (fecha_inicio is None) != (fecha_fin is None):
+        raise BusinessRuleError("Debes proporcionar tanto fecha_inicio como fecha_fin para filtrar por rango.")
+    if fecha_inicio is not None and fecha_fin is not None and fecha_inicio > fecha_fin:
+        raise BusinessRuleError("La fecha de inicio no puede ser mayor que la fecha fin.")
+
+    if fecha_inicio is not None and fecha_fin is not None:
+        modo = "RANGO"
+        periodo_inicio = fecha_inicio
+        periodo_fin = fecha_fin
+        etiqueta_periodo = f"{fecha_inicio.strftime('%d/%m/%Y')} — {fecha_fin.strftime('%d/%m/%Y')}"
+    elif mes is not None:
+        modo = "MES"
+        dias_mes = calendar.monthrange(anio, mes)[1]
+        periodo_inicio = date(anio, mes, 1)
+        periodo_fin = date(anio, mes, dias_mes)
+        etiqueta_periodo = f"{MESES_ES[mes]} {anio}"
+    else:
+        modo = "ANIO"
+        periodo_inicio = date(anio, 1, 1)
+        periodo_fin = date(anio, 12, 31)
+        etiqueta_periodo = f"Año {anio}"
+
+    anio_ini_dt = datetime.combine(date(anio, 1, 1), time.min)
+    anio_fin_dt = datetime.combine(date(anio, 12, 31), time.max)
+    per_ini_dt = datetime.combine(periodo_inicio, time.min)
+    per_fin_dt = datetime.combine(periodo_fin, time.max)
+
+    trans_anio = (
+        await db.execute(
+            select(Transaccion)
+            .where(Transaccion.fecha >= anio_ini_dt, Transaccion.fecha <= anio_fin_dt)
+            .order_by(Transaccion.fecha.desc(), Transaccion.id.desc())
+        )
+    ).scalars().all()
+
+    if periodo_inicio.year == anio and periodo_fin.year == anio:
+        trans_periodo = [t for t in trans_anio if per_ini_dt <= t.fecha <= per_fin_dt]
+    else:
+        trans_periodo = (
+            await db.execute(
+                select(Transaccion)
+                .where(Transaccion.fecha >= per_ini_dt, Transaccion.fecha <= per_fin_dt)
+                .order_by(Transaccion.fecha.desc(), Transaccion.id.desc())
+            )
+        ).scalars().all()
+
+    # Ventas activas pendientes o parciales para Por Cobrar (sin límite de 100)
+    ventas_pendientes = (
+        await db.execute(
+            select(Venta)
+            .where(Venta.estado_pago != EstadoPago.PAGADO)
+            .options(
+                selectinload(Venta.cliente),
+                selectinload(Venta.pagos),
+                selectinload(Venta.detalles).selectinload(DetalleVenta.cuenta_madre).selectinload(CuentaMadre.plataforma),
+                selectinload(Venta.detalles).selectinload(DetalleVenta.combo),
+            )
+            .order_by(Venta.fecha_inicio.desc(), Venta.id.desc())
+        )
+    ).scalars().all()
+
+    # Construir resumen anual de los 12 meses del año seleccionado
+    anual_map = {
+        m: {
+            "mes": m,
+            "etiqueta": MESES_ES[m],
+            "ingresos": Decimal("0.00"),
+            "egresos_compras": Decimal("0.00"),
+            "egresos_otros": Decimal("0.00"),
+            "egresos_totales": Decimal("0.00"),
+            "balance_neto": Decimal("0.00"),
+            "por_cobrar": Decimal("0.00"),
+            "cantidad_compras": 0,
+            "cantidad_otros_egresos": 0,
+            "cantidad_ingresos": 0,
+        }
+        for m in range(1, 13)
+    }
+
+    for t in trans_anio:
+        if not t.fecha:
+            continue
+        bucket = anual_map[t.fecha.month]
+        monto = t.monto or Decimal("0.00")
+        if t.tipo == TipoTransaccion.INGRESO:
+            bucket["ingresos"] += monto
+            bucket["cantidad_ingresos"] += 1
+        elif t.categoria == "COMPRA_CUENTA":
+            bucket["egresos_compras"] += monto
+            bucket["egresos_totales"] += monto
+            bucket["cantidad_compras"] += 1
+        else:
+            bucket["egresos_otros"] += monto
+            bucket["egresos_totales"] += monto
+            bucket["cantidad_otros_egresos"] += 1
+
+    por_cobrar_global = Decimal("0.00")
+    por_cobrar_periodo = Decimal("0.00")
+    pendientes_detalle = []
+
+    for v in ventas_pendientes:
+        abonado, saldo = _calc_sale_pending(v)
+        por_cobrar_global += saldo
+        if v.fecha_inicio:
+            if v.fecha_inicio.year == anio:
+                anual_map[v.fecha_inicio.month]["por_cobrar"] += saldo
+            if periodo_inicio <= v.fecha_inicio <= periodo_fin and saldo > 0:
+                por_cobrar_periodo += saldo
+                pendientes_detalle.append({
+                    "venta_id": v.id,
+                    "cliente_nombre": v.cliente.nombre if v.cliente else f"Cliente #{v.cliente_id}",
+                    "plataformas": _extract_sale_platforms(v),
+                    "fecha_inicio": v.fecha_inicio,
+                    "fecha_corte": v.fecha_corte,
+                    "estado_pago": v.estado_pago.value if hasattr(v.estado_pago, "value") else str(v.estado_pago),
+                    "monto_total": v.monto_total or Decimal("0.00"),
+                    "abonado": abonado,
+                    "saldo_pendiente": saldo,
+                })
+
+    resumen_anual = []
+    for m in range(1, 13):
+        item = anual_map[m]
+        item["balance_neto"] = item["ingresos"] - item["egresos_totales"]
+        resumen_anual.append(item)
+
+    # Enriquecimiento en lote de referencias (CuentaMadre y Venta) para el periodo seleccionado
+    cm_ids = {
+        t.referencia_id
+        for t in trans_periodo
+        if t.referencia_id is not None and t.categoria in ("COMPRA_CUENTA", "REEMBOLSO_CUENTA")
+    }
+    venta_ids = {
+        t.referencia_id
+        for t in trans_periodo
+        if t.referencia_id is not None and t.categoria in ("PAGO_VENTA", "REEMBOLSO_GARANTIA")
+    }
+
+    cm_map: dict[int, CuentaMadre] = {}
+    if cm_ids:
+        cms = (
+            await db.execute(
+                select(CuentaMadre)
+                .where(CuentaMadre.id.in_(cm_ids))
+                .options(
+                    selectinload(CuentaMadre.plataforma),
+                    selectinload(CuentaMadre.credencial),
+                    selectinload(CuentaMadre.proveedor),
+                )
+            )
+        ).scalars().all()
+        cm_map = {cm.id: cm for cm in cms}
+
+    venta_map: dict[int, Venta] = {}
+    if venta_ids:
+        ventas_ref = (
+            await db.execute(
+                select(Venta)
+                .where(Venta.id.in_(venta_ids))
+                .options(selectinload(Venta.cliente))
+            )
+        ).scalars().all()
+        venta_map = {v.id: v for v in ventas_ref}
+
+    ingresos_totales = Decimal("0.00")
+    ingresos_ventas = Decimal("0.00")
+    egresos_totales = Decimal("0.00")
+    egresos_cuentas_madre = Decimal("0.00")
+    entidad_stats: dict[str, dict] = {}
+    compras_detalle = []
+    otros_egresos_detalle = []
+    ingresos_detalle = []
+
+    for t in trans_periodo:
+        monto = t.monto or Decimal("0.00")
+        ent_name = t.entidad.value if hasattr(t.entidad, "value") else str(t.entidad)
+        if ent_name not in entidad_stats:
+            entidad_stats[ent_name] = {
+                "entidad": ent_name,
+                "ingresos": Decimal("0.00"),
+                "egresos": Decimal("0.00"),
+                "balance": Decimal("0.00"),
+            }
+
+        if t.tipo == TipoTransaccion.INGRESO:
+            ingresos_totales += monto
+            entidad_stats[ent_name]["ingresos"] += monto
+            if t.categoria == "PAGO_VENTA":
+                ingresos_ventas += monto
+
+            detalle_txt = None
+            if t.categoria == "PAGO_VENTA" and t.referencia_id in venta_map:
+                v_ref = venta_map[t.referencia_id]
+                cli = v_ref.cliente.nombre if v_ref.cliente else f"Cliente #{v_ref.cliente_id}"
+                detalle_txt = f"{cli} (Venta #{v_ref.id})"
+            elif t.categoria == "REEMBOLSO_CUENTA" and t.referencia_id in cm_map:
+                cm_ref = cm_map[t.referencia_id]
+                plat = cm_ref.plataforma.nombre if cm_ref.plataforma else "Plataforma"
+                correo = cm_ref.credencial.email if cm_ref.credencial else "N/A"
+                detalle_txt = f"{plat} ({correo})"
+
+            ingresos_detalle.append({
+                "id": t.id,
+                "categoria": t.categoria,
+                "monto": monto,
+                "entidad": ent_name,
+                "referencia_id": t.referencia_id,
+                "detalle": detalle_txt,
+                "fecha": t.fecha,
+            })
+        else:
+            egresos_totales += monto
+            entidad_stats[ent_name]["egresos"] += monto
+
+            if t.categoria == "COMPRA_CUENTA":
+                egresos_cuentas_madre += monto
+                cm_ref = cm_map.get(t.referencia_id) if t.referencia_id is not None else None
+                plataforma = cm_ref.plataforma.nombre if (cm_ref and cm_ref.plataforma) else "Cuenta no disponible"
+                correo = cm_ref.credencial.email if (cm_ref and cm_ref.credencial) else "N/A"
+                proveedor = cm_ref.proveedor.nombre if (cm_ref and cm_ref.proveedor) else "N/A"
+                estado_cuenta = (
+                    cm_ref.estado.value if (cm_ref and hasattr(cm_ref.estado, "value"))
+                    else (str(cm_ref.estado) if cm_ref else None)
+                )
+                tipo_mov = "Compra / Renov."
+                if cm_ref and cm_ref.fecha_compra and t.fecha:
+                    tipo_mov = "Renovación" if t.fecha.date() > cm_ref.fecha_compra else "Compra"
+
+                compras_detalle.append({
+                    "id": t.id,
+                    "cuenta_madre_id": t.referencia_id,
+                    "plataforma": plataforma,
+                    "correo": correo,
+                    "proveedor": proveedor,
+                    "estado_cuenta": estado_cuenta,
+                    "tipo_movimiento": tipo_mov,
+                    "monto": monto,
+                    "entidad": ent_name,
+                    "fecha": t.fecha,
+                })
+            else:
+                detalle_txt = None
+                if t.categoria == "REEMBOLSO_GARANTIA" and t.referencia_id in venta_map:
+                    v_ref = venta_map[t.referencia_id]
+                    cli = v_ref.cliente.nombre if v_ref.cliente else f"Cliente #{v_ref.cliente_id}"
+                    detalle_txt = f"{cli} (Venta #{v_ref.id})"
+
+                otros_egresos_detalle.append({
+                    "id": t.id,
+                    "categoria": t.categoria,
+                    "monto": monto,
+                    "entidad": ent_name,
+                    "referencia_id": t.referencia_id,
+                    "detalle": detalle_txt,
+                    "fecha": t.fecha,
+                })
+
+    por_entidad = []
+    for st in entidad_stats.values():
+        st["balance"] = st["ingresos"] - st["egresos"]
+        por_entidad.append(st)
+    por_entidad.sort(key=lambda x: x["ingresos"] + x["egresos"], reverse=True)
+
+    return {
+        "anio": anio,
+        "mes": mes if modo == "MES" else None,
+        "fecha_inicio": periodo_inicio,
+        "fecha_fin": periodo_fin,
+        "modo": modo,
+        "etiqueta_periodo": etiqueta_periodo,
+        "ingresos_totales": ingresos_totales,
+        "ingresos_ventas": ingresos_ventas,
+        "ingresos_otros": ingresos_totales - ingresos_ventas,
+        "egresos_totales": egresos_totales,
+        "egresos_cuentas_madre": egresos_cuentas_madre,
+        "egresos_otros": egresos_totales - egresos_cuentas_madre,
+        "balance_neto": ingresos_totales - egresos_totales,
+        "por_cobrar_periodo": por_cobrar_periodo,
+        "por_cobrar_global": por_cobrar_global,
+        "resumen_anual": resumen_anual,
+        "por_entidad": por_entidad,
+        "compras_detalle": compras_detalle,
+        "otros_egresos_detalle": otros_egresos_detalle,
+        "ingresos_detalle": ingresos_detalle,
+        "pendientes_detalle": pendientes_detalle,
+    }
+
 

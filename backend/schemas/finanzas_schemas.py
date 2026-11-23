@@ -113,3 +113,96 @@ class ResumenMensualResponse(BaseModel):
     por_plataforma: list[PlataformaVentaStats]
     ventas_detalle: list[VentaMensualItem]
     comparativa_anual: list[MesAnualComparativo]
+
+
+# --- Reporte Financiero de Caja (Anual / Mensual / Rango) ---
+
+class MesFinancieroResumen(BaseModel):
+    mes: int
+    etiqueta: str
+    ingresos: Decimal
+    egresos_compras: Decimal
+    egresos_otros: Decimal
+    egresos_totales: Decimal
+    balance_neto: Decimal
+    por_cobrar: Decimal
+    cantidad_compras: int
+    cantidad_otros_egresos: int
+    cantidad_ingresos: int
+
+
+class EntidadResumenItem(BaseModel):
+    entidad: str
+    ingresos: Decimal
+    egresos: Decimal
+    balance: Decimal
+
+
+class CompraCuentaDetalleItem(BaseModel):
+    id: int
+    cuenta_madre_id: int | None = None
+    plataforma: str
+    correo: str
+    proveedor: str
+    estado_cuenta: str | None = None
+    tipo_movimiento: str
+    monto: Decimal
+    entidad: str
+    fecha: datetime
+
+
+class EgresoDetalleItem(BaseModel):
+    id: int
+    categoria: str
+    monto: Decimal
+    entidad: str
+    referencia_id: int | None = None
+    detalle: str | None = None
+    fecha: datetime
+
+
+class IngresoDetalleItem(BaseModel):
+    id: int
+    categoria: str
+    monto: Decimal
+    entidad: str
+    referencia_id: int | None = None
+    detalle: str | None = None
+    fecha: datetime
+
+
+class PendienteDetalleItem(BaseModel):
+    venta_id: int
+    cliente_nombre: str
+    plataformas: str
+    fecha_inicio: date
+    fecha_corte: date
+    estado_pago: str
+    monto_total: Decimal
+    abonado: Decimal
+    saldo_pendiente: Decimal
+
+
+class ReporteFinancieroResponse(BaseModel):
+    anio: int
+    mes: int | None = None
+    fecha_inicio: date
+    fecha_fin: date
+    modo: str  # 'ANIO', 'MES', 'RANGO'
+    etiqueta_periodo: str
+    ingresos_totales: Decimal
+    ingresos_ventas: Decimal
+    ingresos_otros: Decimal
+    egresos_totales: Decimal
+    egresos_cuentas_madre: Decimal
+    egresos_otros: Decimal
+    balance_neto: Decimal
+    por_cobrar_periodo: Decimal
+    por_cobrar_global: Decimal
+    resumen_anual: list[MesFinancieroResumen]
+    por_entidad: list[EntidadResumenItem]
+    compras_detalle: list[CompraCuentaDetalleItem]
+    otros_egresos_detalle: list[EgresoDetalleItem]
+    ingresos_detalle: list[IngresoDetalleItem]
+    pendientes_detalle: list[PendienteDetalleItem]
+
